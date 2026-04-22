@@ -8,95 +8,115 @@
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;800&display=swap" rel="stylesheet">
     <style>
         body { 
+            /* שימוש בקישור ה-Cloudinary המעודכן עם שכבת כהות */
             background-image: linear-gradient(rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.8)), 
-                              url('https://res.cloudinary.com/dxygefiai/image/upload/v1776868529/TLV2099_c7nqzc.png');
+                              url('https://res.cloudinary.com/dxygefiai/image/upload/v1776870001/Gemini_Generated_Image_jbr8f5jbr8f5jbr8_burebz.png');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
+            background-repeat: no-repeat;
             color: white; 
             font-family: 'Assistant', sans-serif; 
         }
-        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
-        .item-card { transition: all 0.3s ease; border: 1px solid rgba(59, 130, 246, 0.1); }
-        .item-card:hover { transform: translateY(-5px); border-color: rgba(59, 130, 246, 0.5); background: rgba(30, 41, 59, 0.9); }
-        .neon-glow { box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
+        .glass { 
+            background: rgba(15, 23, 42, 0.85); 
+            backdrop-filter: blur(12px); 
+            border: 1px solid rgba(255,255,255,0.05); 
+        }
+        .item-card { 
+            transition: all 0.3s ease; 
+            border: 1px solid rgba(59, 130, 246, 0.1); 
+        }
+        .item-card:hover { 
+            transform: translateY(-5px); 
+            border-color: rgba(59, 130, 246, 0.5); 
+            background: rgba(30, 41, 59, 0.95); 
+            box-shadow: 0 0 25px rgba(59, 130, 246, 0.2);
+        }
+        .neon-text { 
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.3); 
+        }
     </style>
 </head>
 <body class="min-h-screen p-6 md:p-10">
 
-    <header class="flex justify-between items-center mb-10 pb-6 border-b border-slate-800 max-w-6xl mx-auto">
+    <header class="flex justify-between items-center mb-10 pb-6 border-b border-slate-800 max-w-7xl mx-auto">
         <div class="flex items-center gap-4">
-            <a href="dashboard.html" class="text-slate-400 hover:text-white transition-colors">◄ חזרה לחמ"ל</a>
-            <h1 class="text-4xl font-black italic tracking-tighter">נשקייה <span class="text-blue-500">ARMORY</span></h1>
+            <a href="dashboard.html" class="glass p-2 px-4 rounded-full text-slate-400 hover:text-white transition-all text-xs border border-slate-700">◄ חזרה לחמ"ל</a>
+            <h1 class="text-4xl font-black italic tracking-tighter neon-text text-white">נשקייה <span class="text-blue-500">ARMORY</span></h1>
         </div>
-        <div class="flex gap-4">
-            <div class="glass px-4 py-2 rounded-xl text-sm border border-slate-700">
-                <span class="text-slate-500 ml-2">זוזים:</span>
-                <span id="player-coins" class="font-bold text-white">-</span>
+        <div class="flex items-center gap-4">
+            <div class="glass px-5 py-2.5 rounded-full text-sm border border-slate-700 shadow-lg flex items-center gap-2">
+                <span class="text-3xl">💰</span>
+                <span class="text-slate-500">זוזים:</span>
+                <span id="player-coins" class="font-bold text-white text-lg">-</span>
             </div>
         </div>
     </header>
 
-    <main class="max-w-6xl mx-auto">
-        <div class="flex gap-4 mb-8 overflow-x-auto pb-2">
-            <button class="bg-blue-600 text-white px-6 py-2 rounded-full font-bold text-sm shadow-lg shadow-blue-900/40">הכל</button>
-            <button class="glass text-slate-400 px-6 py-2 rounded-full font-bold text-sm hover:text-white transition-all">נשק חם</button>
-            <button class="glass text-slate-400 px-6 py-2 rounded-full font-bold text-sm hover:text-white transition-all">נשק קר</button>
-            <button class="glass text-slate-400 px-6 py-2 rounded-full font-bold text-sm hover:text-white transition-all">טכנולוגיה</button>
+    <main class="max-w-7xl mx-auto">
+        <div class="flex gap-4 mb-10 overflow-x-auto pb-3">
+            <button class="bg-blue-600 text-white px-7 py-3 rounded-full font-black text-sm shadow-lg shadow-blue-900/50 whitespace-nowrap">הכל</button>
+            <button class="glass text-slate-400 px-7 py-3 rounded-full font-bold text-sm hover:text-white transition-all whitespace-nowrap">נשק חם</button>
+            <button class="glass text-slate-400 px-7 py-3 rounded-full font-bold text-sm hover:text-white transition-all whitespace-nowrap">נשק קר</button>
+            <button class="glass text-slate-400 px-7 py-3 rounded-full font-bold text-sm hover:text-white transition-all whitespace-nowrap">טכנולוגיה</button>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             
-            <div class="glass p-6 rounded-[2rem] item-card flex flex-col gap-4">
-                <div class="flex justify-between items-start">
-                    <span class="bg-blue-900/40 text-blue-400 text-[10px] font-bold px-3 py-1 rounded-full border border-blue-500/30 uppercase tracking-widest">מצויד</span>
-                    <span class="text-3xl">🔫</span>
+            <div class="glass p-8 rounded-[2.5rem] item-card flex flex-col gap-5 relative border border-slate-800">
+                <div class="flex justify-between items-center">
+                    <span class="bg-blue-900/50 text-blue-400 text-[10px] font-black px-4 py-1.5 rounded-full border border-blue-500/30 uppercase tracking-widest shadow-md">מצויד (Active)</span>
+                    <span class="text-5xl drop-shadow-lg">🔫</span>
                 </div>
-                <div>
-                    <h3 class="text-xl font-black mb-1">אקדח פעימה "נמסיס"</h3>
-                    <p class="text-slate-500 text-xs">נשק בסיסי לציידים מתחילים. אמין ומהיר.</p>
+                <div class="mt-2">
+                    <h3 class="text-2xl font-black mb-1.5 text-white">אקדח פעימה "נמסיס"</h3>
+                    <p class="text-slate-400 text-xs">נשק בסיסי לציידים מתחילים. אמין, מהיר ועוצמתי.</p>
                 </div>
-                <div class="flex justify-between items-center mt-2 border-t border-slate-800 pt-4">
+                <div class="flex justify-between items-center mt-3 border-t border-slate-800 pt-5">
                     <div class="text-sm">
                         <span class="text-slate-500">נזק:</span>
-                        <span class="text-blue-400 font-bold">25 ATK</span>
+                        <span class="text-blue-400 font-bold text-lg">25 ATK</span>
                     </div>
-                    <button class="text-[10px] font-bold uppercase text-slate-500 hover:text-white transition-colors">פרטים נוספים</button>
+                    <button class="text-[10px] font-bold uppercase text-slate-600 hover:text-white transition-colors">פרטים נוספים</button>
                 </div>
             </div>
 
-            <div class="glass p-6 rounded-[2rem] item-card flex flex-col gap-4 opacity-60">
-                <div class="flex justify-between items-start">
-                    <span class="bg-slate-800 text-slate-500 text-[10px] font-bold px-3 py-1 rounded-full border border-slate-700 uppercase tracking-widest">במלאי</span>
-                    <span class="text-3xl">⚔️</span>
+            <div class="glass p-8 rounded-[2.5rem] item-card flex flex-col gap-5 border border-slate-800">
+                <div class="flex justify-between items-center">
+                    <span class="bg-slate-900/50 text-slate-500 text-[10px] font-black px-4 py-1.5 rounded-full border border-slate-800 uppercase tracking-widest shadow-md">במלאי (Stock)</span>
+                    <span class="text-5xl drop-shadow-lg">⚔️</span>
                 </div>
-                <div>
-                    <h3 class="text-xl font-black mb-1">להב קטאנה טרמי</h3>
-                    <p class="text-slate-500 text-xs">להב חם המסוגל לחתוך שריון של מפלצות רמה 2.</p>
+                <div class="mt-2">
+                    <h3 class="text-2xl font-black mb-1.5 text-white">להב קטאנה טרמי</h3>
+                    <p class="text-slate-400 text-xs">להב חם המסוגל לחתוך שריון של מפלצות רמה 2 ומעלה.</p>
                 </div>
-                <div class="flex justify-between items-center mt-2 border-t border-slate-800 pt-4">
+                <div class="flex justify-between items-center mt-3 border-t border-slate-800 pt-5">
                     <div class="text-sm">
                         <span class="text-slate-500">נזק:</span>
-                        <span class="text-blue-400 font-bold">45 ATK</span>
+                        <span class="text-blue-400 font-bold text-lg">45 ATK</span>
                     </div>
-                    <button class="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black hover:bg-blue-500 transition-all">צייד (Equip)</button>
+                    <button class="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-xs font-black hover:bg-blue-500 transition-all shadow-lg active:scale-95">
+                        צייד (Equip)
+                    </button>
                 </div>
             </div>
 
-            <div class="glass p-6 rounded-[2rem] item-card flex flex-col gap-4">
-                <div class="flex justify-between items-start">
-                    <span class="bg-slate-800 text-slate-500 text-[10px] font-bold px-3 py-1 rounded-full border border-slate-700 uppercase tracking-widest">5 יחידות</span>
-                    <span class="text-3xl">💊</span>
+            <div class="glass p-8 rounded-[2.5rem] item-card flex flex-col gap-5 border border-slate-800 relative opacity-80 hover:opacity-100 transition-opacity">
+                <div class="flex justify-between items-center">
+                    <span class="bg-slate-900/50 text-slate-500 text-[10px] font-black px-4 py-1.5 rounded-full border border-slate-800 uppercase tracking-widest shadow-md">5 יחידות</span>
+                    <span class="text-5xl drop-shadow-lg">💊</span>
                 </div>
-                <div>
-                    <h3 class="text-xl font-black mb-1">מזרק ננו-בוסט</h3>
-                    <p class="text-slate-500 text-xs">מרפא 30% חיים באופן מיידי במהלך קרב.</p>
+                <div class="mt-2">
+                    <h3 class="text-2xl font-black mb-1.5 text-white">מזרק ננו-בוסט</h3>
+                    <p class="text-slate-400 text-xs">מרפא 30% חיים (Health) באופן מיידי במהלך קרב.</p>
                 </div>
-                <div class="flex justify-between items-center mt-2 border-t border-slate-800 pt-4">
+                <div class="flex justify-between items-center mt-3 border-t border-slate-800 pt-5">
                     <div class="text-sm">
                         <span class="text-slate-500">שימוש:</span>
-                        <span class="text-green-400 font-bold">RECOVERY</span>
+                        <span class="text-green-400 font-bold text-lg">RECOVERY</span>
                     </div>
+                    <span class="text-xs text-slate-600">שימוש מיידי</span>
                 </div>
             </div>
 
@@ -108,14 +128,21 @@
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
+        // בדיקה אם המשתמש מחובר ושואב נתונים
         onAuthStateChanged(auth, async (user) => {
             if (user) {
+                // משיכת נתונים מה-Firestore
                 const docRef = doc(db, "players", user.uid);
                 const docSnap = await getDoc(docRef);
+
                 if (docSnap.exists()) {
+                    // עדכון הממשק עם כמות הזוזים
                     document.getElementById('player-coins').innerText = docSnap.data().coins;
+                } else {
+                    console.error("מסמך שחקן לא נמצא ב-Database!");
                 }
             } else {
+                // משתמש לא מחובר, החזר לדף ההרשמה
                 window.location.href = 'index.html';
             }
         });
