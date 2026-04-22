@@ -3,174 +3,114 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TLV2099 - כניסת ציידים</title>
-    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <title>כניסת ציידים | TLV2099</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        :root {
-            --main-bg: #050505;
-            --card-bg: #0f0f0f;
-            --neon-color: #00ffcc; /* צבע הניאון של חדרי הבריחה */
-            --accent-color: #ff0055;
-            --text-color: #e0e0e0;
-        }
-
-        body {
-            background-color: var(--main-bg);
-            color: var(--text-color);
-            font-family: 'Assistant', sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden;
-        }
-
-        /* עיצוב המכל המרכזי - כמו בחדרי בריחה */
-        .login-container {
-            background: var(--card-bg);
-            padding: 40px;
-            border-radius: 4px;
-            border-left: 4px solid var(--neon-color); /* פס דקורטיבי בצד */
-            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
-            width: 100%;
-            max-width: 360px;
-            text-align: center;
-        }
-
-        h1 {
-            font-family: 'Orbitron', sans-serif; /* פונט עתידני לכותרות */
-            font-size: 2rem;
-            letter-spacing: 2px;
-            margin-bottom: 30px;
-            color: #fff;
-            text-transform: uppercase;
-        }
-
-        .input-group {
-            margin-bottom: 20px;
-            text-align: right;
-        }
-
-        label {
-            display: block;
-            font-size: 0.8rem;
-            margin-bottom: 5px;
-            color: var(--neon-color);
-            font-weight: bold;
-        }
-
-        input {
-            width: 100%;
-            padding: 12px;
-            background: #1a1a1a;
-            border: 1px solid #333;
-            color: #fff;
-            border-radius: 4px;
-            box-sizing: border-box;
-            transition: border 0.3s;
-        }
-
-        input:focus {
-            outline: none;
-            border-color: var(--neon-color);
-        }
-
-        /* כפתור בסגנון חדר בריחה */
-        button {
-            width: 100%;
-            padding: 15px;
-            background: var(--neon-color);
-            border: none;
-            color: #000;
-            font-weight: 700;
-            font-size: 1rem;
-            text-transform: uppercase;
-            cursor: pointer;
-            border-radius: 4px;
-            transition: all 0.3s ease;
-            margin-top: 10px;
-            letter-spacing: 1px;
-        }
-
-        button:hover {
-            background: #fff;
-            box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
-        }
-
-        .toggle-link {
-            margin-top: 20px;
-            font-size: 0.9rem;
-            color: #888;
-            cursor: pointer;
-            transition: color 0.3s;
-        }
-
-        .toggle-link:hover {
-            color: var(--neon-color);
-        }
-
-        /* אלמנט עיצובי קטן - מספר זיהוי סתמי לאווירה */
-        .system-id {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            font-size: 0.6rem;
-            color: #222;
-            font-family: monospace;
-        }
+        body { background-color: #020617; color: white; font-family: 'Assistant', sans-serif; }
+        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
+        .neon-text { text-shadow: 0 0 10px rgba(96, 165, 250, 0.5); }
     </style>
 </head>
-<body>
+<body class="flex items-center justify-center min-h-screen p-6">
 
-<div class="login-container">
-    <h1 id="form-title">TLV 2099</h1>
-    
-    <div class="input-group">
-        <label>זיהוי אימייל</label>
-        <input type="email" id="email" placeholder="hunter@city.com" required>
+    <div class="w-full max-w-md">
+        <header class="text-center mb-10">
+            <h1 class="text-5xl font-black text-blue-500 italic tracking-tighter neon-text">TLV2099</h1>
+            <p class="text-slate-500 text-[10px] mt-3 uppercase tracking-[0.4em]">צייד המפלצות של תל אביב</p>
+        </header>
+
+        <div class="glass p-8 rounded-[2.5rem] shadow-2xl">
+            <div class="flex mb-8 bg-slate-950/50 p-1.5 rounded-2xl">
+                <button id="tab-login" onclick="switchTab('login')" class="flex-1 py-3 rounded-xl font-bold text-sm transition-all bg-blue-600 text-white shadow-lg">התחברות</button>
+                <button id="tab-signup" onclick="switchTab('signup')" class="flex-1 py-3 rounded-xl font-bold text-sm transition-all text-slate-400">הרשמה</button>
+            </div>
+
+            <form id="auth-form" class="space-y-5">
+                <div id="username-field" class="hidden">
+                    <label class="block text-[10px] uppercase text-slate-500 mb-2 font-bold mr-1">כינוי צייד</label>
+                    <input type="text" id="username" class="w-full bg-slate-950 border border-slate-800 p-4 rounded-2xl outline-none focus:border-blue-500 text-white transition-all placeholder:text-slate-700" placeholder="למשל: Hunter_X">
+                </div>
+
+                <div>
+                    <label class="block text-[10px] uppercase text-slate-500 mb-2 font-bold mr-1">אימייל</label>
+                    <input type="email" id="email" required class="w-full bg-slate-950 border border-slate-800 p-4 rounded-2xl outline-none focus:border-blue-500 text-white transition-all">
+                </div>
+
+                <div>
+                    <label class="block text-[10px] uppercase text-slate-500 mb-2 font-bold mr-1">סיסמה</label>
+                    <input type="password" id="password" required class="w-full bg-slate-950 border border-slate-800 p-4 rounded-2xl outline-none focus:border-blue-500 text-white transition-all">
+                </div>
+
+                <button type="submit" id="submit-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-2xl shadow-lg shadow-blue-900/40 transition-all active:scale-95 mt-4">
+                    בוא נצא לדרך 🚀
+                </button>
+            </form>
+            
+            <p id="error-msg" class="text-red-400 text-xs mt-4 text-center hidden bg-red-900/20 p-2 rounded-lg border border-red-900/30"></p>
+        </div>
     </div>
 
-    <div class="input-group">
-        <label>קוד גישה</label>
-        <input type="password" id="password" placeholder="******" required>
-    </div>
+    <script type="module">
+        import { auth, db } from './firebase-config.js';
+        import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    <div class="input-group" id="username-group" style="display:none;">
-        <label>כינוי מבצעי</label>
-        <input type="text" id="username" placeholder="הכנס שם קוד">
-    </div>
+        let mode = 'login';
 
-    <button id="main-btn">כניסה למערכת</button>
-    
-    <p class="toggle-link" id="toggle-auth">ליצירת פרופיל צייד חדש</p>
-</div>
+        // פונקציה להחלפת מצבים (חשופה ל-window בגלל ה-onclick ב-HTML)
+        window.switchTab = (newMode) => {
+            mode = newMode;
+            const isLogin = mode === 'login';
+            const usernameField = document.getElementById('username-field');
+            const tabLogin = document.getElementById('tab-login');
+            const tabSignup = document.getElementById('tab-signup');
+            const submitBtn = document.getElementById('submit-btn');
 
-<div class="system-id">SYS_VER: 2099.4.22 // ENCRYPTED</div>
+            tabLogin.className = isLogin ? "flex-1 py-3 rounded-xl font-bold text-sm bg-blue-600 text-white shadow-lg" : "flex-1 py-3 rounded-xl font-bold text-sm text-slate-400";
+            tabSignup.className = !isLogin ? "flex-1 py-3 rounded-xl font-bold text-sm bg-blue-600 text-white shadow-lg" : "flex-1 py-3 rounded-xl font-bold text-sm text-slate-400";
+            submitBtn.innerText = isLogin ? "בוא נצא לדרך 🚀" : "צור פרופיל צייד ✨";
+            
+            if (isLogin) {
+                usernameField.classList.add('hidden');
+            } else {
+                usernameField.classList.remove('hidden');
+            }
+        };
 
-<script type="module" src="auth.js"></script>
+        document.getElementById('auth-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const username = document.getElementById('username').value;
+            const errorMsg = document.getElementById('error-msg');
+            
+            errorMsg.classList.add('hidden');
+            
+            try {
+                if (mode === 'login') {
+                    await signInWithEmailAndPassword(auth, email, password);
+                } else {
+                    if (!username) throw new Error("חובה לבחור כינוי צייד");
+                    
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    const user = userCredential.user;
 
-<script>
-    // לוגיקה קטנה לשינוי התצוגה של השדות (מעבר להרשמה/כניסה)
-    const toggle = document.getElementById('toggle-auth');
-    const userGroup = document.getElementById('username-group');
-    const title = document.getElementById('form-title');
-    const btn = document.getElementById('main-btn');
-
-    toggle.addEventListener('click', () => {
-        if (userGroup.style.display === 'none') {
-            userGroup.style.display = 'block';
-            title.innerText = 'REGISTRATION';
-            btn.innerText = 'צור חשבון';
-            toggle.innerText = 'כבר יש לך הרשאה? היכנס';
-        } else {
-            userGroup.style.display = 'none';
-            title.innerText = 'TLV 2099';
-            btn.innerText = 'כניסה למערכת';
-            toggle.innerText = 'ליצירת פרופיל צייד חדש';
-        }
-    });
-</script>
-
+                    // יצירת שחקן ב-Database
+                    await setDoc(doc(db, "players", user.uid), {
+                        username: username,
+                        level: 1,
+                        xp: 0,
+                        coins: 100,
+                        energy: 100,
+                        joinedAt: new Error().toISOString // תאריך הצטרפות
+                    });
+                }
+                window.location.href = 'dashboard.html';
+            } catch (error) {
+                errorMsg.innerText = "גישה נדחתה: " + error.message;
+                errorMsg.classList.remove('hidden');
+            }
+        };
+    </script>
 </body>
 </html>
