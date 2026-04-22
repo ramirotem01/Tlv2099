@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TLV2099 - כניסת ציידים</title>
+    <style>
+        body { background-color: #0a0a0a; color: #00ffcc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-container { background: #1a1a1a; padding: 2rem; border: 2px solid #00ffcc; border-radius: 10px; box-shadow: 0 0 15px #00ffcc; width: 300px; text-align: center; }
+        h1 { font-size: 1.8rem; margin-bottom: 1.5rem; text-shadow: 2px 2px #ff0055; }
+        input { width: 90%; padding: 10px; margin: 10px 0; background: #000; border: 1px solid #00ffcc; color: #fff; border-radius: 5px; }
+        button { width: 100%; padding: 10px; background: #ff0055; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 5px; margin-top: 10px; }
+        button:hover { background: #ff3377; box-shadow: 0 0 10px #ff0055; }
+        .toggle-link { margin-top: 15px; font-size: 0.8rem; cursor: pointer; text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+<div class="login-container">
+    <h1 id="form-title">TLV2099: כניסת צייד</h1>
+    <div id="auth-form">
+        <input type="email" id="email" placeholder="אימייל" required>
+        <input type="password" id="password" placeholder="סיסמה (לפחות 6 תווים)" required>
+        <input type="text" id="username" placeholder="כינוי צייד (רק בהרשמה)" style="display:none;">
+        
+        <button id="main-btn">כניסה למערכת</button>
+        <p class="toggle-link" id="toggle-auth">אין לך חשבון? הירשם כאן</p>
+    </div>
+</div>
+
+<script type="module" src="auth.js"></script>
+</body>
+</html>
