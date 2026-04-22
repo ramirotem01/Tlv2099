@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>לוח בקרה | TLV2099</title>
+    <title>חמ"ל מבצעי | TLV2099</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;800&display=swap" rel="stylesheet">
     <style>
         body { 
-            /* שימוש בתמונה החדשה של המפקדה */
-            background-image: linear-gradient(rgba(2, 6, 23, 0.6), rgba(2, 6, 23, 0.6)), 
-                              url('bg_dashboard.png');
+            /* שימוש בקישור ה-Cloudinary המעודכן עם שכבת כהות עדינה */
+            background-image: linear-gradient(rgba(2, 6, 23, 0.7), rgba(2, 6, 23, 0.7)), 
+                              url('https://res.cloudinary.com/dxygefiai/image/upload/v1776869126/TLVDESH_lkyxtd.png');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -23,6 +23,9 @@
             backdrop-filter: blur(12px); 
             border: 1px solid rgba(255,255,255,0.05); 
         }
+        .neon-text { 
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.3); 
+        }
         .neon-border { 
             border: 1px solid rgba(59, 130, 246, 0.3);
             box-shadow: 0 0 15px rgba(59, 130, 246, 0.1);
@@ -31,46 +34,53 @@
 </head>
 <body class="min-h-screen p-6 md:p-10">
 
-    <header class="flex justify-between items-center mb-10 pb-5 border-b border-slate-800">
+    <header class="flex justify-between items-center mb-10 pb-6 border-b border-slate-800">
         <div class="flex items-center gap-4">
-            <h1 class="text-3xl font-black text-white italic tracking-tighter">TLV2099</h1>
-            <span class="text-slate-500">| חמ"ל מבצעי</span>
+            <h1 class="text-4xl font-black text-white italic tracking-tighter neon-text">TLV2099</h1>
+            <span class="text-slate-500 font-bold">| חמ"ל מבצעי</span>
         </div>
-        <div class="flex items-center gap-4 glass p-2 px-4 rounded-full neon-border">
+        <div class="flex items-center gap-4 glass p-2.5 px-5 rounded-full neon-border shadow-lg">
             <span id="player-username" class="font-bold text-blue-400">טוען...</span>
+            <span class="text-slate-600">|</span>
             <button id="logout-btn" class="text-xs text-slate-500 hover:text-white transition-colors">התנתק</button>
         </div>
     </header>
 
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
-        <div class="glass p-6 rounded-3xl flex flex-col items-center text-center shadow-lg">
-            <div class="text-[10px] uppercase text-slate-500 mb-2 font-bold tracking-widest">רמה</div>
-            <div id="stat-level" class="text-5xl font-extrabold text-blue-500 tracking-tighter">-</div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12 max-w-7xl mx-auto">
+        <div class="glass p-8 rounded-3xl flex flex-col items-center text-center shadow-lg border border-slate-800">
+            <div class="text-[10px] uppercase text-slate-500 mb-3 font-bold tracking-widest">רמה</div>
+            <div id="stat-level" class="text-6xl font-extrabold text-blue-500 tracking-tighter">-</div>
         </div>
-        <div class="glass p-6 rounded-3xl flex flex-col items-center text-center shadow-lg">
-            <div class="text-[10px] uppercase text-slate-500 mb-2 font-bold tracking-widest">זוזים (כסף)</div>
-            <div id="stat-coins" class="text-5xl font-extrabold text-white tracking-tighter">-</div>
+        <div class="glass p-8 rounded-3xl flex flex-col items-center text-center shadow-lg border border-slate-800">
+            <div class="text-[10px] uppercase text-slate-500 mb-3 font-bold tracking-widest">זוזים (כסף)</div>
+            <div id="stat-coins" class="text-6xl font-extrabold text-white tracking-tighter">-</div>
         </div>
-        <div class="glass p-6 rounded-3xl col-span-2 flex flex-col items-start shadow-lg">
+        <div class="glass p-8 rounded-3xl col-span-2 flex flex-col items-start shadow-lg border border-slate-800">
             <div class="text-[10px] uppercase text-slate-500 mb-2 font-bold tracking-widest">אנרגיה</div>
-            <div class="w-full flex justify-between items-baseline mb-1">
-                <div id="stat-energy-text" class="text-5xl font-extrabold text-white tracking-tighter">-</div>
-                <div class="text-xs text-slate-500">100%</div>
+            <div class="w-full flex justify-between items-baseline mb-2">
+                <div id="stat-energy-text" class="text-6xl font-extrabold text-white tracking-tighter">-</div>
+                <div class="text-xs text-slate-500 font-bold">MAX: 100%</div>
             </div>
-            <div class="w-full bg-slate-900 h-3 rounded-full border border-slate-700">
-                <div id="stat-energy-bar" class="bg-blue-600 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+            <div class="w-full bg-slate-950 h-3.5 rounded-full border border-slate-800 p-0.5">
+                <div id="stat-energy-bar" class="bg-blue-600 h-full rounded-full transition-all duration-1000 shadow-lg shadow-blue-900/50" style="width: 0%"></div>
             </div>
         </div>
     </div>
 
-    <div class="max-w-xl mx-auto space-y-5">
-        <a href="map.html" class="block w-full glass hover:bg-slate-900 p-6 rounded-3xl flex items-center justify-between border border-blue-900/40 shadow-lg shadow-blue-950/20 active:scale-95 transition-all group">
-            <span class="text-xl font-black text-white">צא לציד מפלצות (מפה)</span>
-            <span class="text-4xl text-blue-600 group-hover:scale-110 transition-transform">🗺️</span>
+    <div class="max-w-2xl mx-auto space-y-6">
+        <a href="map.html" class="block w-full glass hover:bg-slate-900/80 p-7 rounded-3xl flex items-center justify-between border border-blue-900/40 shadow-lg shadow-blue-950/20 active:scale-95 transition-all group">
+            <div class="flex flex-col gap-1">
+                <span class="text-2xl font-black text-white">צא לציד מפלצות</span>
+                <span class="text-sm text-slate-400">פתח את המפה הטקטית של תל אביב</span>
+            </div>
+            <span class="text-5xl text-blue-600 group-hover:scale-110 transition-transform">🗺️</span>
         </a>
-        <a href="inventory.html" class="block w-full glass hover:bg-slate-900 p-6 rounded-3xl flex items-center justify-between border border-slate-800 shadow-lg active:scale-95 transition-all group">
-            <span class="text-xl font-black text-white">נשקייה וציוד (Inventory)</span>
-            <span class="text-4xl text-blue-600 group-hover:scale-110 transition-transform">⚔️</span>
+        <a href="inventory.html" class="block w-full glass hover:bg-slate-900/80 p-7 rounded-3xl flex items-center justify-between border border-slate-800 shadow-lg active:scale-95 transition-all group">
+            <div class="flex flex-col gap-1">
+                <span class="text-2xl font-black text-white">נשקייה וציוד</span>
+                <span class="text-sm text-slate-400">נהל את מלאי הנשקים והשדרוגים (Inventory)</span>
+            </div>
+            <span class="text-5xl text-blue-600 group-hover:scale-110 transition-transform">⚔️</span>
         </a>
     </div>
 
@@ -95,11 +105,13 @@
                     document.getElementById('stat-coins').innerText = data.coins;
                     document.getElementById('stat-energy-text').innerText = data.energy + "%";
                     
-                    // עדכון ה-Energy Bar
-                    const energyBar = document.getElementById('stat-energy-bar');
-                    energyBar.style.width = data.energy + "%";
+                    // עדכון ה-Energy Bar עם אנימציה
+                    setTimeout(() => {
+                        const energyBar = document.getElementById('stat-energy-bar');
+                        energyBar.style.width = data.energy + "%";
+                    }, 300); // השהייה קלה לאפקט כניסה
                 } else {
-                    console.log("No such player document!");
+                    console.error("מסמך שחקן לא נמצא ב-Database!");
                 }
             } else {
                 // משתמש לא מחובר, החזר לדף ההרשמה
