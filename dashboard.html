@@ -29,7 +29,7 @@
             box-shadow: 0 0 15px rgba(59, 130, 246, 0.1);
         }
 
-        /* סגנון לצמתים הזוהרים */
+        /* צמתי ניווט */
         .nav-node {
             position: absolute;
             width: 40px;
@@ -47,8 +47,6 @@
             z-index: 20;
         }
         .nav-node:hover { transform: scale(1.2); background: #3b82f6; box-shadow: 0 0 40px #3b82f6; }
-        
-        /* תווית הסבר במעבר עכבר */
         .nav-node::after {
             content: attr(data-label);
             position: absolute;
@@ -57,7 +55,7 @@
             background: black;
             padding: 4px 12px;
             border-radius: 8px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 800;
             opacity: 0;
             pointer-events: none;
@@ -71,6 +69,9 @@
             50% { transform: scale(1.1); box-shadow: 0 0 25px rgba(59, 130, 246, 0.8); }
             100% { transform: scale(1); box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
         }
+
+        .xp-bar-container { height: 6px; width: 100%; background: rgba(0,0,0,0.4); border-radius: 10px; margin-top: 8px; border: 1px solid rgba(255,255,255,0.05); }
+        .xp-bar-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); border-radius: 10px; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
     </style>
 </head>
 <body class="min-h-screen relative p-6 md:p-10">
@@ -85,40 +86,47 @@
             <span class="text-slate-500 font-bold">| חמ"ל מבצעי</span>
         </div>
         <div class="flex items-center gap-4 glass p-2.5 px-5 rounded-full neon-border shadow-lg">
-            <span id="player-username" class="font-bold text-blue-400">טוען...</span>
+            <span id="player-username" class="font-bold text-blue-400 font-mono tracking-tighter italic uppercase">טוען...</span>
             <span class="text-slate-600">|</span>
-            <button id="logout-btn" class="text-xs text-slate-500 hover:text-white transition-colors font-bold">התנתק</button>
+            <button id="logout-btn" class="text-xs text-slate-500 hover:text-white transition-colors font-bold uppercase">התנתק</button>
         </div>
     </header>
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8 max-w-7xl mx-auto relative z-10">
         <div class="glass p-6 rounded-3xl flex flex-col items-center text-center shadow-lg border border-slate-800">
-            <div class="text-[10px] uppercase text-slate-500 mb-2 font-bold tracking-widest">רמה</div>
+            <div class="text-[10px] uppercase text-slate-500 mb-2 font-bold tracking-widest italic">רמת סוכן</div>
             <div id="stat-level" class="text-5xl font-extrabold text-blue-500 tracking-tighter">-</div>
+            <div class="xp-bar-container">
+                <div id="xp-bar-fill" class="xp-bar-fill" style="width: 0%"></div>
+            </div>
+            <div id="xp-text" class="text-[8px] text-slate-500 mt-1 font-bold font-mono">XP: 0 / 0</div>
         </div>
+
         <div class="glass p-6 rounded-3xl flex flex-col items-center text-center shadow-lg border border-slate-800">
-            <div class="text-[10px] uppercase text-slate-500 mb-2 font-bold tracking-widest">כוח (ATK)</div>
+            <div class="text-[10px] uppercase text-slate-500 mb-2 font-bold tracking-widest italic">כוח (ATK)</div>
             <div id="stat-power" class="text-5xl font-extrabold text-red-500 tracking-tighter">0</div>
         </div>
+
         <div class="glass p-6 rounded-3xl flex flex-col items-center text-center shadow-lg border border-slate-800">
-            <div class="text-[10px] uppercase text-slate-500 mb-2 font-bold tracking-widest">זוזים</div>
+            <div class="text-[10px] uppercase text-slate-500 mb-2 font-bold tracking-widest italic">זוזים</div>
             <div id="stat-coins" class="text-5xl font-extrabold text-white tracking-tighter">-</div>
         </div>
+
         <div class="glass p-6 rounded-3xl flex flex-col items-center text-center shadow-lg border border-slate-800">
-            <div class="text-[10px] uppercase text-slate-500 mb-2 font-bold tracking-widest">אנרגיה (HP)</div>
+            <div class="text-[10px] uppercase text-slate-500 mb-2 font-bold tracking-widest italic">אנרגיה (HP)</div>
             <div id="stat-energy-text" class="text-5xl font-extrabold text-green-400 tracking-tighter">-%</div>
-            <div id="recovery-indicator" class="text-[8px] text-green-500/50 font-bold animate-pulse mt-1"></div>
+            <div id="recovery-indicator" class="text-[8px] text-green-500/50 font-bold animate-pulse mt-1 font-mono uppercase"></div>
         </div>
     </div>
 
     <div class="max-w-7xl mx-auto mb-10 relative z-10">
         <div class="glass p-6 rounded-[2.5rem] border border-slate-800 relative overflow-hidden">
-            <div class="flex items-center justify-between mb-6">
-                <h3 class="font-black text-xs uppercase tracking-[0.3em] text-slate-500">ציוד לחימה (Loadout)</h3>
-                <div class="h-px flex-1 bg-slate-800 mx-6"></div>
+            <div class="flex items-center justify-between mb-6 px-2">
+                <h3 class="font-black text-xs uppercase tracking-[0.3em] text-slate-500 italic">ציוד לחימה נוכחי</h3>
+                <div class="h-px flex-1 bg-slate-800 mx-6 opacity-30"></div>
             </div>
-            <div id="inventory-list" class="flex gap-4 overflow-x-auto pb-2">
-                <div class="text-slate-600 text-xs italic">טוען ציוד...</div>
+            <div id="inventory-list" class="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                <div class="text-slate-600 text-xs italic">סורק ציוד...</div>
             </div>
         </div>
     </div>
@@ -141,32 +149,51 @@
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists()) {
-                    const data = docSnap.data();
+                    let data = docSnap.data();
                     
-                    // חישוב ריפוי אנרגיה אוטומטי
-                    processEnergyRecovery(docRef, data);
+                    // בדיקת עליית רמה
+                    const leveledUpData = await checkLevelUp(docRef, data);
+                    
+                    // חישוב ריפוי אנרגיה
+                    processEnergyRecovery(docRef, leveledUpData || data);
                 }
             } else {
                 window.location.href = 'index.html';
             }
         });
 
+        async function checkLevelUp(docRef, data) {
+            const currentLevel = data.level || 1;
+            const currentXP = data.xp || 0;
+            const xpNeeded = currentLevel * 10; // רמה 1 צריכה 10, רמה 2 צריכה 20 וכו'
+
+            if (currentXP >= xpNeeded) {
+                const newLevel = currentLevel + 1;
+                const updatedFields = {
+                    level: newLevel,
+                    xp: currentXP - xpNeeded, // משאיר עודף XP אם היה
+                    energy: 100 // ריפוי מלא בעליית רמה
+                };
+                await updateDoc(docRef, updatedFields);
+                alert(`🚀 עליית דרגה! הגעת לרמה ${newLevel}. האנרגיה התמלאה.`);
+                return { ...data, ...updatedFields };
+            }
+            return null;
+        }
+
         function processEnergyRecovery(docRef, data) {
             const now = Date.now();
             const lastUpdate = data.lastHpUpdate ? data.lastHpUpdate.toMillis() : now;
             const hoursPassed = (now - lastUpdate) / (1000 * 60 * 60);
             
-            // קצב ריפוי: 10% בשעה + בונוס אם יש מיטת ננו
             let recoveryRate = 10;
             if (data.inventory && data.inventory.includes('nano_bed')) recoveryRate = 20;
             
             const recovered = hoursPassed * recoveryRate;
             let currentEnergy = Math.min(100, (data.energy || 0) + recovered);
             
-            // עדכון UI
             updateDashboardUI(data, Math.floor(currentEnergy));
 
-            // אם האנרגיה השתנתה, נעדכן את ה-DB שקט
             if (Math.floor(currentEnergy) > (data.energy || 0)) {
                 updateDoc(docRef, {
                     energy: Math.floor(currentEnergy),
@@ -180,34 +207,39 @@
         }
 
         function updateDashboardUI(data, currentEnergy) {
-            document.getElementById('player-username').innerText = data.username || "AGENT";
-            document.getElementById('stat-level').innerText = data.level || 1;
+            const level = data.level || 1;
+            const xp = data.xp || 0;
+            const xpNeeded = level * 10;
+
+            document.getElementById('player-username').innerText = data.username || "UNKNOWN";
+            document.getElementById('stat-level').innerText = level;
             document.getElementById('stat-coins').innerText = data.coins || 0;
             document.getElementById('stat-energy-text').innerText = currentEnergy + "%";
 
-            // טיפול באינוונטרי וכוח
+            // עדכון פס התקדמות XP
+            const xpPercent = Math.min(100, (xp / xpNeeded) * 100);
+            document.getElementById('xp-bar-fill').style.width = xpPercent + "%";
+            document.getElementById('xp-text').innerText = `XP: ${xp} / ${xpNeeded}`;
+
+            // אינוונטרי וכוח
             let totalAtk = 0;
             const inventoryContainer = document.getElementById('inventory-list');
             inventoryContainer.innerHTML = '';
-
             const inventory = data.inventory || [];
-            if (inventory.length === 0) {
-                inventoryContainer.innerHTML = '<div class="text-slate-600 text-xs italic">אין ציוד זמין.</div>';
-            }
 
             inventory.forEach(itemId => {
                 if (itemStats[itemId]) {
                     totalAtk += itemStats[itemId].atk;
                     const itemDiv = document.createElement('div');
-                    itemDiv.className = "bg-slate-900/50 p-4 rounded-2xl border border-slate-800 flex flex-col items-center min-w-[100px]";
+                    itemDiv.className = "bg-slate-900/40 p-4 rounded-2xl border border-slate-800 flex flex-col items-center min-w-[100px] backdrop-blur-sm";
                     itemDiv.innerHTML = `
                         <span class="text-3xl mb-2">${itemStats[itemId].icon}</span>
-                        <span class="text-[10px] font-bold text-slate-400 text-center">${itemStats[itemId].name}</span>
+                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">${itemStats[itemId].name}</span>
                     `;
                     inventoryContainer.appendChild(itemDiv);
                 }
             });
-
+            if (inventory.length === 0) inventoryContainer.innerHTML = '<div class="text-slate-600 text-xs italic p-2">אין ציוד חם בשטח...</div>';
             document.getElementById('stat-power').innerText = totalAtk;
         }
 
