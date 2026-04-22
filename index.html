@@ -7,17 +7,32 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;800&display=swap" rel="stylesheet">
     <style>
-        body { background-color: #020617; color: white; font-family: 'Assistant', sans-serif; }
-        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
-        .neon-text { text-shadow: 0 0 15px rgba(255, 255, 255, 0.3); }
+        body { 
+            background-image: linear-gradient(rgba(2, 6, 23, 0.6), rgba(2, 6, 23, 0.6)), 
+                              url('https://res.cloudinary.com/dxygefiai/image/upload/v1776868529/TLV2099_c7nqzc.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+            color: white; 
+            font-family: 'Assistant', sans-serif; 
+        }
+        .glass { 
+            background: rgba(15, 23, 42, 0.85); 
+            backdrop-filter: blur(12px); 
+            border: 1px solid rgba(255,255,255,0.05); 
+        }
+        .neon-text { 
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.4); 
+        }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-6">
 
     <div class="w-full max-w-md">
         <header class="text-center mb-10">
-            <h1 class="text-6xl font-black text-white italic tracking-tighter neon-text">TLV2099</h1>
-            <p class="text-slate-400 text-sm mt-4 uppercase tracking-[0.3em] font-bold">צייד המפלצות של תל אביב</p>
+            <h1 class="text-7xl font-black text-white italic tracking-tighter neon-text">TLV2099</h1>
+            <p class="text-slate-300 text-lg mt-4 uppercase tracking-[0.3em] font-bold">צייד המפלצות של תל אביב</p>
         </header>
 
         <div class="glass p-8 rounded-[2.5rem] shadow-2xl">
@@ -27,7 +42,7 @@
             </div>
 
             <form id="auth-form" class="space-y-5">
-                <div id="username-field" class="hidden animate-fade-in">
+                <div id="username-field" class="hidden">
                     <label class="block text-[10px] uppercase text-slate-500 mb-2 font-bold mr-1">כינוי צייד</label>
                     <input type="text" id="username" class="w-full bg-slate-950 border border-slate-800 p-4 rounded-2xl outline-none focus:border-blue-500 text-white transition-all placeholder:text-slate-700" placeholder="למשל: Hunter_X">
                 </div>
@@ -58,7 +73,6 @@
 
         let mode = 'login';
 
-        // החלפת טאבים
         window.switchTab = (newMode) => {
             mode = newMode;
             const isLogin = mode === 'login';
@@ -96,19 +110,18 @@
                     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                     const user = userCredential.user;
 
-                    // יצירת שחקן ב-Database עם נתוני התחלה
                     await setDoc(doc(db, "players", user.uid), {
                         username: username,
                         level: 1,
                         xp: 0,
                         coins: 100,
                         energy: 100,
-                        joinedAt: new Date().toISOString() // תוקן ל-Date תקין
+                        joinedAt: new Date().toISOString()
                     });
                 }
                 window.location.href = 'dashboard.html';
             } catch (error) {
-                errorMsg.innerText = "גישה נדחתה: " + error.message;
+                errorMsg.innerText = "שגיאה: " + error.message;
                 errorMsg.classList.remove('hidden');
             }
         };
