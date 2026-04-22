@@ -13,7 +13,7 @@
         #map-container {
             width: 100vw;
             height: 100vh;
-            background-image: linear-gradient(rgba(2, 6, 23, 0.3), rgba(2, 6, 23, 0.3)), 
+            background-image: linear-gradient(rgba(2, 6, 23, 0.4), rgba(2, 6, 23, 0.4)), 
                               url('https://res.cloudinary.com/dxygefiai/image/upload/v1776869436/Gemini_Generated_Image_pgbq64pgbq64pgbq_uizmv7.png');
             background-size: cover;
             background-position: center;
@@ -22,8 +22,8 @@
 
         .node {
             position: absolute;
-            width: 28px;
-            height: 28px;
+            width: 32px;
+            height: 32px;
             background: #3b82f6;
             border-radius: 50%;
             cursor: pointer;
@@ -41,56 +41,62 @@
 
         @keyframes pulse {
             0% { transform: scale(1); box-shadow: 0 0 10px #3b82f6; }
-            50% { transform: scale(1.1); box-shadow: 0 0 25px #3b82f6; }
+            50% { transform: scale(1.15); box-shadow: 0 0 30px #3b82f6; }
             100% { transform: scale(1); box-shadow: 0 0 10px #3b82f6; }
         }
 
-        .neon-text { text-shadow: 0 0 15px rgba(255, 255, 255, 0.3); }
+        .neon-text { text-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
         .hidden { display: none !important; }
+        
+        .scale-in { animation: scaleIn 0.3s ease-out; }
+        @keyframes scaleIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
     </style>
 </head>
 <body>
 
     <div id="map-container">
         <div class="absolute top-8 right-8 z-10">
-            <a href="dashboard.html" class="glass p-4 px-8 rounded-full font-extrabold text-sm hover:bg-blue-600 transition-all border border-blue-500/30 shadow-lg shadow-blue-900/20">
+            <a href="dashboard.html" class="glass p-4 px-8 rounded-full font-extrabold text-xs hover:bg-blue-600 transition-all border border-blue-500/30 shadow-lg shadow-blue-900/20">
                 🛰️ חזרה לחמ"ל
             </a>
         </div>
 
-        <div class="absolute bottom-8 left-8 z-10 glass p-4 rounded-2xl text-[10px] text-blue-400 font-mono leading-relaxed opacity-70">
-            SYSTEM: ACTIVE<br>
-            SCANNING SECTOR: TLV_CENTRAL<br>
-            ANOMALIES DETECTED: <span id="anomaly-count">0</span><br>
-            GPS: 32.0853° N, 34.7818° E
+        <div class="absolute bottom-8 left-8 z-10 glass p-4 rounded-2xl text-[10px] text-blue-400 font-mono leading-relaxed opacity-80 border-l-4 border-blue-500">
+            STATUS: SCANNING...<br>
+            SECTOR: TLV_CORE<br>
+            TARGETS: <span id="anomaly-count">0</span> DETECTED<br>
+            <span class="animate-pulse">● LIVE FEED ACTIVE</span>
         </div>
 
         <div id="nodes-layer"></div>
 
-        <div id="mission-modal" class="hidden absolute inset-0 bg-black/80 flex items-center justify-center p-6 z-30 backdrop-blur-sm">
+        <div id="mission-modal" class="hidden absolute inset-0 bg-black/80 flex items-center justify-center p-6 z-30 backdrop-blur-md">
             <div class="glass max-w-sm w-full p-8 rounded-[2.5rem] text-center shadow-2xl border-blue-500/40 border-2 scale-in">
-                <div class="w-16 h-1 w-24 bg-blue-600 mx-auto mb-6 rounded-full shadow-lg shadow-blue-500"></div>
+                <div class="w-20 h-1 bg-blue-600 mx-auto mb-6 rounded-full shadow-[0_0_15px_#3b82f6]"></div>
                 
                 <h2 id="m-location" class="text-[10px] uppercase text-blue-400 font-bold tracking-[0.3em] mb-2 font-mono italic">מזהה מיקום...</h2>
                 <h3 id="m-target" class="text-4xl font-black mb-4 italic neon-text text-white tracking-tighter">טוען יעד</h3>
                 
                 <div class="grid grid-cols-2 gap-4 mb-8">
-                    <div class="bg-slate-950/50 p-3 rounded-2xl border border-slate-800">
-                        <div class="text-[8px] text-slate-500 uppercase font-bold mb-1">תגמול משוער</div>
-                        <div id="m-reward" class="text-white font-black">--</div>
+                    <div class="bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
+                        <div class="text-[8px] text-slate-500 uppercase font-bold mb-1">בונוס חיסול</div>
+                        <div id="m-reward" class="text-white font-black text-lg">--</div>
                     </div>
-                    <div class="bg-slate-950/50 p-3 rounded-2xl border border-slate-800">
-                        <div class="text-[8px] text-slate-500 uppercase font-bold mb-1">רמת איום</div>
-                        <div id="m-difficulty" class="text-blue-500 font-black">--</div>
+                    <div class="bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
+                        <div class="text-[8px] text-slate-500 uppercase font-bold mb-1">רמת סיכון</div>
+                        <div id="m-difficulty" class="text-blue-500 font-black text-lg">--</div>
                     </div>
                 </div>
 
-                <p class="text-slate-400 text-xs mb-8 leading-relaxed">שיבוש זוהה במערכות העירוניות. חתימת האנרגיה תואמת לישות עוינת. האם לצאת לחיסול?</p>
+                <p class="text-slate-400 text-xs mb-8 leading-relaxed italic">"המטרה זוהתה במערכת המכ"ם. נדרשת התערבות מיידית לניקוי הסקטור."</p>
                 
                 <div class="flex gap-4">
                     <button onclick="closeMission()" class="flex-1 bg-slate-800 hover:bg-slate-700 py-4 rounded-2xl font-bold transition-all text-xs">ביטול</button>
-                    <button onclick="startHunt()" class="flex-1 bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-black shadow-lg shadow-blue-900/40 active:scale-95 transition-all">
-                        חסל ⚔️
+                    <button onclick="startHunt()" class="flex-1 bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-black shadow-lg shadow-blue-900/40 active:scale-95 transition-all uppercase tracking-tighter">
+                        יציאה לקרב ⚔️
                     </button>
                 </div>
             </div>
@@ -106,8 +112,8 @@
         let activeMissions = [];
         let selectedMissionIndex = null;
 
-        const MONSTERS = ["בוט אבטחה משובש", "מוטאנט ביבים", "צייד רשת", "רחפן קרב", "וירוס פיזי"];
-        const LOCATIONS = ["נמל תל אביב", "דיזינגוף סנטר", "מגדלי עזריאלי", "שוק הכרמל", "פלורנטין", "כיכר המדינה"];
+        const MONSTERS = ["בוט אבטחה משובש", "מוטאנט ביבים", "צייד רשת", "רחפן קרב", "וירוס פיזי", "צייד סייבר"];
+        const LOCATIONS = ["נמל תל אביב", "דיזינגוף סנטר", "מגדלי עזריאלי", "שוק הכרמל", "פלורנטין", "כיכר המדינה", "שדרות רוטשילד"];
 
         onAuthStateChanged(auth, async (user) => {
             if (user) {
@@ -119,9 +125,9 @@
                     const data = snap.data();
                     activeMissions = data.activeMissions || [];
                     
-                    // אם חסרות משימות (פחות מ-3), נשלים אותן
+                    // אם חסרות משימות (פחות מ-3), נשלים אותן ב-Firestore
                     if (activeMissions.length < 3) {
-                        generateMissions(data.level || 1);
+                        generateNewMissions(data.level || 1);
                         await updateDoc(playerRef, { activeMissions: activeMissions });
                     }
                     
@@ -132,17 +138,18 @@
             }
         });
 
-        function generateMissions(playerLevel) {
+        function generateNewMissions(playerLevel) {
             while (activeMissions.length < 3) {
-                const diff = playerLevel + (Math.floor(Math.random() * 3) - 1);
+                // הגרלת רמה סביב רמת השחקן (בין -1 ל-+2)
+                const diff = playerLevel + (Math.floor(Math.random() * 4) - 1);
                 const mission = {
                     location: LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)],
                     target: MONSTERS[Math.floor(Math.random() * MONSTERS.length)],
                     difficulty: Math.max(1, diff),
                     reward: 50 + (diff * 20) + Math.floor(Math.random() * 30),
-                    // הגרלת מיקום על המפה (באחוזים)
-                    top: Math.floor(Math.random() * 60) + 20 + "%",
-                    left: Math.floor(Math.random() * 70) + 15 + "%"
+                    // הגרלת מיקום רנדומלי על המפה באחוזים
+                    top: (Math.floor(Math.random() * 60) + 20) + "%",
+                    left: (Math.floor(Math.random() * 70) + 15) + "%"
                 };
                 activeMissions.push(mission);
             }
@@ -179,16 +186,29 @@
         }
 
         window.startHunt = async function() {
-            // שמירת המשימה הנבחרת ב-LocalStorage כדי שדף הקרב ידע מול מי נלחמים
-            const mission = activeMissions[selectedMissionIndex];
-            localStorage.setItem('currentBattle', JSON.stringify(mission));
+            if (selectedMissionIndex === null) return;
             
-            // הסרת המשימה מהרשימה ב-Firebase (כי היא בביצוע)
+            const mission = activeMissions[selectedMissionIndex];
+            
+            // שמירת נתוני האויב המדויקים לשימוש ב-combat.html
+            localStorage.setItem('currentBattle', JSON.stringify({
+                name: mission.target,
+                level: mission.difficulty,
+                reward: mission.reward,
+                location: mission.location
+            }));
+            
+            // הסרת המשימה מהרשימה ב-Firestore
             activeMissions.splice(selectedMissionIndex, 1);
             const playerRef = doc(db, "players", currentUser.uid);
-            await updateDoc(playerRef, { activeMissions: activeMissions });
-
-            window.location.href = 'combat.html';
+            
+            try {
+                await updateDoc(playerRef, { activeMissions: activeMissions });
+                window.location.href = 'combat.html';
+            } catch (error) {
+                console.error("Error updating missions:", error);
+                alert("שגיאה בחיבור לרשת הקרב.");
+            }
         }
     </script>
 </body>
