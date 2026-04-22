@@ -4,30 +4,173 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TLV2099 - כניסת ציידים</title>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body { background-color: #0a0a0a; color: #00ffcc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-container { background: #1a1a1a; padding: 2rem; border: 2px solid #00ffcc; border-radius: 10px; box-shadow: 0 0 15px #00ffcc; width: 300px; text-align: center; }
-        h1 { font-size: 1.8rem; margin-bottom: 1.5rem; text-shadow: 2px 2px #ff0055; }
-        input { width: 90%; padding: 10px; margin: 10px 0; background: #000; border: 1px solid #00ffcc; color: #fff; border-radius: 5px; }
-        button { width: 100%; padding: 10px; background: #ff0055; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 5px; margin-top: 10px; }
-        button:hover { background: #ff3377; box-shadow: 0 0 10px #ff0055; }
-        .toggle-link { margin-top: 15px; font-size: 0.8rem; cursor: pointer; text-decoration: underline; }
+        :root {
+            --main-bg: #050505;
+            --card-bg: #0f0f0f;
+            --neon-color: #00ffcc; /* צבע הניאון של חדרי הבריחה */
+            --accent-color: #ff0055;
+            --text-color: #e0e0e0;
+        }
+
+        body {
+            background-color: var(--main-bg);
+            color: var(--text-color);
+            font-family: 'Assistant', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        /* עיצוב המכל המרכזי - כמו בחדרי בריחה */
+        .login-container {
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: 4px;
+            border-left: 4px solid var(--neon-color); /* פס דקורטיבי בצד */
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            width: 100%;
+            max-width: 360px;
+            text-align: center;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif; /* פונט עתידני לכותרות */
+            font-size: 2rem;
+            letter-spacing: 2px;
+            margin-bottom: 30px;
+            color: #fff;
+            text-transform: uppercase;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            text-align: right;
+        }
+
+        label {
+            display: block;
+            font-size: 0.8rem;
+            margin-bottom: 5px;
+            color: var(--neon-color);
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            color: #fff;
+            border-radius: 4px;
+            box-sizing: border-box;
+            transition: border 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--neon-color);
+        }
+
+        /* כפתור בסגנון חדר בריחה */
+        button {
+            width: 100%;
+            padding: 15px;
+            background: var(--neon-color);
+            border: none;
+            color: #000;
+            font-weight: 700;
+            font-size: 1rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+            letter-spacing: 1px;
+        }
+
+        button:hover {
+            background: #fff;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
+        }
+
+        .toggle-link {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #888;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .toggle-link:hover {
+            color: var(--neon-color);
+        }
+
+        /* אלמנט עיצובי קטן - מספר זיהוי סתמי לאווירה */
+        .system-id {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            font-size: 0.6rem;
+            color: #222;
+            font-family: monospace;
+        }
     </style>
 </head>
 <body>
 
 <div class="login-container">
-    <h1 id="form-title">TLV2099: כניסת צייד</h1>
-    <div id="auth-form">
-        <input type="email" id="email" placeholder="אימייל" required>
-        <input type="password" id="password" placeholder="סיסמה (לפחות 6 תווים)" required>
-        <input type="text" id="username" placeholder="כינוי צייד (רק בהרשמה)" style="display:none;">
-        
-        <button id="main-btn">כניסה למערכת</button>
-        <p class="toggle-link" id="toggle-auth">אין לך חשבון? הירשם כאן</p>
+    <h1 id="form-title">TLV 2099</h1>
+    
+    <div class="input-group">
+        <label>זיהוי אימייל</label>
+        <input type="email" id="email" placeholder="hunter@city.com" required>
     </div>
+
+    <div class="input-group">
+        <label>קוד גישה</label>
+        <input type="password" id="password" placeholder="******" required>
+    </div>
+
+    <div class="input-group" id="username-group" style="display:none;">
+        <label>כינוי מבצעי</label>
+        <input type="text" id="username" placeholder="הכנס שם קוד">
+    </div>
+
+    <button id="main-btn">כניסה למערכת</button>
+    
+    <p class="toggle-link" id="toggle-auth">ליצירת פרופיל צייד חדש</p>
 </div>
 
+<div class="system-id">SYS_VER: 2099.4.22 // ENCRYPTED</div>
+
 <script type="module" src="auth.js"></script>
+
+<script>
+    // לוגיקה קטנה לשינוי התצוגה של השדות (מעבר להרשמה/כניסה)
+    const toggle = document.getElementById('toggle-auth');
+    const userGroup = document.getElementById('username-group');
+    const title = document.getElementById('form-title');
+    const btn = document.getElementById('main-btn');
+
+    toggle.addEventListener('click', () => {
+        if (userGroup.style.display === 'none') {
+            userGroup.style.display = 'block';
+            title.innerText = 'REGISTRATION';
+            btn.innerText = 'צור חשבון';
+            toggle.innerText = 'כבר יש לך הרשאה? היכנס';
+        } else {
+            userGroup.style.display = 'none';
+            title.innerText = 'TLV 2099';
+            btn.innerText = 'כניסה למערכת';
+            toggle.innerText = 'ליצירת פרופיל צייד חדש';
+        }
+    });
+</script>
+
 </body>
 </html>
