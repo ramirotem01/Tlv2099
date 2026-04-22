@@ -123,29 +123,82 @@
         </div>
     </main>
 
-    <script type="module">
-        import { auth, db } from './firebase-config.js';
-        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+   <script type="module">
+    import { auth, db } from './firebase-config.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { doc, getDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // בדיקה אם המשתמש מחובר ושואב נתונים
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                // משיכת נתונים מה-Firestore
-                const docRef = doc(db, "players", user.uid);
-                const docSnap = await getDoc(docRef);
+    let playerCoins = 0;
+    let playerInventory = [];
 
-                if (docSnap.exists()) {
-                    // עדכון הממשק עם כמות הזוזים
-                    document.getElementById('player-coins').innerText = docSnap.data().coins;
-                } else {
-                    console.error("מסמך שחקן לא נמצא ב-Database!");
-                }
-            } else {
-                // משתמש לא מחובר, החזר לדף ההרשמה
-                window.location.href = 'index.html';
+    // פונקציה לרכישת נשק
+    window.buyItem = async (itemId, itemName, price) => {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        // בדיקה אם לשחקן יש מספיק כסף
+        if (playerCoins < price) {
+            alert("אין לך מספיק זוזים לרכישת " + itemName);
+            return;
+        }
+
+        // בדיקה אם הפריט כבר נמצא בבעלותו
+        if (playerInventory.includes(itemId)) {
+            alert("כבר יש לך את ה" + itemName);
+            return;
+        }
+
+        if (confirm(`האם אתה בטוח שברצונך לרכוש את ${itemName} ב-${price} זוזים?`)) {
+            try {
+                const playerRef = doc(db, "players", user.uid);
+                
+                // עדכון ה-Firestore: הורדת כסף והוספת פריט למערך ה-Inventory
+                await updateDoc(playerRef, {
+                    coins: playerCoins - price,
+                    inventory: arrayUnion(itemId)
+                });
+
+                alert("הרכישה בוצעה בהצלחה! תתחדש על ה" + itemName);
+                location.reload(); // רענון הדף לעדכון הממשק
+            } catch (error) {
+                console.error("שגיאה ברכישה:", error);
+                alert("חלה שגיאה בתהליך הרכישה.");
+            }
+        }
+    };
+
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            const docRef = doc(db, "players", user.uid);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                playerCoins = data.coins;
+                playerInventory = data.inventory || [];
+                
+                document.getElementById('player-coins').innerText = playerCoins;
+                
+                // עדכון כפתורי הרכישה אם הפריט כבר בבעלות השחקן
+                updateUI();
+            }
+        } else {
+            window.location.href = 'index.html';
+        }
+    });
+
+    function updateUI() {
+        // לוגיקה לבדיקת מצב הכפתורים לפי מה שיש ב-inventory
+        playerInventory.forEach(itemId => {
+            const btn = document.getElementById(`buy-btn-${itemId}`);
+            if (btn) {
+                btn.innerText = "בבעלותך";
+                btn.disabled = true;
+                btn.classList.replace('bg-blue-600', 'bg-slate-700');
+                btn.classList.add('cursor-not-allowed');
             }
         });
-    </script>
+    }
+</script>
 </body>
 </html>
