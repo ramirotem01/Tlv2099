@@ -8,7 +8,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;800&display=swap" rel="stylesheet">
     <style>
         body { 
-            /* שימוש בקישור ה-Cloudinary המעודכן עם שכבת כהות */
             background-image: linear-gradient(rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.8)), 
                               url('https://res.cloudinary.com/dxygefiai/image/upload/v1776870001/Gemini_Generated_Image_jbr8f5jbr8f5jbr8_burebz.png');
             background-size: cover;
@@ -36,6 +35,14 @@
         .neon-text { 
             text-shadow: 0 0 15px rgba(255, 255, 255, 0.3); 
         }
+        .price-tag {
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            padding: 2px 10px;
+            border-radius: 8px;
+            font-weight: 800;
+            color: #60a5fa;
+        }
     </style>
 </head>
 <body class="min-h-screen p-6 md:p-10">
@@ -55,150 +62,135 @@
     </header>
 
     <main class="max-w-7xl mx-auto">
-        <div class="flex gap-4 mb-10 overflow-x-auto pb-3">
-            <button class="bg-blue-600 text-white px-7 py-3 rounded-full font-black text-sm shadow-lg shadow-blue-900/50 whitespace-nowrap">הכל</button>
-            <button class="glass text-slate-400 px-7 py-3 rounded-full font-bold text-sm hover:text-white transition-all whitespace-nowrap">נשק חם</button>
-            <button class="glass text-slate-400 px-7 py-3 rounded-full font-bold text-sm hover:text-white transition-all whitespace-nowrap">נשק קר</button>
-            <button class="glass text-slate-400 px-7 py-3 rounded-full font-bold text-sm hover:text-white transition-all whitespace-nowrap">טכנולוגיה</button>
-        </div>
-
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             
             <div class="glass p-8 rounded-[2.5rem] item-card flex flex-col gap-5 relative border border-slate-800">
                 <div class="flex justify-between items-center">
-                    <span class="bg-blue-900/50 text-blue-400 text-[10px] font-black px-4 py-1.5 rounded-full border border-blue-500/30 uppercase tracking-widest shadow-md">מצויד (Active)</span>
+                    <div class="price-tag">חינם</div>
                     <span class="text-5xl drop-shadow-lg">🔫</span>
                 </div>
                 <div class="mt-2">
                     <h3 class="text-2xl font-black mb-1.5 text-white">אקדח פעימה "נמסיס"</h3>
-                    <p class="text-slate-400 text-xs">נשק בסיסי לציידים מתחילים. אמין, מהיר ועוצמתי.</p>
+                    <p class="text-slate-400 text-xs font-bold">נזק: 25 ATK</p>
+                    <p class="text-slate-500 text-xs mt-2">נשק בסיסי לציידים מתחילים. אמין ומהיר.</p>
                 </div>
-                <div class="flex justify-between items-center mt-3 border-t border-slate-800 pt-5">
-                    <div class="text-sm">
-                        <span class="text-slate-500">נזק:</span>
-                        <span class="text-blue-400 font-bold text-lg">25 ATK</span>
-                    </div>
-                    <button class="text-[10px] font-bold uppercase text-slate-600 hover:text-white transition-colors">פרטים נוספים</button>
+                <div class="mt-auto pt-5">
+                    <button id="buy-btn-pistol_nemesis" 
+                        onclick="buyItem('pistol_nemesis', 'אקדח פעימה נמסיס', 0)"
+                        class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-black shadow-lg transition-all active:scale-95">
+                        רכוש עכשיו
+                    </button>
                 </div>
             </div>
 
             <div class="glass p-8 rounded-[2.5rem] item-card flex flex-col gap-5 border border-slate-800">
                 <div class="flex justify-between items-center">
-                    <span class="bg-slate-900/50 text-slate-500 text-[10px] font-black px-4 py-1.5 rounded-full border border-slate-800 uppercase tracking-widest shadow-md">במלאי (Stock)</span>
+                    <div class="price-tag">250 💰</div>
                     <span class="text-5xl drop-shadow-lg">⚔️</span>
                 </div>
                 <div class="mt-2">
                     <h3 class="text-2xl font-black mb-1.5 text-white">להב קטאנה טרמי</h3>
-                    <p class="text-slate-400 text-xs">להב חם המסוגל לחתוך שריון של מפלצות רמה 2 ומעלה.</p>
+                    <p class="text-slate-400 text-xs font-bold">נזק: 45 ATK</p>
+                    <p class="text-slate-500 text-xs mt-2">להב חם המסוגל לחתוך שריון של מפלצות רמה 2 ומעלה.</p>
                 </div>
-                <div class="flex justify-between items-center mt-3 border-t border-slate-800 pt-5">
-                    <div class="text-sm">
-                        <span class="text-slate-500">נזק:</span>
-                        <span class="text-blue-400 font-bold text-lg">45 ATK</span>
-                    </div>
-                    <button class="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-xs font-black hover:bg-blue-500 transition-all shadow-lg active:scale-95">
-                        צייד (Equip)
+                <div class="mt-auto pt-5">
+                    <button id="buy-btn-katana_thermal" 
+                        onclick="buyItem('katana_thermal', 'להב קטאנה טרמי', 250)"
+                        class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-black shadow-lg transition-all active:scale-95">
+                        רכוש עכשיו
                     </button>
                 </div>
             </div>
 
-            <div class="glass p-8 rounded-[2.5rem] item-card flex flex-col gap-5 border border-slate-800 relative opacity-80 hover:opacity-100 transition-opacity">
+            <div class="glass p-8 rounded-[2.5rem] item-card flex flex-col gap-5 border border-slate-800">
                 <div class="flex justify-between items-center">
-                    <span class="bg-slate-900/50 text-slate-500 text-[10px] font-black px-4 py-1.5 rounded-full border border-slate-800 uppercase tracking-widest shadow-md">5 יחידות</span>
+                    <div class="price-tag">100 💰</div>
                     <span class="text-5xl drop-shadow-lg">💊</span>
                 </div>
                 <div class="mt-2">
                     <h3 class="text-2xl font-black mb-1.5 text-white">מזרק ננו-בוסט</h3>
-                    <p class="text-slate-400 text-xs">מרפא 30% חיים (Health) באופן מיידי במהלך קרב.</p>
+                    <p class="text-slate-400 text-xs font-bold">ריפוי: 30% HP</p>
+                    <p class="text-slate-500 text-xs mt-2">מרפא חיים באופן מיידי במהלך קרב. פריט חובה.</p>
                 </div>
-                <div class="flex justify-between items-center mt-3 border-t border-slate-800 pt-5">
-                    <div class="text-sm">
-                        <span class="text-slate-500">שימוש:</span>
-                        <span class="text-green-400 font-bold text-lg">RECOVERY</span>
-                    </div>
-                    <span class="text-xs text-slate-600">שימוש מיידי</span>
+                <div class="mt-auto pt-5">
+                    <button id="buy-btn-nano_boost" 
+                        onclick="buyItem('nano_boost', 'מזרק ננו-בוסט', 100)"
+                        class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-black shadow-lg transition-all active:scale-95">
+                        רכוש עכשיו
+                    </button>
                 </div>
             </div>
 
         </div>
     </main>
 
-   <script type="module">
-    import { auth, db } from './firebase-config.js';
-    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { doc, getDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    <script type="module">
+        import { auth, db } from './firebase-config.js';
+        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { doc, getDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    let playerCoins = 0;
-    let playerInventory = [];
+        let playerCoins = 0;
+        let playerInventory = [];
 
-    // פונקציה לרכישת נשק
-    window.buyItem = async (itemId, itemName, price) => {
-        const user = auth.currentUser;
-        if (!user) return;
+        window.buyItem = async (itemId, itemName, price) => {
+            const user = auth.currentUser;
+            if (!user) return;
 
-        // בדיקה אם לשחקן יש מספיק כסף
-        if (playerCoins < price) {
-            alert("אין לך מספיק זוזים לרכישת " + itemName);
-            return;
-        }
-
-        // בדיקה אם הפריט כבר נמצא בבעלותו
-        if (playerInventory.includes(itemId)) {
-            alert("כבר יש לך את ה" + itemName);
-            return;
-        }
-
-        if (confirm(`האם אתה בטוח שברצונך לרכוש את ${itemName} ב-${price} זוזים?`)) {
-            try {
-                const playerRef = doc(db, "players", user.uid);
-                
-                // עדכון ה-Firestore: הורדת כסף והוספת פריט למערך ה-Inventory
-                await updateDoc(playerRef, {
-                    coins: playerCoins - price,
-                    inventory: arrayUnion(itemId)
-                });
-
-                alert("הרכישה בוצעה בהצלחה! תתחדש על ה" + itemName);
-                location.reload(); // רענון הדף לעדכון הממשק
-            } catch (error) {
-                console.error("שגיאה ברכישה:", error);
-                alert("חלה שגיאה בתהליך הרכישה.");
+            if (playerInventory.includes(itemId)) {
+                alert("כבר יש לך את ה" + itemName);
+                return;
             }
-        }
-    };
 
-    onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            const docRef = doc(db, "players", user.uid);
-            const docSnap = await getDoc(docRef);
-
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                playerCoins = data.coins;
-                playerInventory = data.inventory || [];
-                
-                document.getElementById('player-coins').innerText = playerCoins;
-                
-                // עדכון כפתורי הרכישה אם הפריט כבר בבעלות השחקן
-                updateUI();
+            if (playerCoins < price) {
+                alert(`אין לך מספיק זוזים! חסרים לך ${price - playerCoins} זוזים.`);
+                return;
             }
-        } else {
-            window.location.href = 'index.html';
-        }
-    });
 
-    function updateUI() {
-        // לוגיקה לבדיקת מצב הכפתורים לפי מה שיש ב-inventory
-        playerInventory.forEach(itemId => {
-            const btn = document.getElementById(`buy-btn-${itemId}`);
-            if (btn) {
-                btn.innerText = "בבעלותך";
-                btn.disabled = true;
-                btn.classList.replace('bg-blue-600', 'bg-slate-700');
-                btn.classList.add('cursor-not-allowed');
+            if (confirm(`לרכוש את ${itemName} ב-${price} זוזים?`)) {
+                try {
+                    const playerRef = doc(db, "players", user.uid);
+                    await updateDoc(playerRef, {
+                        coins: playerCoins - price,
+                        inventory: arrayUnion(itemId)
+                    });
+
+                    alert("הרכישה הושלמה!");
+                    location.reload();
+                } catch (error) {
+                    console.error("שגיאה:", error);
+                    alert("הרכישה נכשלה. בדוק את חיבור האינטרנט.");
+                }
+            }
+        };
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const docRef = doc(db, "players", user.uid);
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    playerCoins = data.coins;
+                    playerInventory = data.inventory || [];
+                    document.getElementById('player-coins').innerText = playerCoins;
+                    updateUI();
+                }
+            } else {
+                window.location.href = 'index.html';
             }
         });
-    }
-</script>
+
+        function updateUI() {
+            playerInventory.forEach(itemId => {
+                const btn = document.getElementById(`buy-btn-${itemId}`);
+                if (btn) {
+                    btn.innerText = "בבעלותך";
+                    btn.disabled = true;
+                    btn.classList.replace('bg-blue-600', 'bg-slate-700');
+                    btn.classList.add('cursor-not-allowed');
+                }
+            });
+        }
+    </script>
 </body>
 </html>
