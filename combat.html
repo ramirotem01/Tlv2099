@@ -26,7 +26,7 @@
 
     <div id="enemy-area" class="w-full max-w-lg text-center mt-4">
         <div class="mb-2">
-            <h2 id="enemy-name" class="text-3xl font-black italic text-red-500 tracking-widest uppercase">סורק...</h2>
+            <h2 id="enemy-name" class="text-3xl font-black italic text-red-500 tracking-widest uppercase text-shadow-lg">סורק...</h2>
             <div id="enemy-level" class="text-slate-500 text-[10px] font-black tracking-[0.3em]">LEVEL --</div>
         </div>
         
@@ -38,25 +38,25 @@
             <div class="w-full bg-slate-950 h-3 rounded-full border border-slate-800 p-0.5 overflow-hidden">
                 <div id="enemy-hp-bar" class="hp-bar bg-red-600 h-full rounded-full" style="width: 100%"></div>
             </div>
-            <div id="enemy-hp-text" class="text-[10px] mt-1.5 font-bold text-slate-500 uppercase tracking-tighter">--/-- HP</div>
+            <div id="enemy-hp-text" class="text-[10px] mt-1.5 font-bold text-slate-500 uppercase tracking-tighter italic">--/-- HP</div>
         </div>
     </div>
 
-    <div id="battle-log" class="glass w-full max-w-xl p-5 rounded-[2rem] h-32 overflow-y-auto text-sm border border-slate-800 my-4">
-        <p class="text-blue-500 font-bold">► טוען נתוני מודיעין מהשטח...</p>
+    <div id="battle-log" class="glass w-full max-w-xl p-5 rounded-[2rem] h-32 overflow-y-auto text-sm border border-slate-800 my-4 font-mono">
+        <p class="text-blue-500 font-bold tracking-tighter">► טוען נתוני מודיעין מהשטח...</p>
     </div>
 
     <div class="w-full max-w-xl bg-slate-900/50 p-6 rounded-[2.5rem] border border-slate-800">
         <div class="flex justify-between items-end mb-5">
             <div class="flex flex-col gap-1">
-                <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Vitals</span>
+                <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Vitals / Energy</span>
                 <div class="w-48 bg-slate-950 h-2.5 rounded-full border border-slate-800 p-0.5">
                     <div id="player-hp-bar" class="hp-bar bg-green-500 h-full rounded-full" style="width: 100%"></div>
                 </div>
             </div>
             <div class="text-right">
                 <span id="player-hp-text" class="text-3xl font-black italic">100</span>
-                <span class="text-slate-600 text-xs font-bold">/100 HP</span>
+                <span class="text-slate-600 text-xs font-bold uppercase italic">/100 %</span>
             </div>
         </div>
 
@@ -67,7 +67,7 @@
     <script type="module">
         import { auth, db } from './firebase-config.js';
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { doc, getDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { doc, getDoc, updateDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const itemDatabase = {
             'pistol_nemesis': { name: 'ירי נמסיס', baseAtk: 25, icon: '🔫' },
@@ -81,29 +81,28 @@
         onAuthStateChanged(auth, async (user) => {
             if (!user) window.location.href = 'index.html';
             
-            // 1. משיכת נתוני האויב מה-LocalStorage (מה שהוגדר במפה)
             const battleData = JSON.parse(localStorage.getItem('currentBattle'));
             if (!battleData) {
-                window.location.href = 'map.html'; // אם אין נתונים, תחזור למפה
+                window.location.href = 'map.html';
                 return;
             }
 
-            // 2. הגדרת האויב לפי הנתונים מהמפה
             enemy.name = battleData.name;
             enemy.level = battleData.level;
             enemy.reward = battleData.reward;
-            enemy.maxHp = 50 + (enemy.level * 30); // סקיילינג לפי רמה מהמפה
+            enemy.maxHp = 50 + (enemy.level * 30);
             enemy.hp = enemy.maxHp;
             enemy.atk = 10 + (enemy.level * 5);
             
             document.getElementById('enemy-name').innerText = enemy.name;
             document.getElementById('enemy-level').innerText = `LEVEL ${enemy.level}`;
-            addLog(`קרב התחיל ב-${battleData.location}! יעד: ${enemy.name}`, 'text-red-500 font-bold');
+            addLog(`קרב התחיל ב-${battleData.location}! יעד: ${enemy.name}`, 'text-red-500 font-bold uppercase tracking-tighter');
 
-            // 3. משיכת נתוני שחקן
             const docSnap = await getDoc(doc(db, "players", user.uid));
             if (docSnap.exists()) {
-                player.inventory = docSnap.data().inventory || [];
+                const data = docSnap.data();
+                player.hp = data.energy || 100;
+                player.inventory = data.inventory || [];
                 renderActions();
                 updateUI();
             }
@@ -126,13 +125,13 @@
             if (item.type === 'heal') {
                 const heal = Math.floor(item.healPower * 0.8);
                 player.hp = Math.min(player.maxHp, player.hp + heal);
-                addLog(`ריפוי: +${heal} HP`, 'text-green-400');
+                addLog(`ריפוי: +${heal} %`, 'text-green-400 font-bold');
             } else {
                 const roll = calculateRoll(item.baseAtk);
                 if (roll.type === 'MISS') addLog(`פספסת עם ${item.name}!`, 'text-slate-500');
                 else {
                     enemy.hp -= roll.val;
-                    addLog(`${roll.type === 'CRIT' ? '⚡ ' : ''}פגעת ב-${roll.val}`, 'text-white font-bold');
+                    addLog(`${roll.type === 'CRIT' ? '⚡ ' : ''}פגעת ב-${roll.val}`, 'text-white font-black italic');
                     triggerShake('enemy-area');
                 }
             }
@@ -144,25 +143,32 @@
 
         function enemyTurn() {
             const roll = calculateRoll(enemy.atk);
-            if (roll.type === 'MISS') addLog(`${enemy.name} פספס!`, 'text-blue-400');
+            if (roll.type === 'MISS') addLog(`${enemy.name} פספס!`, 'text-blue-400 italic');
             else {
                 player.hp -= roll.val;
-                addLog(`${enemy.name} הוריד לך ${roll.val} חיים`, 'text-red-400');
+                addLog(`${enemy.name} הוריד לך ${roll.val} %`, 'text-red-400 font-bold');
                 triggerShake('player-hp-bar');
             }
             updateUI();
             if (player.hp <= 0) {
+                updateDoc(doc(db, "players", auth.currentUser.uid), { energy: 0, lastHpUpdate: serverTimestamp() });
                 alert("המערכות קרסו! הובסת.");
                 window.location.href = 'dashboard.html';
             } else player.isMyTurn = true;
         }
 
         function processVictory() {
-            addLog(`🏆 ניצחון! אספת ${enemy.reward} זוזים.`, 'text-yellow-400 font-black');
+            const xpGained = enemy.level; // XP שווה לרמת האויב (בלי הכפלות כדי לשמור על מספרים נמוכים)
+            addLog(`🏆 ניצחון! אספת ${enemy.reward} זוזים ו-${xpGained} XP.`, 'text-yellow-400 font-black italic uppercase tracking-tighter');
+            
             const playerRef = doc(db, "players", auth.currentUser.uid);
+            
+            // עדכון Firestore עם הנתונים החדשים
             updateDoc(playerRef, {
                 coins: increment(enemy.reward),
-                energy: increment(-15)
+                xp: increment(xpGained),
+                energy: Math.max(0, Math.floor(player.hp)), // שמירת האנרגיה שנותרה
+                lastHpUpdate: serverTimestamp() // התחלת ספירת ריפוי מחדש מהרגע הזה
             }).then(() => {
                 setTimeout(() => window.location.href = 'dashboard.html', 3000);
             });
@@ -193,7 +199,7 @@
                 const item = itemDatabase[itemId];
                 if (item) {
                     const btn = document.createElement('button');
-                    btn.className = "glass p-4 rounded-2xl font-black text-sm hover:bg-slate-800 border border-slate-700";
+                    btn.className = "glass p-4 rounded-2xl font-black text-xs hover:bg-slate-800 border border-slate-700 uppercase tracking-tighter italic transition-all active:scale-95";
                     btn.innerHTML = `<span>${item.icon}</span> ${item.name}`;
                     btn.onclick = () => handleAction(itemId);
                     container.appendChild(btn);
