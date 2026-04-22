@@ -5,28 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>כניסת ציידים | TLV2099</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;800&display=swap" rel="stylesheet">
     <style>
         body { background-color: #020617; color: white; font-family: 'Assistant', sans-serif; }
         .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
-        .neon-text { text-shadow: 0 0 10px rgba(96, 165, 250, 0.5); }
+        .neon-text { text-shadow: 0 0 15px rgba(255, 255, 255, 0.3); }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-6">
 
     <div class="w-full max-w-md">
         <header class="text-center mb-10">
-            <h1 class="text-5xl font-black text-blue-500 italic tracking-tighter neon-text">TLV2099</h1>
-            <p class="text-slate-500 text-[10px] mt-3 uppercase tracking-[0.4em]">צייד המפלצות של תל אביב</p>
+            <h1 class="text-6xl font-black text-white italic tracking-tighter neon-text">TLV2099</h1>
+            <p class="text-slate-400 text-sm mt-4 uppercase tracking-[0.3em] font-bold">צייד המפלצות של תל אביב</p>
         </header>
 
         <div class="glass p-8 rounded-[2.5rem] shadow-2xl">
-            <div class="flex mb-8 bg-slate-950/50 p-1.5 rounded-2xl">
+            <div class="flex mb-8 bg-slate-950/50 p-1.5 rounded-2xl border border-slate-800">
                 <button id="tab-login" onclick="switchTab('login')" class="flex-1 py-3 rounded-xl font-bold text-sm transition-all bg-blue-600 text-white shadow-lg">התחברות</button>
                 <button id="tab-signup" onclick="switchTab('signup')" class="flex-1 py-3 rounded-xl font-bold text-sm transition-all text-slate-400">הרשמה</button>
             </div>
 
             <form id="auth-form" class="space-y-5">
-                <div id="username-field" class="hidden">
+                <div id="username-field" class="hidden animate-fade-in">
                     <label class="block text-[10px] uppercase text-slate-500 mb-2 font-bold mr-1">כינוי צייד</label>
                     <input type="text" id="username" class="w-full bg-slate-950 border border-slate-800 p-4 rounded-2xl outline-none focus:border-blue-500 text-white transition-all placeholder:text-slate-700" placeholder="למשל: Hunter_X">
                 </div>
@@ -46,7 +47,7 @@
                 </button>
             </form>
             
-            <p id="error-msg" class="text-red-400 text-xs mt-4 text-center hidden bg-red-900/20 p-2 rounded-lg border border-red-900/30"></p>
+            <p id="error-msg" class="text-red-400 text-xs mt-4 text-center hidden bg-red-900/20 p-3 rounded-xl border border-red-900/30"></p>
         </div>
     </div>
 
@@ -57,7 +58,7 @@
 
         let mode = 'login';
 
-        // פונקציה להחלפת מצבים (חשופה ל-window בגלל ה-onclick ב-HTML)
+        // החלפת טאבים
         window.switchTab = (newMode) => {
             mode = newMode;
             const isLogin = mode === 'login';
@@ -95,14 +96,14 @@
                     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                     const user = userCredential.user;
 
-                    // יצירת שחקן ב-Database
+                    // יצירת שחקן ב-Database עם נתוני התחלה
                     await setDoc(doc(db, "players", user.uid), {
                         username: username,
                         level: 1,
                         xp: 0,
                         coins: 100,
                         energy: 100,
-                        joinedAt: new Error().toISOString // תאריך הצטרפות
+                        joinedAt: new Date().toISOString() // תוקן ל-Date תקין
                     });
                 }
                 window.location.href = 'dashboard.html';
