@@ -8,7 +8,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;800&display=swap" rel="stylesheet">
     <style>
         body { 
-            /* שימוש בקישור ה-Cloudinary המעודכן עם שכבת כהות עדינה */
             background-image: linear-gradient(rgba(2, 6, 23, 0.7), rgba(2, 6, 23, 0.7)), 
                               url('https://res.cloudinary.com/dxygefiai/image/upload/v1776869126/TLVDESH_lkyxtd.png');
             background-size: cover;
@@ -23,13 +22,13 @@
             backdrop-filter: blur(12px); 
             border: 1px solid rgba(255,255,255,0.05); 
         }
-        .neon-text { 
-            text-shadow: 0 0 15px rgba(255, 255, 255, 0.3); 
-        }
+        .neon-text { text-shadow: 0 0 15px rgba(255, 255, 255, 0.3); }
         .neon-border { 
             border: 1px solid rgba(59, 130, 246, 0.3);
             box-shadow: 0 0 15px rgba(59, 130, 246, 0.1);
         }
+        .stat-card { transition: all 0.3s ease; }
+        .stat-card:hover { transform: translateY(-3px); border-color: rgba(59, 130, 246, 0.4); }
     </style>
 </head>
 <body class="min-h-screen p-6 md:p-10">
@@ -46,23 +45,33 @@
         </div>
     </header>
 
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12 max-w-7xl mx-auto">
-        <div class="glass p-8 rounded-3xl flex flex-col items-center text-center shadow-lg border border-slate-800">
-            <div class="text-[10px] uppercase text-slate-500 mb-3 font-bold tracking-widest">רמה</div>
-            <div id="stat-level" class="text-6xl font-extrabold text-blue-500 tracking-tighter">-</div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8 max-w-7xl mx-auto">
+        <div class="glass p-6 rounded-3xl stat-card flex flex-col items-center text-center shadow-lg border border-slate-800">
+            <div class="text-[10px] uppercase text-slate-500 mb-2 font-bold tracking-widest">רמה</div>
+            <div id="stat-level" class="text-5xl font-extrabold text-blue-500 tracking-tighter">-</div>
         </div>
-        <div class="glass p-8 rounded-3xl flex flex-col items-center text-center shadow-lg border border-slate-800">
-            <div class="text-[10px] uppercase text-slate-500 mb-3 font-bold tracking-widest">זוזים (כסף)</div>
-            <div id="stat-coins" class="text-6xl font-extrabold text-white tracking-tighter">-</div>
+        <div class="glass p-6 rounded-3xl stat-card flex flex-col items-center text-center shadow-lg border border-slate-800">
+            <div class="text-[10px] uppercase text-slate-500 mb-2 font-bold tracking-widest">נקודות כוח (ATK)</div>
+            <div id="stat-power" class="text-5xl font-extrabold text-red-500 tracking-tighter">0</div>
         </div>
-        <div class="glass p-8 rounded-3xl col-span-2 flex flex-col items-start shadow-lg border border-slate-800">
-            <div class="text-[10px] uppercase text-slate-500 mb-2 font-bold tracking-widest">אנרגיה</div>
-            <div class="w-full flex justify-between items-baseline mb-2">
-                <div id="stat-energy-text" class="text-6xl font-extrabold text-white tracking-tighter">-</div>
-                <div class="text-xs text-slate-500 font-bold">MAX: 100%</div>
+        <div class="glass p-6 rounded-3xl stat-card flex flex-col items-center text-center shadow-lg border border-slate-800">
+            <div class="text-[10px] uppercase text-slate-500 mb-2 font-bold tracking-widest">זוזים</div>
+            <div id="stat-coins" class="text-5xl font-extrabold text-white tracking-tighter">-</div>
+        </div>
+        <div class="glass p-6 rounded-3xl stat-card flex flex-col items-center text-center shadow-lg border border-slate-800">
+            <div class="text-[10px] uppercase text-slate-500 mb-2 font-bold tracking-widest">סטטוס אנרגיה</div>
+            <div id="stat-energy-text" class="text-5xl font-extrabold text-green-400 tracking-tighter">-%</div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto mb-10">
+        <div class="glass p-6 rounded-[2.5rem] border border-slate-800 relative overflow-hidden">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="font-black text-xs uppercase tracking-[0.3em] text-slate-500">ציוד לחימה נוכחי (Loadout)</h3>
+                <div class="h-px flex-1 bg-slate-800 mx-6"></div>
             </div>
-            <div class="w-full bg-slate-950 h-3.5 rounded-full border border-slate-800 p-0.5">
-                <div id="stat-energy-bar" class="bg-blue-600 h-full rounded-full transition-all duration-1000 shadow-lg shadow-blue-900/50" style="width: 0%"></div>
+            <div id="inventory-list" class="flex gap-4 overflow-x-auto pb-2">
+                <div class="text-slate-600 text-xs italic">טוען ציוד...</div>
             </div>
         </div>
     </div>
@@ -78,7 +87,7 @@
         <a href="inventory.html" class="block w-full glass hover:bg-slate-900/80 p-7 rounded-3xl flex items-center justify-between border border-slate-800 shadow-lg active:scale-95 transition-all group">
             <div class="flex flex-col gap-1">
                 <span class="text-2xl font-black text-white">נשקייה וציוד</span>
-                <span class="text-sm text-slate-400">נהל את מלאי הנשקים והשדרוגים (Inventory)</span>
+                <span class="text-sm text-slate-400">נהל את מלאי הנשקים והשדרוגים</span>
             </div>
             <span class="text-5xl text-blue-600 group-hover:scale-110 transition-transform">⚔️</span>
         </a>
@@ -89,41 +98,62 @@
         import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // בדיקה אם המשתמש מחובר ושואב נתונים
+        // הגדרת ערכי הכוח של הפריטים (כדי לחשב ATK)
+        const itemStats = {
+            'pistol_nemesis': { name: 'אקדח פעימה', atk: 25, icon: '🔫' },
+            'katana_thermal': { name: 'קטאנה טרמית', atk: 45, icon: '⚔️' },
+            'nano_boost': { name: 'ננו-בוסט', atk: 0, icon: '💊' }
+        };
+
         onAuthStateChanged(auth, async (user) => {
             if (user) {
-                // משיכת נתונים מה-Firestore
                 const docRef = doc(db, "players", user.uid);
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists()) {
                     const data = docSnap.data();
+                    const inventory = data.inventory || [];
                     
-                    // עדכון הממשק
+                    // עדכון טקסטים בסיסיים
                     document.getElementById('player-username').innerText = data.username;
                     document.getElementById('stat-level').innerText = data.level;
                     document.getElementById('stat-coins').innerText = data.coins;
                     document.getElementById('stat-energy-text').innerText = data.energy + "%";
-                    
-                    // עדכון ה-Energy Bar עם אנימציה
-                    setTimeout(() => {
-                        const energyBar = document.getElementById('stat-energy-bar');
-                        energyBar.style.width = data.energy + "%";
-                    }, 300); // השהייה קלה לאפקט כניסה
-                } else {
-                    console.error("מסמך שחקן לא נמצא ב-Database!");
+
+                    // חישוב כוח התקפה ותצוגת ציוד
+                    let totalAtk = 0;
+                    const inventoryContainer = document.getElementById('inventory-list');
+                    inventoryContainer.innerHTML = ''; // ניקוי הטוען
+
+                    if (inventory.length === 0) {
+                        inventoryContainer.innerHTML = '<div class="text-slate-600 text-xs italic">אין ציוד זמין. בקר בנשקייה.</div>';
+                    }
+
+                    inventory.forEach(itemId => {
+                        if (itemStats[itemId]) {
+                            totalAtk += itemStats[itemId].atk;
+                            
+                            // יצירת אלמנט ויזואלי לכל נשק ב-Loadout
+                            const itemDiv = document.createElement('div');
+                            itemDiv.className = "bg-slate-900/50 p-4 rounded-2xl border border-slate-800 flex flex-col items-center min-w-[100px]";
+                            itemDiv.innerHTML = `
+                                <span class="text-3xl mb-2">${itemStats[itemId].icon}</span>
+                                <span class="text-[10px] font-bold text-slate-400 text-center">${itemStats[itemId].name}</span>
+                            `;
+                            inventoryContainer.appendChild(itemDiv);
+                        }
+                    });
+
+                    document.getElementById('stat-power').innerText = totalAtk;
+
                 }
             } else {
-                // משתמש לא מחובר, החזר לדף ההרשמה
                 window.location.href = 'index.html';
             }
         });
 
-        // התנתקות
         document.getElementById('logout-btn').addEventListener('click', () => {
-            signOut(auth).then(() => {
-                window.location.href = 'index.html';
-            });
+            signOut(auth).then(() => { window.location.href = 'index.html'; });
         });
     </script>
 </body>
