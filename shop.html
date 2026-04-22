@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>שדרוגים טקטיים | TLV2099</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;800&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #020617; color: white; font-family: 'Assistant', sans-serif; min-height: 100vh; }
+        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+        .item-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .item-card:hover { transform: translateY(-5px); border-color: rgba(59, 130, 246, 0.5); }
+        .owned { opacity: 0.6; pointer-events: none; filter: grayscale(1); }
+    </style>
+</head>
+<body class="p-6">
+
+    <div class="max-w-4xl mx-auto">
+        <header class="flex justify-between items-center mb-10">
+            <div>
+                <h1 class="text-4xl font-black italic tracking-tighter uppercase">נשקייה ושדרוגים</h1>
+                <p class="text-slate-500 text-xs font-bold tracking-widest mt-1">ARMORY & BIOMETRIC UPGRADES</p>
+            </div>
+            <div class="text-right glass p-4 rounded-2xl border-yellow-500/20">
+                <div class="text-[10px] text-slate-500 font-bold uppercase mb-1">הון זמין</div>
+                <div id="player-coins" class="text-2xl font-black text-yellow-400">0 <span class="text-sm">זוזים</span></div>
+            </div>
+        </header>
+
+        <div class="flex gap-4 mb-8 overflow-x-auto pb-2">
+            <button class="glass px-6 py-2 rounded-full text-xs font-black bg-blue-600 border-blue-500">הכל</button>
+            <button class="glass px-6 py-2 rounded-full text-xs font-black hover:bg-slate-800">נשק</button>
+            <button class="glass px-6 py-2 rounded-full text-xs font-black hover:bg-slate-800">ביומטרי</button>
+            <a href="dashboard.html" class="mr-auto glass px-6 py-2 rounded-full text-xs font-black hover:bg-red-950/20 text-red-400 border-red-900/30">יציאה לחמ"ל</a>
+        </div>
+
+        <div id="shop-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            </div>
+    </div>
+
+    <script type="module">
+        import { auth, db } from './firebase-config.js';
+        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { doc, getDoc, updateDoc, arrayUnion, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // מאגר הפריטים בחנות
+        const shopItems = [
+            {
+                id: 'pistol_nemesis',
+                name: 'אקדח נמסיס',
+                desc: 'נשק בסיסי יעיל לטווח קצר. נזק יציב.',
+                price: 150,
+                icon: '🔫',
+                category: 'נשק'
+            },
+            {
+                id: 'katana_thermal',
+                name: 'להב טרמי',
+                desc: 'חרב פלזמה חותכת שריון. נזק גבוה מאוד.',
+                price: 550,
+                icon: '⚔️',
+                category: 'נשק'
+            },
+            {
+                id: 'nano_bed',
+                name: 'מיטת ננו-ריפוי',
+                desc: 'משפרת את הריפוי הפסיבי ב-Dashboard ב-100%.',
+                price: 300,
+                icon: '🛌',
+                category: 'ביומטרי'
+            },
+            {
+                id: 'nano_boost',
+                name: 'מזרק ננו-בוסט',
+                desc: 'מאפשר פעולת ריפוי אקטיבית במהלך קרב.',
+                price: 200,
+                icon: '💊',
+                category: 'ביומטרי'
+            }
+        ];
+
+        let playerData = null;
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const snap = await getDoc(doc(db, "players", user.uid));
+                if (snap.exists()) {
+                    playerData = snap.data();
+                    updateUI();
+                    renderShop();
+                }
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
+
+        function renderShop() {
+            const grid = document.getElementById('shop-grid');
+            grid.innerHTML = '';
+
+            shopItems.forEach(item => {
+                const isOwned = playerData.inventory && playerData.inventory.includes(item.id);
+                
+                const card = document.createElement('div');
+                card.className = `glass p-6 rounded-[2.5rem] flex flex-col justify-between item-card border border-slate-800 ${isOwned ? 'owned' : ''}`;
+                
+                card.innerHTML = `
+                    <div>
+                        <div class="text-4xl mb-4">${item.icon}</div>
+                        <h3 class="text-xl font-black italic mb-1 uppercase">${item.name}</h3>
+                        <p class="text-slate-400 text-xs leading-relaxed mb-4">${item.desc}</p>
+                    </div>
+                    <div class="mt-4 flex flex-col gap-3">
+                        <div class="flex justify-between items-center px-1">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">${item.category}</span>
+                            <span class="text-yellow-400 font-black">${item.price} <span class="text-[10px]">זוזים</span></span>
+                        </div>
+                        <button 
+                            onclick="buyItem('${item.id}', ${item.price})" 
+                            class="w-full py-3 rounded-2xl font-black text-xs uppercase tracking-tighter transition-all ${isOwned ? 'bg-slate-700 text-slate-500' : 'bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-900/20'}"
+                        >
+                            ${isOwned ? 'בבעלותך' : 'רכישה מיידית'}
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        window.buyItem = async (itemId, price) => {
+            if (playerData.coins < price) {
+                alert("אין לך מספיק זוזים! צא לקרבות או השלם משימות.");
+                return;
+            }
+
+            if (confirm("האם לאשר את הרכישה?")) {
+                const userRef = doc(db, "players", auth.currentUser.uid);
+                
+                try {
+                    await updateDoc(userRef, {
+                        coins: increment(-price),
+                        inventory: arrayUnion(itemId)
+                    });
+                    
+                    // עדכון מקומי של הנתונים כדי למנוע קריאה נוספת ל-DB
+                    playerData.coins -= price;
+                    if(!playerData.inventory) playerData.inventory = [];
+                    playerData.inventory.push(itemId);
+                    
+                    updateUI();
+                    renderShop();
+                    alert("הרכישה בוצעה בהצלחה! הציוד הותקן.");
+                } catch (e) {
+                    console.error(e);
+                    alert("שגיאה בתקשורת עם השרת.");
+                }
+            }
+        };
+
+        function updateUI() {
+            document.getElementById('player-coins').innerHTML = `${playerData.coins} <span class="text-sm">זוזים</span>`;
+        }
+    </script>
+</body>
+</html>
