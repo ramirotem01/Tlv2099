@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>דירוג ציידים | TLV2099</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;800&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            background-image: linear-gradient(rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.8)), 
+                              url('https://res.cloudinary.com/dxygefiai/image/upload/v1776868529/TLV2099_c7nqzc.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: white; 
+            font-family: 'Assistant', sans-serif; 
+            min-height: 100vh;
+        }
+        .glass { 
+            background: rgba(15, 23, 42, 0.85); 
+            backdrop-filter: blur(12px); 
+            border: 1px solid rgba(255,255,255,0.05); 
+        }
+        .player-card {
+            transition: all 0.3s ease;
+        }
+        .player-card:hover {
+            border-color: rgba(59, 130, 246, 0.5);
+            background: rgba(30, 41, 59, 0.7);
+        }
+        .neon-text { text-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-5xl mx-auto">
+        <header class="flex justify-between items-center mb-10">
+            <div>
+                <h1 class="text-5xl font-black italic tracking-tighter neon-text">SCOREBOARD</h1>
+                <p class="text-blue-400 text-xs font-bold uppercase tracking-[0.2em]">דירוג ציידי המטרופולין</p>
+            </div>
+            <a href="dashboard.html" class="glass p-3 px-6 rounded-2xl font-bold text-xs hover:bg-slate-800 transition-all">
+                חזרה לחמ"ל 🛰️
+            </a>
+        </header>
+
+        <div id="loading-state" class="text-center py-20">
+            <div class="animate-spin text-4xl mb-4">🌀</div>
+            <p class="text-slate-400 font-bold">סורק רשת ציידים...</p>
+        </div>
+
+        <div id="players-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
+            </div>
+    </div>
+
+    <script type="module">
+        import { auth, db } from './firebase-config.js';
+        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { collection, getDocs, doc, getDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        let myData = null;
+        
+        // בסיס נתונים פשוט לבדיקת כוח הציוד (לפי ה-IDs שיש לך במשחק)
+        const itemPower = {
+            'basic_attack': 1,
+            'pistol_nemesis': 10,
+            'katana_thermal': 25,
+            'plasma_rifle': 40
+        };
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) { window.location.href = 'index.html'; return; }
+            
+            const mySnap = await getDoc(doc(db, "players", user.uid));
+            if (mySnap.exists()) {
+                myData = mySnap.data();
+                loadPlayers();
+            }
+        });
+
+        async function loadPlayers() {
+            const playersList = document.getElementById('players-list');
+            const loading = document.getElementById('loading-state');
+            
+            try {
+                const q = query(collection(db, "players"), orderBy("xp", "desc"));
+                const querySnapshot = await getDocs(q);
+                
+                playersList.innerHTML = '';
+                
+                querySnapshot.forEach((doc) => {
+                    const p = doc.data();
+                    const pId = doc.id;
+                    
+                    if (pId === auth.currentUser.uid) return; // לא להראות את עצמי
+
+                    // חישוב הציוד החזק ביותר
+                    let strongestItem = "אין ציוד";
+                    if (p.inventory && p.inventory.length > 0) {
+                        strongestItem = p.inventory.reduce((prev, current) => {
+                            return (itemPower[current] || 0) > (itemPower[prev] || 0) ? current : prev;
+                        });
+                        // הפיכת ID לשם תצוגה (אופציונלי - אפשר להוסיף מילון שמות)
+                        strongestItem = strongestItem.replace('_', ' ').toUpperCase();
+                    }
+
+                    // בדיקת זמינות לקרב (5 דרגות הפרש)
+                    const levelDiff = Math.abs(p.level - myData.level);
+                    const canFight = levelDiff <= 5;
+
+                    const card = document.createElement('div');
+                    card.className = `glass p-6 rounded-[2rem] player-card flex justify-between items-center ${!canFight ? 'opacity-50 grayscale' : ''}`;
+                    
+                    card.innerHTML = `
+                        <div class="flex items-center gap-4">
+                            <div class="w-16 h-16 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-center text-2xl">
+                                ${p.heroImg ? `<img src="${p.heroImg}" class="w-full h-full object-cover rounded-2xl">` : '👤'}
+                            </div>
+                            <div>
+                                <h3 class="font-black text-xl italic">${p.username || 'צייד אנונימי'}</h3>
+                                <div class="flex gap-3 mt-1">
+                                    <span class="text-[10px] bg-blue-900/50 text-blue-300 px-2 py-0.5 rounded-full font-bold">LVL ${p.level}</span>
+                                    <span class="text-[10px] bg-yellow-900/50 text-yellow-300 px-2 py-0.5 rounded-full font-bold">${p.xp} XP</span>
+                                </div>
+                                <p class="text-[9px] text-slate-500 mt-2 font-bold uppercase tracking-tighter">ציוד עיקרי: <span class="text-slate-300">${strongestItem}</span></p>
+                            </div>
+                        </div>
+                        
+                        <div class="text-right">
+                            ${canFight ? 
+                                `<button onclick="challengePlayer('${pId}', '${p.username}', ${p.level}, ${p.coins || 0}, '${p.heroImg || ''}')" 
+                                    class="bg-red-600 hover:bg-red-500 p-3 px-5 rounded-xl font-black text-[10px] transition-all active:scale-95 shadow-lg shadow-red-900/20">
+                                    דו קרב ⚔️
+                                </button>` : 
+                                `<span class="text-[9px] text-slate-600 font-bold italic">מחוץ לטווח רמה</span>`
+                            }
+                        </div>
+                    `;
+                    playersList.appendChild(card);
+                });
+
+                loading.classList.add('hidden');
+                playersList.classList.remove('hidden');
+
+            } catch (err) {
+                console.error(err);
+                loading.innerText = "שגיאה בטעינת הנתונים.";
+            }
+        }
+
+        window.challengePlayer = function(id, name, level, coins, img) {
+            // חישוב זהב פוטנציאלי: 10% מזהב היריב + בונוס קהל (לפי רמה)
+            const crowdBonus = 50 + (level * 20);
+            const potentialLoot = Math.floor(coins * 0.10) + crowdBonus;
+
+            // שמירה ל-LocalStorage (שימוש בדף הקרב הקיים)
+            localStorage.setItem('currentBattle', JSON.stringify({
+                name: name,
+                img: img,
+                level: level,
+                reward: potentialLoot,
+                isPvP: true,
+                opponentId: id,
+                originalCoins: coins
+            }));
+
+            window.location.href = 'combat.html';
+        };
+    </script>
+</body>
+</html>
