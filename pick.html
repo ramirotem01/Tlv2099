@@ -30,10 +30,10 @@
         
         <div onclick="selectHero('warrior')" id="card-warrior" class="character-card glass p-6 rounded-[2.5rem] border border-slate-800 flex flex-col items-center text-center">
             <div class="w-40 h-40 bg-slate-950 rounded-full mb-4 overflow-hidden border-2 border-slate-800 shadow-inner">
-                <img src="placeholder_male.jpg" id="img-warrior" class="w-full h-full object-cover opacity-60">
+                <img src="https://raw.githubusercontent.com/ramirotem01/pcs365/main/assets/warrior.png" id="img-warrior" class="w-full h-full object-cover opacity-60">
             </div>
             <h2 class="text-2xl font-black italic mb-1 uppercase">מחסל הזאבים</h2>
-            <p class="text-blue-400 text-[10px] font-bold uppercase tracking-widest mb-6">עוצמה וספיגה</p>
+            <p class="text-blue-400 text-[10px] font-bold uppercase tracking-widest mb-6">עוצמה גבוהה</p>
             
             <div class="w-full space-y-4 text-right text-xs">
                 <div>
@@ -41,8 +41,8 @@
                     <div class="stat-bar"><div class="stat-fill w-[95%] shadow-[0_0_10px_#3b82f6]"></div></div>
                 </div>
                 <div>
-                    <div class="flex justify-between mb-1"><span class="font-bold">ספיגה</span><span class="text-blue-400">85%</span></div>
-                    <div class="stat-bar"><div class="stat-fill w-[85%] shadow-[0_0_10px_#3b82f6]"></div></div>
+                    <div class="flex justify-between mb-1"><span class="font-bold">ספיגה</span><span class="text-blue-400">60%</span></div>
+                    <div class="stat-bar"><div class="stat-fill w-[60%] shadow-[0_0_10px_#3b82f6]"></div></div>
                 </div>
                 <div>
                     <div class="flex justify-between mb-1"><span class="font-bold">מהירות</span><span class="text-slate-500">20%</span></div>
@@ -79,7 +79,7 @@
                 <img src="placeholder_monk.jpg" id="img-monk" class="w-full h-full object-cover opacity-60">
             </div>
             <h2 class="text-2xl font-black italic mb-1 uppercase">קרן אור</h2>
-            <p class="text-yellow-400 text-[10px] font-bold uppercase tracking-widest mb-6">זריזות והתחמקות</p>
+            <p class="text-yellow-400 text-[10px] font-bold uppercase tracking-widest mb-6">זריזות מוחלטת</p>
             
             <div class="w-full space-y-4 text-right text-xs">
                 <div>
@@ -87,8 +87,8 @@
                     <div class="stat-bar"><div class="stat-fill w-[50%] bg-yellow-400 shadow-[0_0_10px_#eab308]"></div></div>
                 </div>
                 <div>
-                    <div class="flex justify-between mb-1"><span class="font-bold">ספיגה</span><span class="text-yellow-400">50%</span></div>
-                    <div class="stat-bar"><div class="stat-fill w-[50%] bg-yellow-400 shadow-[0_0_10px_#eab308]"></div></div>
+                    <div class="flex justify-between mb-1"><span class="font-bold">ספיגה</span><span class="text-yellow-400">70%</span></div>
+                    <div class="stat-bar"><div class="stat-fill w-[70%] bg-yellow-400 shadow-[0_0_10px_#eab308]"></div></div>
                 </div>
                 <div>
                     <div class="flex justify-between mb-1"><span class="font-bold">מהירות</span><span class="text-yellow-400">95%</span></div>
@@ -111,10 +111,11 @@
         let selectedId = null;
         const confirmBtn = document.getElementById('confirm-btn');
 
+        // ערכים מעודכנים בתיאום לבקשת האיזון
         const heroes = {
-            'warrior': { heroName: 'מחסל הזאבים', atk: 1.3, def: 1.2, eva: 0.05, spd: 0.2 },
+            'warrior': { heroName: 'מחסל הזאבים', atk: 1.3, def: 0.6, eva: 0.05, spd: 0.2 },
             'rogue': { heroName: 'מפרקת הערפדים', atk: 1.0, def: 1.3, eva: 0.15, spd: 0.5 },
-            'monk': { heroName: 'קרן אור', atk: 0.8, def: 0.8, eva: 0.40, spd: 0.95 }
+            'monk': { heroName: 'קרן אור', atk: 0.8, def: 1.1, eva: 0.40, spd: 0.95 }
         };
 
         window.selectHero = function(id) {
