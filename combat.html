@@ -64,190 +64,59 @@
             </div>
     </div>
 
-    <script type="module">
-        import { auth, db } from './firebase-config.js';
-        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { doc, getDoc, updateDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+   <script type="module">
+    // ... Imports הקיימים שלך ...
+    import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        const itemDatabase = {
-            'basic_attack': { name: 'מכה בסיסית', baseAtk: 15, icon: '👊' },
-            'pistol_nemesis': { name: 'ירי נמסיס', baseAtk: 30, icon: '🔫' },
-            'katana_thermal': { name: 'להב טרמי', baseAtk: 50, icon: '⚔️' },
-            'nano_boost': { name: 'ננו-בוסט', healPower: 40, icon: '💊', type: 'heal' }
-        };
+    // ... משתני player ו-enemy הקיימים ...
 
-        let player = { 
-            hp: 100, maxHp: 100, inventory: [], isMyTurn: true,
-            stats: { atkMod: 1, defMod: 1, evaMod: 0.1, speed: 0.5 } 
-        };
+    onAuthStateChanged(auth, async (user) => {
+        if (!user) { window.location.href = 'index.html'; return; }
         
-        let enemy = { name: "", hp: 0, maxHp: 0, atk: 0, level: 1, reward: 0 };
+        const battleData = JSON.parse(localStorage.getItem('currentBattle'));
+        if (!battleData) { window.location.href = 'map.html'; return; }
 
-        onAuthStateChanged(auth, async (user) => {
-            if (!user) { window.location.href = 'index.html'; return; }
-            
-            const battleData = JSON.parse(localStorage.getItem('currentBattle'));
-            if (!battleData) { window.location.href = 'map.html'; return; }
+        // הגדרת אויב מהנתונים שהגיעו מהמפה (וה-DB)
+        enemy.name = battleData.name;
+        enemy.level = battleData.level;
+        enemy.reward = battleData.reward;
+        enemy.maxHp = 50 + (enemy.level * 35);
+        enemy.hp = enemy.maxHp;
+        enemy.atk = 15 + (enemy.level * 6);
+        
+        document.getElementById('enemy-name').innerText = enemy.name;
+        document.getElementById('enemy-level').innerText = `LEVEL ${enemy.level}`;
 
-            // נתוני אויב
-            enemy.name = battleData.name;
-            enemy.level = battleData.level;
-            enemy.reward = battleData.reward;
-            enemy.maxHp = 50 + (enemy.level * 35);
-            enemy.hp = enemy.maxHp;
-            enemy.atk = 15 + (enemy.level * 6);
-            
-            document.getElementById('enemy-name').innerText = enemy.name;
-            document.getElementById('enemy-level').innerText = `LEVEL ${enemy.level}`;
-
-            // שליפת נתוני לוחם מה-DB
-            const docSnap = await getDoc(doc(db, "players", user.uid));
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                
-                // עדכון סטאטים מהבחירה
-                if(data.stats) player.stats = data.stats;
-                if(data.heroName) document.getElementById('player-class-name').innerText = data.heroName;
-
-                const pLevel = data.level || 1;
-                player.maxHp = 100 + (pLevel * 15);
-                player.hp = (data.energy !== undefined) ? data.energy : player.maxHp;
-                player.inventory = data.inventory || [];
-                
-                renderActions();
-                updateUI();
-                addLog(`קרב התחיל נגד ${enemy.name}!`, 'text-red-500 font-bold');
-            }
-        });
-
-        function calculateDamage(base, modifier, isPlayerAttacking) {
-            const variance = (Math.random() * 0.3) + 0.85; // 85% to 115%
-            let finalDmg = base * modifier * variance;
-
-            // אם האויב תוקף, נחשב התחמקות של השחקן
-            if (!isPlayerAttacking) {
-                if (Math.random() < player.stats.evaMod) return { val: 0, type: 'MISS' };
-                // הפחתת נזק לפי ספיגה של השחקן
-                finalDmg = finalDmg / player.stats.defMod;
-            }
-
-            const roll = Math.random();
-            if (roll > 0.92) return { val: Math.floor(finalDmg * 1.8), type: 'CRIT' };
-            return { val: Math.max(1, Math.floor(finalDmg)), type: 'HIT' };
+        // הזרקת התמונה מה-DB במקום האייקון
+        const enemyIcon = document.getElementById('enemy-icon');
+        if (battleData.img) {
+            // הפיכת הדיב שמכיל את האייקון למכולה של תמונה
+            enemyIcon.parentElement.innerHTML = `
+                <img src="${battleData.img}" 
+                     class="w-full h-full object-cover rounded-full border-4 border-red-900/30 enemy-glow"
+                     alt="${enemy.name}">
+            `;
         }
 
-        window.handleAction = function(itemId) {
-            if (!player.isMyTurn || player.hp <= 0) return;
-            const item = itemDatabase[itemId] || itemDatabase['basic_attack'];
-            player.isMyTurn = false;
+        // שליפת נתוני לוחם מה-DB
+        const docSnap = await getDoc(doc(db, "players", user.uid));
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            if(data.stats) player.stats = data.stats;
+            if(data.heroName) document.getElementById('player-class-name').innerText = data.heroName;
 
-            if (item.type === 'heal') {
-                const heal = Math.floor(item.healPower * (player.stats.defMod || 1));
-                player.hp = Math.min(player.maxHp, player.hp + heal);
-                addLog(`שימוש ב${item.name}: +${heal} HP`, 'text-green-400 font-bold');
-            } else {
-                const res = calculateDamage(item.baseAtk, player.stats.atkMod, true);
-                if (res.val > 0) {
-                    enemy.hp -= res.val;
-                    addLog(`התקפת עם ${item.name}: ${res.type === 'CRIT' ? '⚡ ' : ''}${res.val} נזק`, 'text-white font-black italic');
-                    triggerShake('enemy-area');
-                } else {
-                    addLog(`התקפת ${item.name} פוספסה!`, 'text-slate-500');
-                }
-            }
-
+            const pLevel = data.level || 1;
+            player.maxHp = 100 + (pLevel * 15);
+            player.hp = (data.energy !== undefined) ? data.energy : player.maxHp;
+            player.inventory = data.inventory || [];
+            
+            renderActions();
             updateUI();
-            if (enemy.hp <= 0) return processVictory();
-            
-            // השהייה קטנה לפני תור האויב
-            setTimeout(enemyTurn, 800);
+            addLog(`מערכת זיהתה: ${enemy.name}. התחל סריקה טקטית.`, 'text-red-500 font-bold');
         }
+    });
 
-        function enemyTurn() {
-            if (enemy.hp <= 0) return;
-
-            const res = calculateDamage(enemy.atk, 1, false);
-            
-            if (res.type === 'MISS') {
-                addLog(`זריזות הלוחם! ${enemy.name} פספס!`, 'text-blue-400 font-bold');
-            } else {
-                player.hp -= res.val;
-                addLog(`${enemy.name} פגע בך: ${res.val} נזק`, 'text-red-400 font-bold');
-                triggerShake('player-hp-bar');
-            }
-
-            updateUI();
-            
-            if (player.hp <= 0) {
-                updateDoc(doc(db, "players", auth.currentUser.uid), { energy: 0 });
-                alert("המערכות קרסו! חזרה לבסיס.");
-                window.location.href = 'dashboard.html';
-            } else {
-                player.isMyTurn = true;
-            }
-        }
-
-        function processVictory() {
-            const xpGained = enemy.level * 2; 
-            addLog(`🏆 ניצחון! נאספו ${enemy.reward} זוזים ו-${xpGained} XP.`, 'text-yellow-400 font-black italic uppercase');
-            
-            updateDoc(doc(db, "players", auth.currentUser.uid), {
-                coins: increment(enemy.reward),
-                xp: increment(xpGained),
-                energy: Math.max(0, Math.floor(player.hp)),
-                lastHpUpdate: serverTimestamp()
-            }).then(() => {
-                setTimeout(() => window.location.href = 'dashboard.html', 2500);
-            });
-        }
-
-        function renderActions() {
-            const container = document.getElementById('action-buttons');
-            container.innerHTML = '';
-            
-            // תמיד להוסיף התקפת בסיס
-            const basicBtn = createActionBtn('basic_attack');
-            container.appendChild(basicBtn);
-
-            // להוסיף חפצים מהאינוונטר
-            player.inventory.forEach(itemId => {
-                if (itemDatabase[itemId]) {
-                    container.appendChild(createActionBtn(itemId));
-                }
-            });
-        }
-
-        function createActionBtn(itemId) {
-            const item = itemDatabase[itemId];
-            const btn = document.createElement('button');
-            btn.className = "glass p-4 rounded-2xl font-black text-xs hover:bg-slate-800 border border-slate-700 uppercase italic transition-all active:scale-95 flex items-center justify-center gap-2";
-            btn.innerHTML = `<span>${item.icon}</span> ${item.name}`;
-            btn.onclick = () => handleAction(itemId);
-            return btn;
-        }
-
-        function updateUI() {
-            document.getElementById('enemy-hp-bar').style.width = Math.max(0, (enemy.hp / enemy.maxHp * 100)) + "%";
-            document.getElementById('enemy-hp-text').innerText = `${Math.max(0, Math.floor(enemy.hp))}/${enemy.maxHp} HP`;
-            
-            document.getElementById('player-hp-bar').style.width = Math.max(0, (player.hp / player.maxHp * 100)) + "%";
-            document.getElementById('player-hp-text').innerText = Math.max(0, Math.floor(player.hp));
-            document.getElementById('player-max-hp-display').innerText = `/${player.maxHp} %`;
-        }
-
-        function addLog(msg, colorClass) {
-            const logBox = document.getElementById('battle-log');
-            logBox.innerHTML += `<p class="${colorClass}">► ${msg}</p>`;
-            logBox.scrollTop = logBox.scrollHeight;
-        }
-
-        function triggerShake(id) {
-            const el = document.getElementById(id);
-            if(el) {
-                el.classList.add('shake');
-                setTimeout(() => el.classList.remove('shake'), 400);
-            }
-        }
-    </script>
+    // ... שאר הפונקציות (calculateDamage, enemyTurn וכו') ללא שינוי ...
+</script>
 </body>
 </html>
