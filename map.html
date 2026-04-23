@@ -95,7 +95,7 @@
                 
                 <div class="flex gap-4">
                     <button onclick="closeMission()" class="flex-1 bg-slate-800 hover:bg-slate-700 py-4 rounded-2xl font-bold transition-all text-xs">ביטול</button>
-                    <button onclick="startHunt()" class="flex-1 bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-black shadow-lg shadow-blue-900/40 active:scale-95 transition-all uppercase tracking-tighter">
+                    <button id="start-hunt-btn" onclick="startHunt()" class="flex-1 bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-black shadow-lg shadow-blue-900/40 active:scale-95 transition-all uppercase tracking-tighter">
                         יציאה לקרב ⚔️
                     </button>
                 </div>
@@ -106,13 +106,12 @@
     <script type="module">
         import { auth, db } from './firebase-config.js';
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { doc, getDoc, updateDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         let currentUser = null;
         let activeMissions = [];
         let selectedMissionIndex = null;
 
-        const MONSTERS = ["בוט אבטחה משובש", "מוטאנט ביבים", "צייד רשת", "רחפן קרב", "וירוס פיזי", "צייד סייבר"];
         const LOCATIONS = ["נמל תל אביב", "דיזינגוף סנטר", "מגדלי עזריאלי", "שוק הכרמל", "פלורנטין", "כיכר המדינה", "שדרות רוטשילד"];
 
         onAuthStateChanged(auth, async (user) => {
@@ -125,7 +124,6 @@
                     const data = snap.data();
                     activeMissions = data.activeMissions || [];
                     
-                    // אם חסרות משימות (פחות מ-3), נשלים אותן ב-Firestore
                     if (activeMissions.length < 3) {
                         generateNewMissions(data.level || 1);
                         await updateDoc(playerRef, { activeMissions: activeMissions });
@@ -140,14 +138,12 @@
 
         function generateNewMissions(playerLevel) {
             while (activeMissions.length < 3) {
-                // הגרלת רמה סביב רמת השחקן (בין -1 ל-+2)
                 const diff = playerLevel + (Math.floor(Math.random() * 4) - 1);
                 const mission = {
                     location: LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)],
-                    target: MONSTERS[Math.floor(Math.random() * MONSTERS.length)],
+                    target: "מטרה לא מזוהה", // זה יתחלף ברגע שנלחץ על הקרב
                     difficulty: Math.max(1, diff),
                     reward: 50 + (diff * 20) + Math.floor(Math.random() * 30),
-                    // הגרלת מיקום רנדומלי על המפה באחוזים
                     top: (Math.floor(Math.random() * 60) + 20) + "%",
                     left: (Math.floor(Math.random() * 70) + 15) + "%"
                 };
@@ -175,7 +171,7 @@
             selectedMissionIndex = index;
             const m = activeMissions[index];
             document.getElementById('m-location').innerText = m.location;
-            document.getElementById('m-target').innerText = m.target;
+            document.getElementById('m-target').innerText = "אנומליה זוהתה";
             document.getElementById('m-reward').innerText = m.reward + " זוזים";
             document.getElementById('m-difficulty').innerText = "LVL " + m.difficulty;
             document.getElementById('mission-modal').classList.remove('hidden');
@@ -188,26 +184,56 @@
         window.startHunt = async function() {
             if (selectedMissionIndex === null) return;
             
+            const btn = document.getElementById('start-hunt-btn');
+            btn.innerText = "יוצר קשר...";
+            btn.disabled = true;
+
             const mission = activeMissions[selectedMissionIndex];
             
-            // שמירת נתוני האויב המדויקים לשימוש ב-combat.html
-            localStorage.setItem('currentBattle', JSON.stringify({
-                name: mission.target,
-                level: mission.difficulty,
-                reward: mission.reward,
-                location: mission.location
-            }));
-            
-            // הסרת המשימה מהרשימה ב-Firestore
-            activeMissions.splice(selectedMissionIndex, 1);
-            const playerRef = doc(db, "players", currentUser.uid);
-            
             try {
+                // 1. חיפוש מפלצת ב-DB שמתאימה לרמה (maxLevel >= difficulty)
+                const q = query(collection(db, "monsters"), where("maxLevel", ">=", mission.difficulty));
+                const querySnapshot = await getDocs(q);
+                const possibleMonsters = [];
+                
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    // אנחנו לוקחים רק כאלו שהם לא בוסים למפה הרגילה
+                    if (!data.isBoss) {
+                        possibleMonsters.push(data);
+                    }
+                });
+
+                let selectedMonster;
+                if (possibleMonsters.length > 0) {
+                    // הגרלת מפלצת מהרשימה
+                    selectedMonster = possibleMonsters[Math.floor(Math.random() * possibleMonsters.length)];
+                } else {
+                    // Fallback למקרה שאין מפלצות ב-DB שמתאימות לרמה
+                    selectedMonster = { name: "יחידת סיור פגומה", img: "" };
+                }
+
+                // 2. שמירת נתוני הקרב המלאים ל-LocalStorage
+                localStorage.setItem('currentBattle', JSON.stringify({
+                    name: selectedMonster.name,
+                    img: selectedMonster.img,
+                    level: mission.difficulty,
+                    reward: mission.reward,
+                    location: mission.location
+                }));
+                
+                // 3. הסרת המשימה מהרשימה ב-Firestore ומעבר לקרב
+                activeMissions.splice(selectedMissionIndex, 1);
+                const playerRef = doc(db, "players", currentUser.uid);
                 await updateDoc(playerRef, { activeMissions: activeMissions });
+                
                 window.location.href = 'combat.html';
+
             } catch (error) {
-                console.error("Error updating missions:", error);
-                alert("שגיאה בחיבור לרשת הקרב.");
+                console.error("Error starting hunt:", error);
+                alert("שגיאה בסנכרון מול ה-Database.");
+                btn.disabled = false;
+                btn.innerText = "יציאה לקרב ⚔️";
             }
         }
     </script>
