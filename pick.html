@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>בחירת דמות | TLV2099</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;800&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            background: radial-gradient(circle, #0f172a 0%, #020617 100%);
+            color: white; font-family: 'Assistant', sans-serif; min-height: 100vh;
+        }
+        .glass { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+        .character-card { transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); cursor: pointer; }
+        .character-card:hover { transform: scale(1.05); border-color: #3b82f6; box-shadow: 0 0 30px rgba(59, 130, 246, 0.2); }
+        .selected { border: 3px solid #3b82f6 !important; background: rgba(59, 130, 246, 0.1) !important; }
+        .stat-bar { height: 4px; background: #1e293b; border-radius: 2px; overflow: hidden; }
+        .stat-fill { height: 100%; background: #3b82f6; }
+    </style>
+</head>
+<body class="p-4 md:p-8 flex flex-col items-center">
+
+    <div class="text-center mb-10">
+        <h1 class="text-4xl font-black italic tracking-tighter text-blue-500 uppercase">בחר את הסוכן שלך</h1>
+        <p class="text-slate-400 text-sm mt-2 font-bold">הבחירה הזו תקבע את אסטרטגיית הקרב שלך</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl">
+        
+        <div onclick="selectHero('warrior')" id="card-warrior" class="character-card glass p-6 rounded-[2.5rem] border border-slate-800 flex flex-col items-center text-center">
+            <div class="w-40 h-40 bg-slate-800 rounded-full mb-4 overflow-hidden border-2 border-slate-700">
+                <img src="placeholder_male.jpg" id="img-warrior" class="w-full h-full object-cover opacity-50">
+            </div>
+            <h2 class="text-2xl font-black italic mb-1">מחסל הזאבים</h2>
+            <p class="text-blue-400 text-[10px] font-bold uppercase tracking-widest mb-4">כוח מתפרץ וספיגה</p>
+            <div class="w-full space-y-3 text-right text-xs">
+                <div>
+                    <div class="flex justify-between mb-1"><span>עוצמה</span><span>90%</span></div>
+                    <div class="stat-bar"><div class="stat-fill w-[90%]"></div></div>
+                </div>
+                <div>
+                    <div class="flex justify-between mb-1"><span>ספיגה</span><span>80%</span></div>
+                    <div class="stat-bar"><div class="stat-fill w-[80%]"></div></div>
+                </div>
+                <div>
+                    <div class="flex justify-between mb-1"><span>מהירות</span><span>30%</span></div>
+                    <div class="stat-bar"><div class="stat-fill w-[30%] bg-slate-500"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div onclick="selectHero('rogue')" id="card-rogue" class="character-card glass p-6 rounded-[2.5rem] border border-slate-800 flex flex-col items-center text-center">
+            <div class="w-40 h-40 bg-slate-800 rounded-full mb-4 overflow-hidden border-2 border-slate-700">
+                <img src="placeholder_female.jpg" id="img-rogue" class="w-full h-full object-cover opacity-50">
+            </div>
+            <h2 class="text-2xl font-black italic mb-1">מפרקת הערפדים</h2>
+            <p class="text-pink-500 text-[10px] font-bold uppercase tracking-widest mb-4">ריפוי וסיבולת</p>
+            <div class="w-full space-y-3 text-right text-xs">
+                <div>
+                    <div class="flex justify-between mb-1"><span>ריפוי</span><span>95%</span></div>
+                    <div class="stat-bar"><div class="stat-fill w-[95%] bg-pink-500"></div></div>
+                </div>
+                <div>
+                    <div class="flex justify-between mb-1"><span>ספיגה</span><span>60%</span></div>
+                    <div class="stat-bar"><div class="stat-fill w-[60%] bg-pink-500"></div></div>
+                </div>
+                <div>
+                    <div class="flex justify-between mb-1"><span>מהירות</span><span>60%</span></div>
+                    <div class="stat-bar"><div class="stat-fill w-[60%] bg-pink-500"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div onclick="selectHero('monk')" id="card-monk" class="character-card glass p-6 rounded-[2.5rem] border border-slate-800 flex flex-col items-center text-center">
+            <div class="w-40 h-40 bg-slate-800 rounded-full mb-4 overflow-hidden border-2 border-slate-700">
+                <img src="placeholder_monk.jpg" id="img-monk" class="w-full h-full object-cover opacity-50">
+            </div>
+            <h2 class="text-2xl font-black italic mb-1">קרן אור</h2>
+            <p class="text-yellow-400 text-[10px] font-bold uppercase tracking-widest mb-4">זריזות והתחמקות</p>
+            <div class="w-full space-y-3 text-right text-xs">
+                <div>
+                    <div class="flex justify-between mb-1"><span>מהירות/התחמקות</span><span>95%</span></div>
+                    <div class="stat-bar"><div class="stat-fill w-[95%] bg-yellow-400"></div></div>
+                </div>
+                <div>
+                    <div class="flex justify-between mb-1"><span>עוצמה</span><span>50%</span></div>
+                    <div class="stat-bar"><div class="stat-fill w-[50%] bg-yellow-400"></div></div>
+                </div>
+                <div>
+                    <div class="flex justify-between mb-1"><span>ספיגה</span><span>50%</span></div>
+                    <div class="stat-bar"><div class="stat-fill w-[50%] bg-yellow-400"></div></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <button id="confirm-btn" disabled class="mt-12 bg-blue-600 px-12 py-4 rounded-2xl font-black text-white uppercase tracking-widest opacity-30 cursor-not-allowed transition-all">אישור בחירה</button>
+
+    <script type="module">
+        import { auth, db } from './firebase-config.js';
+        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        let selectedId = null;
+        const confirmBtn = document.getElementById('confirm-btn');
+
+        const heroes = {
+            'warrior': { 
+                heroName: 'מחסל הזאבים', 
+                atkMod: 1.3, // 30% יותר נזק
+                defMod: 1.2, // 20% יותר ספיגה
+                evaMod: 0.05 // 5% סיכוי התחמקות בלבד
+            },
+            'rogue': { 
+                heroName: 'מפרקת הערפדים', 
+                atkMod: 1.0, 
+                defMod: 1.1, 
+                healMod: 1.4, // 40% יותר ריפוי
+                evaMod: 0.15 
+            },
+            'monk': { 
+                heroName: 'קרן אור', 
+                atkMod: 0.8, 
+                defMod: 0.8, 
+                evaMod: 0.35 // 35% סיכוי התחמקות (גבוה מאוד)
+            }
+        };
+
+        window.selectHero = function(id) {
+            selectedId = id;
+            // הסרת בחירה קודמת
+            document.querySelectorAll('.character-card').forEach(c => c.classList.remove('selected'));
+            // הוספת בחירה חדשה
+            document.getElementById(`card-${id}`).classList.add('selected');
+            
+            confirmBtn.disabled = false;
+            confirmBtn.classList.remove('opacity-30', 'cursor-not-allowed');
+            confirmBtn.classList.add('hover:bg-blue-500', 'shadow-lg', 'shadow-blue-500/20');
+        }
+
+        confirmBtn.onclick = async () => {
+            const user = auth.currentUser;
+            if (!user || !selectedId) return;
+
+            confirmBtn.innerText = "מעדכן פרופיל...";
+            confirmBtn.disabled = true;
+
+            try {
+                const heroData = heroes[selectedId];
+                const playerRef = doc(db, "players", user.uid);
+                
+                await updateDoc(playerRef, {
+                    heroClass: selectedId,
+                    heroName: heroData.heroName,
+                    stats: {
+                        atkMod: heroData.atkMod,
+                        defMod: heroData.defMod,
+                        evaMod: heroData.evaMod,
+                        healMod: heroData.healMod || 1.0
+                    },
+                    hasPickedHero: true // דגל שמוודא שהוא לא יחזור לכאן
+                });
+
+                window.location.href = 'dashboard.html';
+            } catch (error) {
+                console.error("Error saving hero:", error);
+                alert("שגיאה בשמירת הדמות. נסה שוב.");
+                confirmBtn.innerText = "אישור בחירה";
+                confirmBtn.disabled = false;
+            }
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            if (!user) window.location.href = 'index.html';
+        });
+    </script>
+</body>
+</html>
