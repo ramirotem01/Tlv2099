@@ -1,28 +1,18 @@
-// קוד הזרקה חד פעמי ליצירת האוסף והודעת בדיקה
-async function createFirstNotification(userId) {
-    import { addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    
+import { db } from './firebase-config.js';
+import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+async function createTestNotification(myId) {
     try {
-        const docRef = await addDoc(collection(db, "notifications"), {
-            targetUserId: userId,
-            text: "המערכת הופעלה בהצלחה! זוהי הודעת הבדיקה הראשונה שלך.",
-            type: "system",
+        await addDoc(collection(db, "notifications"), {
+            targetUserId: myId,
+            type: 'level_up',
+            newLevel: 5,
+            text: "בדיקה: עלית לרמה 5!",
             isRead: false,
             createdAt: serverTimestamp()
         });
-        console.log("הודעה ראשונה נוצרה ב-ID: ", docRef.id);
-        // אחרי שזה נוצר, נטען את ההודעות מחדש
-        loadMessages(userId);
+        alert("הודעת בדיקה נוצרה! עכשיו תבדוק את דף ההודעות.");
     } catch (e) {
-        console.error("שגיאה ביצירת הודעה אוטומטית: ", e);
+        console.error(e);
     }
 }
-
-// קריאה לפונקציה בתוך ה-AuthState (רק לבדיקה - אפשר למחוק אחרי פעם אחת)
-onAuthStateChanged(auth, (user) => {
-    if (user) {
-        // אם אתה רוצה ליצור הודעה אוטומטית עכשיו, שחרר את ההערה מהשורה הבאה:
-        // createFirstNotification(user.uid); 
-        loadMessages(user.uid);
-    }
-});
