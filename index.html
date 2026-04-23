@@ -103,8 +103,11 @@
             
             try {
                 if (mode === 'login') {
+                    // התחברות - מעבר ישיר לדאשבורד
                     await signInWithEmailAndPassword(auth, email, password);
+                    window.location.href = 'dashboard.html';
                 } else {
+                    // הרשמה - מעבר לבחירת דמות
                     if (!username) throw new Error("חובה לבחור כינוי צייד");
                     
                     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -118,8 +121,8 @@
                         energy: 100,
                         joinedAt: new Date().toISOString()
                     });
+                    window.location.href = 'pick.html';
                 }
-                window.location.href = 'pick.html';
             } catch (error) {
                 errorMsg.innerText = "שגיאה: " + error.message;
                 errorMsg.classList.remove('hidden');
