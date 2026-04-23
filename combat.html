@@ -161,50 +161,54 @@
         }
 
         async function processVictory() {
-            addLog(`🏆 ניצחון! נאספו ${enemy.reward} זוזים.`, 'text-yellow-400 font-black italic');
-            
-            const myUpdates = {
-                coins: increment(enemy.reward),
-                xp: increment(enemy.level * 2),
-                energy: Math.max(0, Math.floor(player.hp)),
-                lastHpUpdate: serverTimestamp()
-            };
+            addLog(`🏆 ניצחון! נאספו ${enemy.reward} זוזים.`, 'text-yellow-400 font-black italic uppercase');
+            document.getElementById('action-buttons').innerHTML = '<div class="text-green-500 font-bold animate-pulse text-center w-full">הנתונים נשמרים... מתנתק...</div>';
 
-            await updateDoc(doc(db, "players", auth.currentUser.uid), myUpdates);
+            try {
+                // 1. עדכון השחקן המנצח
+                const myUpdates = {
+                    coins: increment(enemy.reward),
+                    xp: increment(enemy.level * 2),
+                    energy: Math.max(0, Math.floor(player.hp)),
+                    lastHpUpdate: serverTimestamp()
+                };
+                await updateDoc(doc(db, "players", auth.currentUser.uid), myUpdates);
 
-            if (enemy.isPvP && enemy.id) {
-                await updateDoc(doc(db, "players", enemy.id), {
-                    energy: 0,
-                    coins: increment(-Math.floor(enemy.reward * 0.1)),
-                    lastFoughtBy: auth.currentUser.uid
-                });
+                // 2. במידה וזה PVP - עדכון היריב והודעה
+                if (enemy.isPvP && enemy.id) {
+                    await updateDoc(doc(db, "players", enemy.id), {
+                        energy: 0,
+                        coins: increment(-Math.floor(enemy.reward * 0.1)),
+                        lastFoughtBy: auth.currentUser.uid
+                    });
 
-                await addDoc(collection(db, "notifications"), {
-                    targetUserId: enemy.id,
-                    type: "pvp_attack",
-                    attackerName: player.username,
-                    result: "loss",
-                    damageDealt: damageStats.received,
-                    damageReceived: damageStats.dealt,
-                    lostCoins: Math.floor(enemy.reward * 0.1),
-                    isRead: false,
-                    createdAt: Date.now()
-                });
+                    await addDoc(collection(db, "notifications"), {
+                        targetUserId: enemy.id,
+                        type: "pvp_attack",
+                        attackerName: player.username,
+                        result: "loss",
+                        damageDealt: damageStats.received,
+                        damageReceived: damageStats.dealt,
+                        lostCoins: Math.floor(enemy.reward * 0.1),
+                        isRead: false,
+                        createdAt: Date.now()
+                    });
+                }
+            } catch (error) {
+                console.error("Victory update failed:", error);
             }
 
-            setTimeout(() => window.location.href = 'dashboard.html', 2500);
+            // 3. חזרה לדשבורד בכל מקרה אחרי ההמתנה
+            setTimeout(() => { window.location.href = 'dashboard.html'; }, 2000);
         }
 
         async function processDefeat() {
             addLog(`💀 תבוסה... המערכות קרסו.`, 'text-red-600 font-black');
-            
-            // עדכון UI מיידי
             player.hp = 0;
             updateUI();
             document.getElementById('action-buttons').innerHTML = '<div class="text-red-500 font-bold animate-pulse text-center w-full">המערכת במצב חירום - מתנתק...</div>';
 
             try {
-                // עדכון DB וסימון זמן לתחילת ריפוי (Regen)
                 await updateDoc(doc(db, "players", auth.currentUser.uid), { 
                     energy: 0,
                     lastHpUpdate: serverTimestamp() 
@@ -229,7 +233,7 @@
                 }
             } catch (e) { console.error(e); }
 
-            setTimeout(() => window.location.href = 'dashboard.html', 2000);
+            setTimeout(() => { window.location.href = 'dashboard.html'; }, 2000);
         }
 
         function calculateDamage(base, modifier, isPlayerAttacking) {
