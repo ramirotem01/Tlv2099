@@ -8,15 +8,17 @@
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;800&display=swap" rel="stylesheet">
     <style>
         body { 
-            background-image: linear-gradient(rgba(2, 6, 23, 0.85), rgba(2, 6, 23, 0.85)), 
-                              url('https://res.cloudinary.com/dxygefiai/image/upload/v1776868529/TLV2099_c7nqzc.png');
+            background-image: linear-gradient(rgba(2, 6, 23, 0.9), rgba(2, 6, 23, 0.9)), 
+                             url('https://res.cloudinary.com/dxygefiai/image/upload/v1776868529/TLV2099_c7nqzc.png');
             background-size: cover; background-position: center; background-attachment: fixed;
             color: white; font-family: 'Assistant', sans-serif; min-height: 100vh;
         }
         .glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
-        .msg-card { transition: all 0.3s ease; border-right: 4px solid transparent; }
-        .msg-unread { border-right-color: #3b82f6; background: rgba(30, 41, 59, 0.8); }
+        .msg-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border-right: 4px solid transparent; }
+        .msg-card:hover { transform: translateX(-5px); background: rgba(30, 41, 59, 0.9); }
+        .msg-unread { border-right-color: #3b82f6; background: rgba(30, 41, 59, 0.8); box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.1); }
         .neon-text { text-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
+        .envelope-icon { filter: drop-shadow(0 0 5px rgba(59, 130, 246, 0.5)); }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -24,23 +26,24 @@
     <div class="max-w-3xl mx-auto">
         <header class="flex justify-between items-center mb-8">
             <div>
-                <h1 class="text-4xl font-black italic tracking-tighter neon-text uppercase">Messages</h1>
-                <p class="text-blue-400 text-xs font-bold uppercase tracking-widest">תיבת הדואר של הצייד</p>
+                <h1 class="text-4xl font-black italic tracking-tighter neon-text uppercase">In-Box</h1>
+                <p class="text-blue-400 text-xs font-bold uppercase tracking-widest">תקשורת מוצפנת | TLV2099</p>
             </div>
-            <a href="dashboard.html" class="glass p-3 px-6 rounded-2xl font-bold text-xs hover:bg-slate-800 transition-all flex items-center gap-2">
+            <a href="dashboard.html" class="glass p-3 px-6 rounded-2xl font-bold text-xs hover:bg-slate-800 transition-all flex items-center gap-2 border border-blue-500/20">
                 <span>חזרה לחמ"ל</span> 🛰️
             </a>
         </header>
 
         <div id="messages-container" class="space-y-4">
             <div id="loading" class="text-center py-20">
-                <div class="animate-spin text-3xl mb-4">🌀</div>
-                <p class="text-slate-500 font-bold">סורק הודעות מוצפנות...</p>
+                <div class="animate-spin text-3xl mb-4 inline-block">🌀</div>
+                <p class="text-slate-500 font-bold tracking-widest animate-pulse">סורק תדרים...</p>
             </div>
-            </div>
+        </div>
 
-        <div id="no-messages" class="hidden text-center py-20 glass rounded-[2rem]">
-            <p class="text-slate-500 font-bold">אין הודעות חדשות במערכת.</p>
+        <div id="no-messages" class="hidden text-center py-20 glass rounded-[2rem] border-dashed border-slate-700">
+            <div class="text-5xl mb-4 opacity-20">📡</div>
+            <p class="text-slate-500 font-bold uppercase tracking-widest">אין הודעות חדשות במערכת</p>
         </div>
     </div>
 
@@ -63,12 +66,12 @@
             const loading = document.getElementById('loading');
 
             try {
-                // משיכת 10 הודעות אחרונות
+                // שים לב: אם זה עדיין לא מציג, תפתח את ה-Console (F12) ותלחץ על הלינק ש-Firebase נותן כדי ליצור אינדקס
                 const q = query(
                     collection(db, "notifications"),
                     where("targetUserId", "==", userId),
                     orderBy("createdAt", "desc"),
-                    limit(10)
+                    limit(15)
                 );
 
                 const querySnapshot = await getDocs(q);
@@ -80,48 +83,49 @@
                 }
 
                 container.innerHTML = '';
-                querySnapshot.forEach((document) => {
-                    const msg = document.data();
-                    const msgId = document.id;
-                    const date = new Date(msg.createdAt).toLocaleDateString('he-IL', {hour: '2-digit', minute:'2-digit'});
+                querySnapshot.forEach((documentSnap) => {
+                    const msg = documentSnap.data();
+                    const msgId = documentSnap.id;
+                    const date = new Date(msg.createdAt).toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'});
                     
                     const card = document.createElement('div');
-                    card.className = `glass p-5 rounded-2xl msg-card cursor-pointer ${!msg.isRead ? 'msg-unread' : ''}`;
+                    card.className = `glass p-5 rounded-2xl msg-card cursor-pointer border border-slate-800 ${!msg.isRead ? 'msg-unread' : 'opacity-80'}`;
                     
-                    // אייקון מעטפה לפי מצב קריאה
-                    const icon = msg.isRead ? '📂' : '📧';
+                    // אייקון מעטפה (סגורה לחדש, פתוחה לקרוא)
+                    const icon = msg.isRead ? '📂' : '✉️';
                     
                     let contentHtml = "";
                     if (msg.type === 'pvp_attack') {
                         const win = msg.result === 'win';
                         contentHtml = `
                             <div class="flex justify-between items-start mb-2">
-                                <span class="text-xs font-black ${win ? 'text-green-400' : 'text-red-400'} uppercase">${win ? 'ניצחת בהגנה! 🛡️' : 'הפסדת בקרב! 💀'}</span>
-                                <span class="text-[10px] text-slate-500 font-mono">${date}</span>
+                                <span class="text-[10px] font-black ${win ? 'text-green-400' : 'text-red-400'} uppercase tracking-widest">${win ? '🛡️ הגנה מוצלחת' : '💀 המערכת נפרצה'}</span>
+                                <span class="text-[10px] text-slate-500 font-mono tracking-tighter">${date}</span>
                             </div>
-                            <p class="text-sm font-bold mb-2">הצייד <span class="text-blue-400">${msg.attackerName}</span> תקף אותך!</p>
-                            <div class="grid grid-cols-2 gap-2 text-[11px] bg-slate-950/40 p-3 rounded-xl border border-slate-800">
-                                <div>הנזק שספגת: <span class="text-red-400">${msg.damageReceived}</span></div>
-                                <div>הנזק שהחזרת: <span class="text-blue-400">${msg.damageDealt}</span></div>
-                                <div class="col-span-2 pt-1 border-t border-slate-800 mt-1">
-                                    ${win ? `הרווחת מהקהל: <span class="text-yellow-400">${msg.reward} זוזים</span>` : `איבדת בקרב: <span class="text-red-500">${msg.lostCoins} זוזים</span>`}
+                            <p class="text-sm font-bold mb-2">הצייד <span class="text-blue-400 underline decoration-blue-500/30 underline-offset-4">${msg.attackerName}</span> ניסה לאגף אותך!</p>
+                            <div class="grid grid-cols-2 gap-2 text-[10px] bg-black/40 p-3 rounded-xl border border-slate-800/50">
+                                <div>נזק שספגת: <span class="${win ? 'text-slate-400' : 'text-red-400'} font-bold">${msg.damageReceived || 0}</span></div>
+                                <div>נזק שגרמת: <span class="text-blue-400 font-bold">${msg.damageDealt || 0}</span></div>
+                                <div class="col-span-2 pt-2 border-t border-slate-800 mt-1 flex justify-between">
+                                    <span>סטטוס משאבים:</span>
+                                    <span class="${win ? 'text-yellow-400' : 'text-red-500'} font-black">${win ? '+' + (msg.reward || 50) + ' זוזים' : '-' + (msg.lostCoins || 0) + ' זוזים'}</span>
                                 </div>
                             </div>
                         `;
-                    } else if (msg.type === 'level_up') {
+                    } else {
+                        // הודעה כללית/עליית רמה
                         contentHtml = `
                             <div class="flex justify-between items-start mb-2">
-                                <span class="text-xs font-black text-yellow-400 uppercase text-shadow-sm">עליית דרגה! ✨</span>
+                                <span class="text-[10px] font-black text-yellow-400 uppercase tracking-widest">✨ עדכון מערכת</span>
                                 <span class="text-[10px] text-slate-500 font-mono">${date}</span>
                             </div>
-                            <p class="text-sm font-bold">מזל טוב! הגעת לרמה <span class="text-yellow-400 text-lg">${msg.newLevel}</span>.</p>
-                            <p class="text-[10px] text-slate-400">החמ"ל שלח לך בונוס אספקה לתיק.</p>
+                            <p class="text-sm font-bold">${msg.text || 'הודעה מוצפנת מהחמ"ל'}</p>
                         `;
                     }
 
                     card.innerHTML = `
-                        <div class="flex gap-4">
-                            <div class="text-2xl pt-1">${icon}</div>
+                        <div class="flex gap-4 items-start">
+                            <div class="text-2xl pt-1 envelope-icon">${icon}</div>
                             <div class="flex-1">${contentHtml}</div>
                         </div>
                     `;
@@ -132,19 +136,28 @@
 
             } catch (err) {
                 console.error("Error loading messages:", err);
-                loading.innerHTML = `<p class="text-red-400">שגיאה בטעינת הודעות. וודא שקיים אינדקס ב-Firestore.</p>`;
+                loading.innerHTML = `
+                    <div class="bg-red-500/10 border border-red-500/50 p-4 rounded-xl">
+                        <p class="text-red-400 text-xs font-bold">שגיאת סנכרון נתונים</p>
+                        <p class="text-[10px] text-red-300/70 mt-1">וודא שיצרת אינדקס ב-Firestore עבור createdAt.</p>
+                    </div>
+                `;
             }
         }
 
         async function markAsRead(msgId, element) {
+            if (!element.classList.contains('msg-unread')) return; // כבר נקרא
+
             try {
                 await updateDoc(doc(db, "notifications", msgId), {
                     isRead: true
                 });
+                
                 element.classList.remove('msg-unread');
-                // עדכון האייקון לתיקייה פתוחה
-                const iconSpan = element.querySelector('.text-2xl');
-                if (iconSpan) iconSpan.innerText = '📂';
+                element.classList.add('opacity-80');
+                const iconDiv = element.querySelector('.envelope-icon');
+                if (iconDiv) iconDiv.innerText = '📂';
+                
             } catch (err) {
                 console.error("Error marking as read:", err);
             }
