@@ -66,9 +66,8 @@
     <script type="module">
         import { auth, db } from './firebase-config.js';
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { doc, getDoc, updateDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { doc, getDoc, updateDoc, increment, serverTimestamp, addDoc, collection } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // בסיס נתונים פנימי לפעולות
         const itemDatabase = {
             'basic_attack': { name: 'מכה בסיסית', baseAtk: 15, icon: '👊' },
             'pistol_nemesis': { name: 'ירי נמסיס', baseAtk: 30, icon: '🔫' },
@@ -76,12 +75,9 @@
             'nano_boost': { name: 'ננו-בוסט', healPower: 40, icon: '💊', type: 'heal' }
         };
 
-        let player = { 
-            hp: 100, maxHp: 100, inventory: [], isMyTurn: true,
-            stats: { atkMod: 1, defMod: 1, evaMod: 0.1 } 
-        };
-        
-        let enemy = { name: "", hp: 0, maxHp: 0, atk: 0, level: 1, reward: 0 };
+        let player = { hp: 100, maxHp: 100, inventory: [], isMyTurn: true, stats: { atkMod: 1, defMod: 1, evaMod: 0.1 }, username: "" };
+        let enemy = { id: null, name: "", hp: 0, maxHp: 0, atk: 0, level: 1, reward: 0, isPvP: false };
+        let damageStats = { dealt: 0, received: 0 };
 
         onAuthStateChanged(auth, async (user) => {
             if (!user) { window.location.href = 'index.html'; return; }
@@ -89,35 +85,30 @@
             const battleData = JSON.parse(localStorage.getItem('currentBattle'));
             if (!battleData) { window.location.href = 'map.html'; return; }
 
-            // הגדרת אויב מהנתונים
-            enemy.name = battleData.name;
-            enemy.level = battleData.level;
-            enemy.reward = battleData.reward;
-            enemy.maxHp = 50 + (enemy.level * 35);
-            enemy.hp = enemy.maxHp;
-            enemy.atk = 15 + (enemy.level * 6);
+            enemy = {
+                id: battleData.opponentId || null,
+                name: battleData.name,
+                level: battleData.level,
+                reward: battleData.reward,
+                isPvP: !!battleData.isPvP,
+                maxHp: 50 + (battleData.level * 35),
+                hp: 50 + (battleData.level * 35),
+                atk: 15 + (battleData.level * 6)
+            };
             
             document.getElementById('enemy-name').innerText = enemy.name;
             document.getElementById('enemy-level').innerText = `LEVEL ${enemy.level}`;
 
-            const enemyIcon = document.getElementById('enemy-icon');
             if (battleData.img) {
-                enemyIcon.parentElement.innerHTML = `
-                    <img src="${battleData.img}" 
-                         class="w-full h-full object-cover rounded-full border-4 border-red-900/30 enemy-glow"
-                         alt="${enemy.name}">
-                `;
+                document.getElementById('enemy-icon').parentElement.innerHTML = `<img src="${battleData.img}" class="w-full h-full object-cover rounded-full border-4 border-red-900/30 enemy-glow">`;
             }
 
-            // שליפת נתוני לוחם
             const docSnap = await getDoc(doc(db, "players", user.uid));
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                if(data.stats) player.stats = data.stats;
-                if(data.heroName) document.getElementById('player-class-name').innerText = data.heroName;
-
-                const pLevel = data.level || 1;
-                player.maxHp = 100 + (pLevel * 15);
+                player.username = data.username;
+                player.stats = data.stats || player.stats;
+                player.maxHp = 100 + ((data.level || 1) * 15);
                 player.hp = (data.energy !== undefined) ? data.energy : player.maxHp;
                 player.inventory = data.inventory || [];
                 
@@ -126,20 +117,6 @@
                 addLog(`מערכת זיהתה: ${enemy.name}. התחל סריקה טקטית.`, 'text-red-500 font-bold');
             }
         });
-
-        function calculateDamage(base, modifier, isPlayerAttacking) {
-            const variance = (Math.random() * 0.3) + 0.85;
-            let finalDmg = base * (modifier || 1) * variance;
-
-            if (!isPlayerAttacking) {
-                if (Math.random() < (player.stats.evaMod || 0.1)) return { val: 0, type: 'MISS' };
-                finalDmg = finalDmg / (player.stats.defMod || 1);
-            }
-
-            const roll = Math.random();
-            if (roll > 0.92) return { val: Math.floor(finalDmg * 1.8), type: 'CRIT' };
-            return { val: Math.max(1, Math.floor(finalDmg)), type: 'HIT' };
-        }
 
         window.handleAction = function(itemId) {
             if (!player.isMyTurn || player.hp <= 0) return;
@@ -154,10 +131,9 @@
                 const res = calculateDamage(item.baseAtk, player.stats.atkMod, true);
                 if (res.val > 0) {
                     enemy.hp -= res.val;
+                    damageStats.dealt += res.val;
                     addLog(`התקפת עם ${item.name}: ${res.type === 'CRIT' ? '⚡ ' : ''}${res.val} נזק`, 'text-white font-black italic');
                     triggerShake('enemy-area');
-                } else {
-                    addLog(`התקפת ${item.name} פוספסה!`, 'text-slate-500');
                 }
             }
 
@@ -170,49 +146,102 @@
             if (enemy.hp <= 0) return;
             const res = calculateDamage(enemy.atk, 1, false);
             
-            if (res.type === 'MISS') {
-                addLog(`זריזות הלוחם! ${enemy.name} פספס!`, 'text-blue-400 font-bold');
-            } else {
+            if (res.type !== 'MISS') {
                 player.hp -= res.val;
+                damageStats.received += res.val;
                 addLog(`${enemy.name} פגע בך: ${res.val} נזק`, 'text-red-400 font-bold');
                 triggerShake('player-hp-bar');
+            } else {
+                addLog(`זריזות הלוחם! ${enemy.name} פספס!`, 'text-blue-400 font-bold');
             }
 
             updateUI();
-            if (player.hp <= 0) {
-                updateDoc(doc(db, "players", auth.currentUser.uid), { energy: 0 });
-                alert("המערכות קרסו! חזרה לבסיס.");
-                window.location.href = 'dashboard.html';
-            } else {
-                player.isMyTurn = true;
-            }
+            if (player.hp <= 0) processDefeat();
+            else player.isMyTurn = true;
         }
 
-        function processVictory() {
-            const xpGained = enemy.level * 2; 
-            addLog(`🏆 ניצחון! נאספו ${enemy.reward} זוזים ו-${xpGained} XP.`, 'text-yellow-400 font-black italic uppercase');
+        async function processVictory() {
+            addLog(`🏆 ניצחון! נאספו ${enemy.reward} זוזים.`, 'text-yellow-400 font-black italic');
             
-            updateDoc(doc(db, "players", auth.currentUser.uid), {
+            const myUpdates = {
                 coins: increment(enemy.reward),
-                xp: increment(xpGained),
+                xp: increment(enemy.level * 2),
                 energy: Math.max(0, Math.floor(player.hp)),
                 lastHpUpdate: serverTimestamp()
-            }).then(() => {
-                setTimeout(() => window.location.href = 'dashboard.html', 2500);
-            });
+            };
+
+            await updateDoc(doc(db, "players", auth.currentUser.uid), myUpdates);
+
+            if (enemy.isPvP && enemy.id) {
+                // עדכון היריב אופליין
+                await updateDoc(doc(db, "players", enemy.id), {
+                    energy: 0, // היריב נוצח, האנרגיה שלו התאפסה
+                    coins: increment(-Math.floor(enemy.reward * 0.1)), // הפסיד 10%
+                    lastFoughtBy: auth.currentUser.uid // Cooldown
+                });
+
+                // יצירת הודעה ליריב
+                await addDoc(collection(db, "notifications"), {
+                    targetUserId: enemy.id,
+                    type: "pvp_attack",
+                    attackerName: player.username,
+                    result: "loss",
+                    damageDealt: damageStats.received,
+                    damageReceived: damageStats.dealt,
+                    lostCoins: Math.floor(enemy.reward * 0.1),
+                    isRead: false,
+                    createdAt: Date.now()
+                });
+            }
+
+            setTimeout(() => window.location.href = 'dashboard.html', 2500);
+        }
+
+        async function processDefeat() {
+            addLog(`💀 תבוסה... המערכות קרסו.`, 'text-red-600 font-black');
+            
+            await updateDoc(doc(db, "players", auth.currentUser.uid), { energy: 0 });
+
+            if (enemy.isPvP && enemy.id) {
+                // הודעה ליריב שהוא ניצח בהגנה
+                await addDoc(collection(db, "notifications"), {
+                    targetUserId: enemy.id,
+                    type: "pvp_attack",
+                    attackerName: player.username,
+                    result: "win",
+                    damageDealt: damageStats.received,
+                    damageReceived: damageStats.dealt,
+                    reward: 50, // בונוס קטן על הגנה מוצלחת
+                    isRead: false,
+                    createdAt: Date.now()
+                });
+                
+                await updateDoc(doc(db, "players", enemy.id), {
+                    lastFoughtBy: auth.currentUser.uid
+                });
+            }
+
+            setTimeout(() => window.location.href = 'dashboard.html', 2500);
+        }
+
+        // --- שאר הפונקציות (ללא שינוי מהותי) ---
+        function calculateDamage(base, modifier, isPlayerAttacking) {
+            const variance = (Math.random() * 0.3) + 0.85;
+            let finalDmg = base * (modifier || 1) * variance;
+            if (!isPlayerAttacking) {
+                if (Math.random() < (player.stats.evaMod || 0.1)) return { val: 0, type: 'MISS' };
+                finalDmg /= (player.stats.defMod || 1);
+            }
+            return { val: Math.floor(finalDmg), type: Math.random() > 0.9 ? 'CRIT' : 'HIT' };
         }
 
         function renderActions() {
             const container = document.getElementById('action-buttons');
             container.innerHTML = '';
-            // כפתור התקפה בסיסי תמיד קיים
             container.appendChild(createActionBtn('basic_attack'));
-            // הוספת פריטים מהאינוונטורי
-            if (player.inventory) {
-                player.inventory.forEach(itemId => {
-                    if (itemDatabase[itemId]) container.appendChild(createActionBtn(itemId));
-                });
-            }
+            player.inventory.forEach(itemId => {
+                if (itemDatabase[itemId]) container.appendChild(createActionBtn(itemId));
+            });
         }
 
         function createActionBtn(itemId) {
@@ -229,7 +258,7 @@
             document.getElementById('enemy-hp-text').innerText = `${Math.max(0, Math.floor(enemy.hp))}/${enemy.maxHp} HP`;
             document.getElementById('player-hp-bar').style.width = Math.max(0, (player.hp / player.maxHp * 100)) + "%";
             document.getElementById('player-hp-text').innerText = Math.max(0, Math.floor(player.hp));
-            document.getElementById('player-max-hp-display').innerText = `/${player.maxHp} %`;
+            document.getElementById('player-max-hp-display').innerText = `/${player.maxHp} HP`;
         }
 
         function addLog(msg, colorClass) {
@@ -240,10 +269,7 @@
 
         function triggerShake(id) {
             const el = document.getElementById(id);
-            if(el) {
-                el.classList.add('shake');
-                setTimeout(() => el.classList.remove('shake'), 400);
-            }
+            if(el) { el.classList.add('shake'); setTimeout(() => el.classList.remove('shake'), 400); }
         }
     </script>
 </body>
