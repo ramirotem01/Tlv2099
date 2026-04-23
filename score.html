@@ -3,79 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>דירוג ציידים | TLV2099</title>
+    <title>זירת הציידים | TLV2099</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;800&display=swap" rel="stylesheet">
     <style>
         body { 
             background-image: linear-gradient(rgba(2, 6, 23, 0.85), rgba(2, 6, 23, 0.85)), 
                               url('https://res.cloudinary.com/dxygefiai/image/upload/v1776931758/Gemini_Generated_Image_v2msciv2msciv2ms_v7p6st.png');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            color: white; 
-            font-family: 'Assistant', sans-serif; 
-            min-height: 100vh;
+            background-size: cover; background-position: center; background-attachment: fixed;
+            color: white; font-family: 'Assistant', sans-serif; min-height: 100vh;
         }
-        .glass { 
-            background: rgba(15, 23, 42, 0.85); 
-            backdrop-filter: blur(12px); 
-            border: 1px solid rgba(255,255,255,0.05); 
-        }
-        .player-card {
-            transition: all 0.3s ease;
-        }
-        .player-card:hover {
-            border-color: rgba(59, 130, 246, 0.5);
-            background: rgba(30, 41, 59, 0.7);
-        }
+        .glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
+        .player-card { transition: all 0.3s ease; }
+        .player-card:hover { border-color: rgba(59, 130, 246, 0.5); background: rgba(30, 41, 59, 0.7); }
         .neon-text { text-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
+        input::placeholder { color: #475569; }
     </style>
 </head>
 <body class="p-4 md:p-8">
 
     <div class="max-w-5xl mx-auto">
-        <header class="flex justify-between items-center mb-10">
+        <header class="flex flex-col md:flex-row justify-between items-center gap-6 mb-10">
             <div>
                 <h1 class="text-5xl font-black italic tracking-tighter neon-text uppercase">Scoreboard</h1>
-                <p class="text-blue-400 text-xs font-bold uppercase tracking-[0.2em]">זירת דירוג הציידים</p>
+                <p class="text-blue-400 text-xs font-bold uppercase tracking-[0.2em]">איתור ציידים לדו-קרב</p>
             </div>
-            <a href="dashboard.html" class="glass p-3 px-6 rounded-2xl font-bold text-xs hover:bg-slate-800 transition-all">
-                חזרה לחמ"ל 🛰️
-            </a>
+            
+            <div class="flex w-full md:w-auto gap-2">
+                <div class="relative flex-1 md:w-64">
+                    <input type="text" id="search-input" placeholder="חפש כינוי צייד..." 
+                           class="w-full bg-slate-950/80 border border-slate-800 p-3 px-5 rounded-2xl outline-none focus:border-blue-500 transition-all text-sm font-bold">
+                </div>
+                <a href="dashboard.html" class="glass p-3 px-6 rounded-2xl font-bold text-xs hover:bg-slate-800 transition-all flex items-center">חזרה לחמ"ל 🛰️</a>
+            </div>
         </header>
 
         <div id="loading-state" class="text-center py-20">
             <div class="animate-spin text-4xl mb-4">🌀</div>
-            <p class="text-slate-400 font-bold">סורק רשת ציידים זמינים...</p>
+            <p class="text-slate-400 font-bold italic">סורק תדרים...</p>
         </div>
 
-        <div id="no-players-msg" class="text-center py-16 glass rounded-[2rem] hidden">
-            <p class="text-slate-500 text-xl font-bold italic">לא נמצאו ציידים זמינים בטווח הרמה שלך כרגע.</p>
+        <div id="no-players-msg" class="text-center py-16 glass rounded-[3rem] hidden border-dashed border-2 border-slate-800">
+            <p class="text-slate-500 text-xl font-bold italic">לא נמצאו ציידים זמינים העונים לקריטריוני הקרב.</p>
         </div>
 
-        <div id="players-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
+        <div id="players-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 hidden">
             </div>
     </div>
 
     <script type="module">
         import { auth, db } from './firebase-config.js';
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { collection, getDocs, doc, getDoc, query, orderBy, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { collection, getDocs, doc, getDoc, query, orderBy, where, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         let myData = null;
-        
-        // בסיס נתונים לבדיקת כוח הציוד
-        const itemPower = {
-            'basic_attack': 1,
-            'pistol_nemesis': 10,
-            'katana_thermal': 25,
-            'plasma_rifle': 40
-        };
+        let allPlayers = [];
 
         onAuthStateChanged(auth, async (user) => {
             if (!user) { window.location.href = 'index.html'; return; }
-            
             const mySnap = await getDoc(doc(db, "players", user.uid));
             if (mySnap.exists()) {
                 myData = mySnap.data();
@@ -86,86 +71,87 @@
         async function loadPlayers() {
             const playersList = document.getElementById('players-list');
             const loading = document.getElementById('loading-state');
-            const noPlayersMsg = document.getElementById('no-players-msg');
-            let foundPlayers = false;
             
             try {
-                // שאילתה: שחקנים עם חיים מלאים (energy == 100), ממוינים לפי XP
-                const q = query(collection(db, "players"), 
-                                where("energy", "==", 100),
-                                orderBy("xp", "desc"));
-                const querySnapshot = await getDocs(q);
+                // מביאים רק שחקנים עם 100% אנרגיה
+                const q = query(
+                    collection(db, "players"), 
+                    where("energy", "==", 100),
+                    orderBy("xp", "desc")
+                );
                 
-                playersList.innerHTML = '';
+                const querySnapshot = await getDocs(q);
+                allPlayers = [];
                 
                 querySnapshot.forEach((doc) => {
-                    const p = doc.data();
-                    const pId = doc.id;
+                    const data = doc.data();
+                    const id = doc.id;
                     
-                    if (pId === auth.currentUser.uid) return; // לא להראות את עצמי
+                    // תנאי סינון: לא אני, בטווח 5 רמות, ולא הותקף על ידי לאחרונה (Cooldown)
+                    const levelDiff = Math.abs(data.level - myData.level);
+                    const isCooldown = data.lastFoughtBy === auth.currentUser.uid;
 
-                    // בדיקת סינון רמה (5 דרגות הפרש)
-                    const levelDiff = Math.abs(p.level - myData.level);
-                    if (levelDiff > 5) return; // דלג אם מחוץ לטווח הרמה
-
-                    foundPlayers = true; // נמצא לפחות שחקן אחד מתאים
-
-                    // חישוב הציוד החזק ביותר
-                    let strongestItem = "אין ציוד";
-                    if (p.inventory && p.inventory.length > 0) {
-                        strongestItem = p.inventory.reduce((prev, current) => {
-                            return (itemPower[current] || 0) > (itemPower[prev] || 0) ? current : prev;
-                        });
-                        strongestItem = strongestItem.replace('_', ' ').toUpperCase();
+                    if (id !== auth.currentUser.uid && levelDiff <= 5 && !isCooldown) {
+                        allPlayers.push({ id, ...data });
                     }
-
-                    const card = document.createElement('div');
-                    card.className = `glass p-6 rounded-[2rem] player-card flex justify-between items-center`;
-                    
-                    card.innerHTML = `
-                        <div class="flex items-center gap-4">
-                            <div class="w-20 h-20 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-center text-3xl overflow-hidden">
-                                ${p.heroImage ? `<img src="${p.heroImage}" class="w-full h-full object-cover">` : '👤'}
-                            </div>
-                            <div>
-                                <h3 class="font-black text-xl italic neon-text uppercase">${p.username || 'צייד אנונימי'}</h3>
-                                <div class="flex gap-3 mt-1">
-                                    <span class="text-[10px] bg-blue-900/50 text-blue-300 px-2 py-0.5 rounded-full font-bold">LVL ${p.level}</span>
-                                    <span class="text-[10px] bg-yellow-900/50 text-yellow-300 px-2 py-0.5 rounded-full font-bold">${p.xp} XP</span>
-                                </div>
-                                <p class="text-[9px] text-slate-500 mt-2 font-bold uppercase tracking-tighter">ציוד עיקרי: <span class="text-slate-300">${strongestItem}</span></p>
-                            </div>
-                        </div>
-                        
-                        <div class="text-right flex flex-col items-end gap-2">
-                            <div class="text-green-400 text-xs font-bold animate-pulse">● מוכן</div>
-                            <button onclick="challengePlayer('${pId}', '${p.username}', ${p.level}, ${p.coins || 0}, '${p.heroImage || ''}')" 
-                                class="bg-red-600 hover:bg-red-500 p-3 px-5 rounded-xl font-black text-[10px] transition-all active:scale-95 shadow-lg shadow-red-900/20 uppercase tracking-tight">
-                                דו קרב ⚔️
-                            </button>
-                        </div>
-                    `;
-                    playersList.appendChild(card);
                 });
 
+                renderPlayers(allPlayers.slice(0, 6)); // הצגת 6 ראשונים כברירת מחדל
                 loading.classList.add('hidden');
-                
-                if (foundPlayers) {
-                    playersList.classList.remove('hidden');
-                    noPlayersMsg.classList.add('hidden');
-                } else {
-                    playersList.classList.add('hidden');
-                    noPlayersMsg.classList.remove('hidden');
-                }
-
             } catch (err) {
                 console.error(err);
-                loading.innerText = "שגיאה בסריקת הרשת. נסה שוב.";
+                loading.innerText = "שגיאת תקשורת במערכת האיתור.";
             }
         }
 
+        function renderPlayers(players) {
+            const container = document.getElementById('players-list');
+            const noMsg = document.getElementById('no-players-msg');
+            
+            container.innerHTML = '';
+            if (players.length === 0) {
+                container.classList.add('hidden');
+                noMsg.classList.remove('hidden');
+                return;
+            }
+
+            noMsg.classList.add('hidden');
+            container.classList.remove('hidden');
+
+            players.forEach(p => {
+                const card = document.createElement('div');
+                card.className = "glass p-5 rounded-[2rem] player-card flex flex-col items-center text-center gap-3 border border-slate-800/50";
+                card.innerHTML = `
+                    <div class="relative w-20 h-20 bg-slate-950 rounded-full border-2 border-blue-500/20 overflow-hidden shadow-inner">
+                        <img src="${p.heroImage || 'https://via.placeholder.com/150'}" class="w-full h-full object-cover">
+                        <div class="absolute bottom-0 right-0 bg-green-500 w-4 h-4 rounded-full border-2 border-slate-900 shadow-lg"></div>
+                    </div>
+                    <div>
+                        <h3 class="font-black text-lg italic neon-text uppercase tracking-tight">${p.username}</h3>
+                        <div class="flex gap-2 justify-center mt-1">
+                            <span class="text-[9px] bg-blue-900/40 text-blue-300 px-2 py-0.5 rounded-lg font-bold">LVL ${p.level}</span>
+                            <span class="text-[9px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-lg font-bold">READY</span>
+                        </div>
+                    </div>
+                    <button onclick="challengePlayer('${p.id}', '${p.username}', ${p.level}, ${p.coins || 0}, '${p.heroImage || ''}')" 
+                        class="w-full bg-blue-600 hover:bg-red-600 text-white py-3 rounded-2xl font-black text-[10px] transition-all uppercase tracking-widest shadow-lg shadow-blue-900/20">
+                        התחל דו-קרב ⚔️
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // מנגנון חיפוש בזמן אמת
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            const val = e.target.value.toLowerCase();
+            const filtered = allPlayers.filter(p => 
+                p.username.toLowerCase().includes(val)
+            );
+            renderPlayers(filtered.slice(0, 6));
+        });
+
         window.challengePlayer = function(id, name, level, coins, img) {
-            // חישוב זהב פוטנציאלי: 10% מזהב היריב + בונוס קהל
             const crowdBonus = 50 + (level * 20);
             const potentialLoot = Math.floor(coins * 0.10) + crowdBonus;
 
