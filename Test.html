@@ -1,18 +1,74 @@
-import { db } from './firebase-config.js';
-import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>מייצר הודעות בדיקה | TLV2099</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white flex flex-col items-center justify-center min-height-[100vh] p-10">
 
-async function createTestNotification(myId) {
-    try {
-        await addDoc(collection(db, "notifications"), {
-            targetUserId: myId,
-            type: 'level_up',
-            newLevel: 5,
-            text: "בדיקה: עלית לרמה 5!",
-            isRead: false,
-            createdAt: serverTimestamp()
+    <div class="bg-slate-800 p-8 rounded-3xl border border-blue-500/30 shadow-2xl text-center max-w-md">
+        <h1 class="text-2xl font-bold mb-4 text-blue-400">יוצר Collection אוטומטי</h1>
+        <p class="text-slate-400 mb-6 text-sm">לחץ על הכפתור למטה כדי לייצר הודעת בדיקה ראשונה ב-Firestore. זה יפתח את האוסף notifications באופן אוטומטי.</p>
+        
+        <button id="testBtn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-full transition-all transform active:scale-95 shadow-lg">
+            ⚡ צור הודעת בדיקה
+        </button>
+        
+        <div id="status" class="mt-4 text-xs font-mono text-slate-500"></div>
+    </div>
+
+    <script type="module">
+        // ייבוא הקונפיגורציה שלך
+        import { auth, db } from './firebase-config.js';
+        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const btn = document.getElementById('testBtn');
+        const status = document.getElementById('status');
+
+        btn.onclick = async () => {
+            const user = auth.currentUser;
+            
+            if (!user) {
+                alert("אתה חייב להיות מחובר למערכת! עובר לדף התחברות...");
+                window.location.href = 'index.html';
+                return;
+            }
+
+            status.innerText = "שולח נתונים ל-Firestore...";
+            
+            try {
+                // יצירת המסמך הראשון באוסף notifications
+                await addDoc(collection(db, "notifications"), {
+                    targetUserId: user.uid,
+                    type: 'level_up',
+                    newLevel: 99,
+                    text: "המערכת הופעלה! זוהי הודעת בדיקה אוטומטית.",
+                    isRead: false,
+                    createdAt: serverTimestamp() // משתמש בפורמט התקין של פיירבייס
+                });
+
+                status.innerText = "ההודעה נוצרה בהצלחה!";
+                status.classList.add('text-green-400');
+                
+                alert("מזל טוב! האוסף notifications נוצר. עכשיו תוכל לראות את ההודעה בדף ההודעות.");
+                
+            } catch (e) {
+                console.error("שגיאה:", e);
+                status.innerText = "שגיאה: " + e.message;
+                status.classList.add('text-red-400');
+            }
+        };
+
+        // בדיקה אם המשתמש מחובר
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                status.innerText = "ממתין להתחברות...";
+            } else {
+                status.innerText = "מחובר כ: " + user.email;
+            }
         });
-        alert("הודעת בדיקה נוצרה! עכשיו תבדוק את דף ההודעות.");
-    } catch (e) {
-        console.error(e);
-    }
-}
+    </script>
+</body>
+</html>
