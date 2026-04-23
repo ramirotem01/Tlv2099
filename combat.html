@@ -198,28 +198,53 @@
         }
 
         async function processDefeat() {
-            addLog(`💀 תבוסה... המערכות קרסו.`, 'text-red-600 font-black');
-            
-            await updateDoc(doc(db, "players", auth.currentUser.uid), { energy: 0 });
+    addLog(`💀 תבוסה... המערכות קרסו.`, 'text-red-600 font-black');
+    
+    // 1. עדכון מקומי של המשתנה כדי שה-UI יתעדכן
+    player.hp = 0;
+    updateUI(); 
 
-            if (enemy.isPvP && enemy.id) {
-                // הודעה ליריב שהוא ניצח בהגנה
-                await addDoc(collection(db, "notifications"), {
-                    targetUserId: enemy.id,
-                    type: "pvp_attack",
-                    attackerName: player.username,
-                    result: "win",
-                    damageDealt: damageStats.received,
-                    damageReceived: damageStats.dealt,
-                    reward: 50, // בונוס קטן על הגנה מוצלחת
-                    isRead: false,
-                    createdAt: Date.now()
-                });
-                
-                await updateDoc(doc(db, "players", enemy.id), {
-                    lastFoughtBy: auth.currentUser.uid
-                });
-            }
+    // 2. חסימת כפתורי הפעולה כדי שלא ילחצו שוב בזמן העדכון
+    document.getElementById('action-buttons').innerHTML = '<div class="text-red-500 font-bold animate-pulse text-center w-full">המערכת במצב חירום - מתנתק...</div>';
+
+    try {
+        // 3. עדכון ה-Database - כאן אנחנו קובעים שהאנרגיה היא 0
+        const playerRef = doc(db, "players", auth.currentUser.uid);
+        await updateDoc(playerRef, { 
+            energy: 0,
+            lastHpUpdate: serverTimestamp() // מאתחל את זמן הריפוי מרגע התבוסה
+        });
+
+        // 4. הודעה ליריב (אם זה PVP)
+        if (enemy.isPvP && enemy.id) {
+            await addDoc(collection(db, "notifications"), {
+                targetUserId: enemy.id,
+                type: "pvp_attack",
+                attackerName: player.username,
+                result: "win",
+                damageDealt: damageStats.received,
+                damageReceived: damageStats.dealt,
+                reward: 50,
+                isRead: false,
+                createdAt: Date.now()
+            });
+            
+            await updateDoc(doc(db, "players", enemy.id), {
+                lastFoughtBy: auth.currentUser.uid
+            });
+        }
+
+        // 5. רק אחרי שהכל נשמר - עוברים לדשבורד
+        setTimeout(() => {
+            window.location.href = 'dashboard.html';
+        }, 2000);
+
+    } catch (error) {
+        console.error("Error during defeat process:", error);
+        // במקרה של שגיאה בכל זאת נעבור דף כדי לא לתקוע את השחקן
+        window.location.href = 'dashboard.html';
+    }
+}
 
             setTimeout(() => window.location.href = 'dashboard.html', 2500);
         }
