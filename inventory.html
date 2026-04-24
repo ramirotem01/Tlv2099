@@ -59,7 +59,7 @@
                 const docSnap = await getDoc(docRef);
                 if (docSnap.exists()) {
                     playerData = docSnap.data();
-                    document.getElementById('player-coins').innerText = playerData.coins.toLocaleString();
+                    document.getElementById('player-coins').innerText = (playerData.coins || 0).toLocaleString();
                     renderArmory();
                 }
             } else {
@@ -91,7 +91,7 @@
                             ${isOwned ? `
                                 <div class="flex flex-col gap-2">
                                     <button class="w-full bg-green-600/50 text-white py-3 rounded-xl font-black cursor-default border border-green-500/50">מצויד</button>
-                                    ${w.price > 0 ? `<button onclick="window.sellWeapon('${w.id}', ${w.price})" class="text-red-400 text-xs font-bold hover:underline">מכור נשק (החזר ${Math.floor(w.price / 2)})</button>` : ''}
+                                    ${w.price > 0 ? `<button onclick="window.sellWeapon('${w.id}', ${w.price})" class="text-red-400 text-xs font-bold hover:underline text-center">מכור נשק (החזר ${Math.floor(w.price / 2)})</button>` : ''}
                                 </div>
                             ` : `
                                 <button onclick="window.buyWeapon('${w.id}', '${w.name}', ${w.price}, ${w.minLvl})" 
@@ -110,12 +110,12 @@
             if (playerData.level < minLvl) return alert("הרמה שלך נמוכה מדי!");
             if (playerData.coins < price) return alert("אין לך מספיק זוזים!");
             
-            if (playerData.equippedWeapon && playerData.equippedWeapon !== '' && playerData.equippedWeapon !== 'pistol_nemesis') {
+            if (playerData.equippedWeapon && playerData.equippedWeapon !== '' && playerData.equippedWeapon !== 'pistol_nemesis' && id !== 'pistol_nemesis') {
                 alert("עליך למכור את הנשק הנוכחי שלך לפני שתוכל להצטייד בחדש!");
                 return;
             }
 
-            if (confirm(`לרכוש את ${name} ב-${price} זוזים?`)) {
+            if (confirm(`לרכוש/להצטייד ב-${name}?`)) {
                 try {
                     const playerRef = doc(db, "players", auth.currentUser.uid);
                     await updateDoc(playerRef, {
@@ -124,7 +124,7 @@
                         attack: (playerData.baseAttack || 10) + WEAPONS.find(w => w.id === id).atk
                     });
                     location.reload();
-                } catch (e) { console.error(e); }
+                } catch (e) { console.error("Error buying weapon:", e); }
             }
         };
 
@@ -136,11 +136,11 @@
                 const playerRef = doc(db, "players", auth.currentUser.uid);
                 await updateDoc(playerRef, {
                     coins: playerData.coins + sellValue,
-                    equippedWeapon: 'pistol_nemesis', // מחזיר לנשק הבסיסי החינמי
-                    attack: (playerData.baseAttack || 10) + 25 // מחזיר לכוח של הנמסיס
+                    equippedWeapon: 'pistol_nemesis',
+                    attack: (playerData.baseAttack || 10) + 25 
                 });
                 location.reload();
-            } catch (e) { console.error(e); }
+            } catch (e) { console.error("Error selling weapon:", e); }
         };
 
     </script>
