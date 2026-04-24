@@ -234,4 +234,45 @@
                 if (itemStats[itemId] && itemId !== equippedId) {
                     totalAtk += itemStats[itemId].atk;
                     const itemDiv = document.createElement('div');
-                    itemDiv.className = "bg-slate-900/40 p-4 rounded-2xl border border-slate-800 flex flex-col items
+                    itemDiv.className = "bg-slate-900/40 p-4 rounded-2xl border border-slate-800 flex flex-col items-center min-w-[100px]";
+                    itemDiv.innerHTML = `
+                        <span class="text-3xl mb-2">${itemStats[itemId].icon}</span>
+                        <span class="text-[9px] font-bold text-slate-400 uppercase">${itemStats[itemId].name}</span>
+                    `;
+                    inventoryContainer.appendChild(itemDiv);
+                }
+            });
+
+            if (inventoryContainer.innerHTML === '') {
+                inventoryContainer.innerHTML = '<div class="text-slate-600 text-[10px] italic">אין ציוד חמוש</div>';
+            }
+
+            document.getElementById('stat-power').innerText = totalAtk;
+
+            const potionsContainer = document.getElementById('potions-list');
+            potionsContainer.innerHTML = '';
+            const potions = data.potions || [];
+            
+            if (potions.length === 0) {
+                potionsContainer.innerHTML = '<div class="text-slate-600 text-[10px] italic">התרמיל ריק</div>';
+            } else {
+                potions.forEach(pId => {
+                    if (potionStats[pId]) {
+                        const pDiv = document.createElement('div');
+                        pDiv.className = "bg-blue-900/10 p-4 rounded-2xl border border-blue-900/20 flex flex-col items-center min-w-[100px]";
+                        pDiv.innerHTML = `
+                            <span class="text-3xl mb-2 filter drop-shadow-md">${potionStats[pId].icon}</span>
+                            <span class="text-[9px] font-bold ${potionStats[pId].color} uppercase">${potionStats[pId].name}</span>
+                        `;
+                        potionsContainer.appendChild(pDiv);
+                    }
+                });
+            }
+        }
+
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            signOut(auth).then(() => { window.location.href = 'index.html'; });
+        });
+    </script>
+</body>
+</html>
