@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>היכל התהילה | TLV2099</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;800&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            background-image: linear-gradient(rgba(2, 6, 23, 0.95), rgba(2, 6, 23, 0.95)), 
+                               url('https://res.cloudinary.com/dxygefiai/image/upload/v1776868529/TLV2099_c7nqzc.png');
+            background-size: cover; background-position: center; background-attachment: fixed;
+            color: white; font-family: 'Assistant', sans-serif; min-height: 100vh;
+        }
+        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); }
+        
+        /* אפקט ירוק מטאלי מהבהב לשחקן המחובר */
+        .current-user-row {
+            background: rgba(16, 185, 129, 0.1) !important;
+            color: #10b981 !important;
+            font-weight: 800;
+            border: 1px solid #10b981;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+            animation: metallicPulse 2s infinite ease-in-out;
+        }
+
+        @keyframes metallicPulse {
+            0% { text-shadow: 0 0 5px #10b981; opacity: 1; }
+            50% { text-shadow: 0 0 20px #10b981, 0 0 30px #059669; opacity: 0.8; }
+            100% { text-shadow: 0 0 5px #10b981; opacity: 1; }
+        }
+
+        .rank-gold { color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+        .rank-silver { color: #c0c0c0; }
+        .rank-bronze { color: #cd7f32; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto">
+        <header class="text-center mb-10">
+            <h1 class="text-5xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-l from-blue-400 to-purple-500 uppercase">Leaderboard</h1>
+            <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-2">היכל התהילה של הניאון | המדורגים ביותר</p>
+        </header>
+
+        <div class="glass rounded-[2.5rem] overflow-hidden border border-slate-800 shadow-2xl">
+            <table class="w-full text-right border-collapse">
+                <thead>
+                    <tr class="bg-slate-900/50 border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider">
+                        <th class="p-5">דירוג</th>
+                        <th class="p-5">שחקן</th>
+                        <th class="p-5">רמה</th>
+                        <th class="p-5 text-left">זוזים</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard-body">
+                    </tbody>
+            </table>
+
+            <div id="user-footer" class="hidden border-t-2 border-dashed border-emerald-500/30 p-4 bg-emerald-950/20">
+                <p class="text-center text-[10px] text-emerald-400 font-bold uppercase tracking-widest mb-2">המיקום שלך במערכת</p>
+                <table class="w-full text-right">
+                    <tbody id="user-specific-row"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="mt-8 text-center">
+            <a href="dashboard.html" class="glass p-4 px-10 rounded-2xl font-bold text-sm hover:bg-slate-800 transition-all inline-flex items-center gap-2 border border-blue-500/20">
+                <span>חזרה לבסיס</span> 🛰️
+            </a>
+        </div>
+    </div>
+
+    <script type="module">
+        import { auth, db } from './firebase-config.js';
+        import { collection, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                await loadLeaderboard(user.uid);
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
+
+        async function loadLeaderboard(currentUserId) {
+            const tableBody = document.getElementById('leaderboard-body');
+            const userFooter = document.getElementById('user-footer');
+            const userSpecificRow = document.getElementById('user-specific-row');
+
+            try {
+                // משיכת 100 השחקנים המובילים
+                const q = query(
+                    collection(db, "players"),
+                    orderBy("level", "desc"),
+                    orderBy("xp", "desc"),
+                    limit(100)
+                );
+
+                const querySnapshot = await getDocs(q);
+                let players = [];
+                let currentUserRank = -1;
+                let currentUserData = null;
+
+                querySnapshot.forEach((doc) => {
+                    players.push({ id: doc.id, ...doc.data() });
+                });
+
+                // אם המשתמש לא ב-100 הראשונים, נצטרך למצוא את הדירוג האמיתי שלו
+                // הערה: בייצור אמיתי כדאי להחזיק שדה 'rank' ב-DB, כאן נדמה את המיקום
+                let html = '';
+                let userInTop100 = false;
+
+                players.forEach((player, index) => {
+                    const rank = index + 1;
+                    const isCurrentUser = player.id === currentUserId;
+                    if (isCurrentUser) userInTop100 = true;
+
+                    html += renderRow(rank, player, isCurrentUser);
+                });
+
+                tableBody.innerHTML = html;
+
+                // לוגיקה למשתמש שנמצא מחוץ ל-100 הראשונים
+                if (!userInTop100) {
+                    // כאן היינו מושכים את הדירוג האמיתי מהשרת. כרגע נציג את נתוני המשתמש בסוף.
+                    const userDoc = players.find(p => p.id === currentUserId); // בודק אם הוא בטבלה בכלל
+                    
+                    // במידה והוא לא ב-100, נציג שורה מיוחדת (כאן אפשר להוסיף קריאה ל-doc ספציפי אם תרצה)
+                    userFooter.classList.remove('hidden');
+                    // דוגמה לשורה מחוץ לטבלה
+                    userSpecificRow.innerHTML = `<tr class="current-user-row">
+                        <td class="p-5 w-[80px]">#??</td>
+                        <td class="p-5">אתה (מחוץ ל-100)</td>
+                        <td class="p-5">--</td>
+                        <td class="p-5 text-left">--</td>
+                    </tr>`;
+                }
+
+            } catch (err) {
+                console.error("Error loading leaderboard:", err);
+                tableBody.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-red-400 text-xs">שגיאה בטעינת הנתונים מהשרת.</td></tr>`;
+            }
+        }
+
+        function renderRow(rank, player, isCurrentUser) {
+            let rankClass = "";
+            if (rank === 1) rankClass = "rank-gold font-black text-xl";
+            else if (rank === 2) rankClass = "rank-silver font-bold";
+            else if (rank === 3) rankClass = "rank-bronze font-bold";
+
+            const rowClass = isCurrentUser ? 'current-user-row' : 'border-b border-white/5 hover:bg-white/5';
+            
+            return `
+                <tr class="${rowClass} transition-colors">
+                    <td class="p-5 font-mono ${rankClass}">
+                        ${rank <= 3 ? '🏆' : ''} ${rank}
+                    </td>
+                    <td class="p-5">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center text-[10px] border border-white/10">
+                                ${player.name ? player.name[0].toUpperCase() : 'P'}
+                            </div>
+                            <span class="font-bold text-sm">${player.name || 'Anonymous Hunter'}</span>
+                        </div>
+                    </td>
+                    <td class="p-5">
+                        <span class="bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full text-[10px] font-black border border-blue-500/20">
+                            LVL ${player.level || 1}
+                        </span>
+                    </td>
+                    <td class="p-5 text-left font-mono text-yellow-500 font-bold">
+                        ${(player.coins || 0).toLocaleString()} 🪙
+                    </td>
+                </tr>
+            `;
+        }
+    </script>
+</body>
+</html>
