@@ -16,21 +16,29 @@
         .glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
         .neon-text { text-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
         
-        /* עיצוב הטבלה */
         table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
         th { text-align: right; padding: 12px 20px; color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; }
         td { padding: 12px 20px; }
-        tr.rank-row { transition: all 0.2s ease; }
-        tr.rank-row:hover { transform: scale(1.01); }
+        
         tr.rank-row td { background: rgba(15, 23, 42, 0.7); border-top: 1px solid rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.03); }
         tr.rank-row td:first-child { border-right: 1px solid rgba(255,255,255,0.03); border-radius: 0 1.5rem 1.5rem 0; }
         tr.rank-row td:last-child { border-left: 1px solid rgba(255,255,255,0.03); border-radius: 1.5rem 0 0 1.5rem; }
 
-        .hero-thumb {
-            width: 45px; height: 45px; border-radius: 50%; object-fit: cover;
-            border: 2px solid rgba(59, 130, 246, 0.5); box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+        /* סימון שחקן נוכחי - ירוק נאון */
+        tr.current-player td { 
+            background: rgba(34, 197, 94, 0.1) !important; 
+            border-color: rgba(34, 197, 94, 0.4) !important;
+            box-shadow: inset 0 0 15px rgba(34, 197, 94, 0.05);
         }
-        .gold-glow { border-color: #fbbf24; box-shadow: 0 0 15px rgba(251, 191, 36, 0.4); }
+        tr.current-player .agent-name { color: #4ade80 !important; text-shadow: 0 0 10px rgba(74, 222, 128, 0.5); }
+
+        .hero-thumb {
+            width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
+            border: 2px solid rgba(59, 130, 246, 0.3);
+        }
+        .current-player .hero-thumb { border-color: #4ade80; box-shadow: 0 0 10px rgba(74, 222, 128, 0.3); }
+        
+        .separator { border-top: 2px dashed rgba(255,255,255,0.1); margin: 10px 0; }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -56,26 +64,35 @@
                         <th class="text-left">רמה</th>
                     </tr>
                 </thead>
-                <tbody id="leaderboard-body">
-                    </tbody>
+                <tbody id="leaderboard-body"></tbody>
             </table>
 
             <div id="loading" class="text-center py-20">
                 <div class="animate-spin text-2xl mb-4 inline-block">🌀</div>
-                <p class="text-slate-500 text-xs font-bold tracking-widest animate-pulse">מתחבר למסד הנתונים...</p>
+                <p class="text-slate-500 text-xs font-bold tracking-widest animate-pulse">סורק רשת מוצפנת...</p>
             </div>
         </div>
     </div>
 
     <script type="module">
-        import { db } from './firebase-config.js';
-        import { collection, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { db, auth } from './firebase-config.js';
+        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { collection, query, orderBy, limit, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        async function loadLeaderboard() {
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                loadLeaderboard(user.uid);
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
+
+        async function loadLeaderboard(currentUserId) {
             const body = document.getElementById('leaderboard-body');
             const loading = document.getElementById('loading');
 
             try {
+                // 1. שליפת טופ 20
                 const q = query(
                     collection(db, "players"),
                     orderBy("level", "desc"),
@@ -88,44 +105,61 @@
                 body.innerHTML = '';
 
                 let rank = 1;
-                querySnapshot.forEach((docSnap) => {
-                    const player = docSnap.data();
-                    const displayName = player.username || "Unknown Hunter";
-                    const heroImg = player.heroImage || "https://via.placeholder.com/100?text=Agent"; // תמונת גיבוי
-                    
-                    const isTop1 = rank === 1;
+                let userInTop20 = false;
 
-                    const row = document.createElement('tr');
-                    row.className = "rank-row";
+                querySnapshot.forEach((docSnap) => {
+                    const isCurrentUser = docSnap.id === currentUserId;
+                    if (isCurrentUser) userInTop20 = true;
                     
-                    row.innerHTML = `
-                        <td class="font-black text-center ${isTop1 ? 'text-yellow-400 text-xl' : 'text-slate-500'}">
-                            ${rank <= 3 ? ['🥇', '🥈', '🥉'][rank-1] : rank}
-                        </td>
-                        <td>
-                            <div class="font-bold text-white tracking-tight">${displayName}</div>
-                            <div class="text-[9px] text-slate-500 uppercase font-mono tracking-tighter">ID: ${docSnap.id.substring(0, 8)}</div>
-                        </td>
-                        <td class="flex justify-center">
-                            <img src="${heroImg}" alt="Hero" class="hero-thumb ${isTop1 ? 'gold-glow' : ''}">
-                        </td>
-                        <td class="text-left">
-                            <div class="text-blue-400 font-black text-xl italic leading-none">${player.level || 1}</div>
-                            <div class="text-[8px] text-slate-600 font-bold uppercase tracking-widest mt-1">LVL</div>
-                        </td>
-                    `;
-                    
-                    body.appendChild(row);
+                    body.appendChild(createRow(docSnap.data(), rank, isCurrentUser, docSnap.id));
                     rank++;
                 });
 
+                // 2. אם המשתמש לא בטופ 20, נשלוף אותו בנפרד ונוסיף לסוף
+                if (!userInTop20) {
+                    const userDoc = await getDoc(doc(db, "players", currentUserId));
+                    if (userDoc.exists()) {
+                        // הוספת מפריד ויזואלי
+                        const sep = document.createElement('tr');
+                        sep.innerHTML = `<td colspan="4"><div class="separator"></div></td>`;
+                        body.appendChild(sep);
+                        
+                        // כאן אפשר להוסיף לוגיקה לחישוב הדירוג המדויק שלו אם רוצים, כרגע נשים "Me" או נשלוף דירוג כללי
+                        body.appendChild(createRow(userDoc.data(), "??", true, currentUserId));
+                    }
+                }
+
             } catch (err) {
                 console.error("Error:", err);
-                loading.innerHTML = `<p class="text-red-500 text-xs font-bold uppercase">שגיאת רשת: לא ניתן לשלוף דירוגים</p>`;
             }
         }
 
-        loadLeaderboard();
+        function createRow(player, rank, isCurrentUser, id) {
+            const row = document.createElement('tr');
+            row.className = `rank-row ${isCurrentUser ? 'current-player' : ''}`;
+            
+            const displayName = player.username || "Unknown Hunter";
+            const heroImg = player.heroImage || "https://res.cloudinary.com/dxygefiai/image/upload/v1776868529/TLV2099_c7nqzc.png";
+            const isTop1 = rank === 1;
+
+            row.innerHTML = `
+                <td class="font-black text-center ${isTop1 ? 'text-yellow-400 text-xl' : (isCurrentUser ? 'text-green-400' : 'text-slate-500')}">
+                    ${rank <= 3 && rank !== "??" ? ['🥇', '🥈', '🥉'][rank-1] : (rank === "??" ? "YOU" : rank)}
+                </td>
+                <td>
+                    <div class="font-bold text-white tracking-tight agent-name">${displayName} ${isCurrentUser ? '(אתה)' : ''}</div>
+                    <div class="text-[8px] text-slate-500 uppercase font-mono">SEC-ID: ${id.substring(0, 6)}</div>
+                </td>
+                <td class="flex justify-center">
+                    <img src="${heroImg}" alt="Hero" class="hero-thumb">
+                </td>
+                <td class="text-left">
+                    <div class="${isCurrentUser ? 'text-green-400' : 'text-blue-400'} font-black text-xl italic leading-none">${player.level || 1}</div>
+                    <div class="text-[8px] text-slate-600 font-bold uppercase tracking-widest mt-1">LVL</div>
+                </td>
+            `;
+            return row;
+        }
     </script>
 </body>
 </html>
