@@ -29,7 +29,6 @@
             box-shadow: 0 0 15px rgba(59, 130, 246, 0.1);
         }
 
-        /* צמתי ניווט */
         .nav-node {
             position: absolute;
             width: 40px;
@@ -86,12 +85,13 @@
 
         .xp-bar-container { height: 6px; width: 100%; background: rgba(0,0,0,0.4); border-radius: 10px; margin-top: 8px; border: 1px solid rgba(255,255,255,0.05); }
         .xp-bar-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); border-radius: 10px; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
     </style>
 </head>
-<body class="min-h-screen relative p-6 md:p-10">
+<body class="min-h-screen relative p-6 md:p-10 text-right">
 
     <a href="map.html" class="nav-node" style="top: 40%; left: 20%;" data-label="מפה טקטית (לחימה)">🗺️</a>
-    <a href="shop.html" class="nav-node" style="top: 65%; left: 50%;" data-label="המעבדה">🛒</a>
+    <a href="shop.html" class="nav-node" style="top: 65%; left: 50%;" data-label="המעבדה">🧪</a>
     <a href="inventory.html" class="nav-node" style="top: 30%; left: 80%;" data-label="נשקייה וציוד">⚔️</a>
     <a href="score.html" class="nav-node" style="top: 15%; left: 45%;" data-label="דירוג ציידים (PvP)">🏆</a>
     <a href="Winner.html" class="nav-node" style="top: 15%; left: 25%; background: rgba(16, 185, 129, 0.6);" data-label="היכל התהילה">🎖️</a>
@@ -136,7 +136,7 @@
         </div>
     </div>
 
-    <div class="max-w-7xl mx-auto mb-10 relative z-10">
+    <div class="max-w-7xl mx-auto mb-10 relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="glass p-6 rounded-[2.5rem] border border-slate-800 relative overflow-hidden">
             <div class="flex items-center justify-between mb-6 px-2">
                 <h3 class="font-black text-xs uppercase tracking-[0.3em] text-slate-500 italic">ציוד לחימה נוכחי</h3>
@@ -144,6 +144,16 @@
             </div>
             <div id="inventory-list" class="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
                 <div class="text-slate-600 text-xs italic">סורק ציוד...</div>
+            </div>
+        </div>
+
+        <div class="glass p-6 rounded-[2.5rem] border border-slate-800 relative overflow-hidden">
+            <div class="flex items-center justify-between mb-6 px-2">
+                <h3 class="font-black text-xs uppercase tracking-[0.3em] text-blue-500 italic">תרמיל שיקויים</h3>
+                <div class="h-px flex-1 bg-blue-900/30 mx-6 opacity-30"></div>
+            </div>
+            <div id="potions-list" class="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                <div class="text-slate-600 text-xs italic">בודק תרמיל...</div>
             </div>
         </div>
     </div>
@@ -160,6 +170,15 @@
             'nano_bed': { name: 'מיטת ריפוי', atk: 0, icon: '🛌' }
         };
 
+        const potionStats = {
+            'health_large': { name: 'חיים גדול', icon: '🧪', color: 'text-green-400' },
+            'health_small': { name: 'חיים קטן', icon: '🧪', color: 'text-green-500' },
+            'atk_small': { name: 'כוח קטן', icon: '🍷', color: 'text-red-400' },
+            'atk_large': { name: 'כוח גדול', icon: '🍷', color: 'text-red-600' },
+            'def_small': { name: 'ספיגה קטן', icon: '🍶', color: 'text-blue-400' },
+            'def_large': { name: 'ספיגה גדול', icon: '🍶', color: 'text-blue-600' }
+        };
+
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 const docRef = doc(db, "players", user.uid);
@@ -167,17 +186,9 @@
 
                 if (docSnap.exists()) {
                     let data = docSnap.data();
-                    
-                    // בדיקת מארב מפלצת (Offline Ambush)
                     await checkForOfflineAmbush(user.uid, data);
-                    
-                    // בדיקת הודעות חדשות
                     checkUnreadMessages(user.uid);
-
-                    // בדיקת עליית רמה
                     const leveledUpData = await checkLevelUp(docRef, data);
-                    
-                    // חישוב ריפוי אנרגיה
                     processEnergyRecovery(docRef, leveledUpData || data);
                 }
             } else {
@@ -185,57 +196,31 @@
             }
         });
 
-        // --- מנגנון תקיפת מפלצת באופליין ---
         async function checkForOfflineAmbush(userId, userData) {
             const now = Date.now();
             const lastAmbush = userData.lastAmbushDate ? userData.lastAmbushDate.toMillis() : 0;
-            const cooldown = 4 * 60 * 60 * 1000; // פעם ב-4 שעות לפחות
-
-            // תנאים: 100% חיים ועבר זמן הצינון
+            const cooldown = 4 * 60 * 60 * 1000;
             if ((userData.energy || 0) >= 100 && (now - lastAmbush > cooldown)) {
-                if (Math.random() < 0.25) { // 25% סיכוי למארב
-                    await executeMonsterAmbush(userId, userData);
-                }
+                if (Math.random() < 0.25) { await executeMonsterAmbush(userId, userData); }
             }
         }
 
         async function executeMonsterAmbush(userId, userData) {
             const power = userData.power || 10;
-            const agility = userData.agility || 10;
             const level = userData.level || 1;
-
             const monsterPower = (Math.random() * 15) + (level * 4);
             const winChance = (power / (power + monsterPower)) + 0.1;
             const didWin = Math.random() < winChance;
-
-            let damage = 0;
-            if (!didWin) {
-                const baseDmg = Math.floor(Math.random() * 25) + 15;
-                damage = Math.max(8, baseDmg - Math.floor(agility / 3));
-            }
-
+            let damage = !didWin ? Math.floor(Math.random() * 25) + 15 : 0;
             const loot = didWin ? Math.floor(Math.random() * 40) + 10 : 0;
-            const lost = didWin ? 0 : Math.floor(Math.random() * 20);
 
             await updateDoc(doc(db, "players", userId), {
                 energy: Math.max(0, (userData.energy || 100) - damage),
-                coins: Math.max(0, (userData.coins || 0) + loot - lost),
+                coins: Math.max(0, (userData.coins || 0) + loot),
                 lastAmbushDate: serverTimestamp()
-            });
-
-            await addDoc(collection(db, "notifications"), {
-                targetUserId: userId,
-                type: 'monster_ambush',
-                result: didWin ? 'win' : 'loss',
-                damageReceived: damage,
-                reward: loot,
-                text: didWin ? `הותקפת במארב אופליין אך ניצחת והרווחת ${loot} זוזים!` : `מפלצת הפתיעה אותך! ספגת ${damage} נזק ואיבדת ${lost} זוזים.`,
-                isRead: false,
-                createdAt: serverTimestamp()
             });
         }
 
-        // --- שאר הפונקציות הקיימות ---
         async function checkUnreadMessages(userId) {
             const q = query(collection(db, "notifications"), where("targetUserId", "==", userId), where("isRead", "==", false), limit(1));
             const querySnapshot = await getDocs(q);
@@ -252,7 +237,6 @@
                 const newLevel = currentLevel + 1;
                 const updatedFields = { level: newLevel, xp: currentXP - xpNeeded, energy: 100 };
                 await updateDoc(docRef, updatedFields);
-                alert(`🚀 עליית דרגה! הגעת לרמה ${newLevel}.`);
                 return { ...data, ...updatedFields };
             }
             return null;
@@ -273,21 +257,22 @@
         }
 
         function updateDashboardUI(data, currentEnergy) {
-            const level = data.level || 1;
-            const xp = data.xp || 0;
-            const xpNeeded = level * 10;
             document.getElementById('player-username').innerText = data.username || "UNKNOWN";
-            document.getElementById('stat-level').innerText = level;
-            document.getElementById('stat-coins').innerText = data.coins || 0;
+            document.getElementById('stat-level').innerText = data.level || 1;
+            document.getElementById('stat-coins').innerText = (data.coins || 0).toLocaleString();
             document.getElementById('stat-energy-text').innerText = currentEnergy + "%";
-            const xpPercent = Math.min(100, (xp / xpNeeded) * 100);
+            
+            const xpNeeded = (data.level || 1) * 10;
+            const xpPercent = Math.min(100, ((data.xp || 0) / xpNeeded) * 100);
             document.getElementById('xp-bar-fill').style.width = xpPercent + "%";
-            document.getElementById('xp-text').innerText = `XP: ${xp} / ${xpNeeded}`;
+            document.getElementById('xp-text').innerText = `XP: ${data.xp || 0} / ${xpNeeded}`;
 
+            // עדכון רשימת ציוד
             let totalAtk = 0;
             const inventoryContainer = document.getElementById('inventory-list');
             inventoryContainer.innerHTML = '';
             const inventory = data.inventory || [];
+            if (inventory.length === 0) inventoryContainer.innerHTML = '<div class="text-slate-600 text-[10px] italic">אין ציוד חמוש</div>';
             inventory.forEach(itemId => {
                 if (itemStats[itemId]) {
                     totalAtk += itemStats[itemId].atk;
@@ -298,6 +283,23 @@
                 }
             });
             document.getElementById('stat-power').innerText = totalAtk;
+
+            // עדכון רשימת שיקויים
+            const potionsContainer = document.getElementById('potions-list');
+            potionsContainer.innerHTML = '';
+            const potions = data.potions || [];
+            if (potions.length === 0) potionsContainer.innerHTML = '<div class="text-slate-600 text-[10px] italic">התרמיל ריק</div>';
+            potions.forEach(pId => {
+                if (potionStats[pId]) {
+                    const pDiv = document.createElement('div');
+                    pDiv.className = "bg-blue-900/10 p-4 rounded-2xl border border-blue-900/20 flex flex-col items-center min-w-[100px]";
+                    pDiv.innerHTML = `
+                        <span class="text-3xl mb-2 filter drop-shadow-md">${potionStats[pId].icon}</span>
+                        <span class="text-[9px] font-bold ${potionStats[pId].color} uppercase">${potionStats[pId].name}</span>
+                    `;
+                    potionsContainer.appendChild(pDiv);
+                }
+            });
         }
 
         document.getElementById('logout-btn').addEventListener('click', () => {
