@@ -262,7 +262,7 @@
             const now = Date.now();
             const lastUpdate = data.lastHpUpdate ? data.lastHpUpdate.toMillis() : now;
             const hoursPassed = (now - lastUpdate) / (1000 * 60 * 60);
-            let recoveryRate = (data.inventory && data.inventory.includes('nano_bed')) ? 20 : 10;
+            let recoveryRate = (data.inventory && data.inventory.includes('nano_bed')) ? 40 : 20;
             const recovered = hoursPassed * recoveryRate;
             let currentEnergy = Math.min(100, (data.energy || 0) + recovered);
             updateDashboardUI(data, Math.floor(currentEnergy));
