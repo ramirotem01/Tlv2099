@@ -10,79 +10,19 @@
         body { 
             background-image: linear-gradient(rgba(2, 6, 23, 0.7), rgba(2, 6, 23, 0.7)), 
                                url('https://res.cloudinary.com/dxygefiai/image/upload/v1776869126/TLVDESH_lkyxtd.png');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            background-repeat: no-repeat;
-            color: white; 
-            font-family: 'Assistant', sans-serif; 
-            overflow-x: hidden;
+            background-size: cover; background-position: center; background-attachment: fixed;
+            background-repeat: no-repeat; color: white; font-family: 'Assistant', sans-serif; overflow-x: hidden;
         }
-        .glass { 
-            background: rgba(15, 23, 42, 0.85); 
-            backdrop-filter: blur(12px); 
-            border: 1px solid rgba(255,255,255,0.05); 
-        }
+        .glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
         .neon-text { text-shadow: 0 0 15px rgba(255, 255, 255, 0.3); }
-        .neon-border { 
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            box-shadow: 0 0 15px rgba(59, 130, 246, 0.1);
-        }
-
-        .nav-node {
-            position: absolute;
-            width: 40px;
-            height: 40px;
-            background: rgba(59, 130, 246, 0.6);
-            border: 2px solid white;
-            border-radius: 50%;
-            cursor: pointer;
-            box-shadow: 0 0 20px rgba(59, 130, 246, 0.8);
-            animation: pulse 2s infinite;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s ease;
-            z-index: 20;
-        }
+        .neon-border { border: 1px solid rgba(59, 130, 246, 0.3); box-shadow: 0 0 15px rgba(59, 130, 246, 0.1); }
+        .nav-node { position: absolute; width: 40px; height: 40px; background: rgba(59, 130, 246, 0.6); border: 2px solid white; border-radius: 50%; cursor: pointer; box-shadow: 0 0 20px rgba(59, 130, 246, 0.8); animation: pulse 2s infinite; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; z-index: 20; }
         .nav-node:hover { transform: scale(1.2); background: #3b82f6; box-shadow: 0 0 40px #3b82f6; }
-        
-        .nav-node.has-unread {
-            background: rgba(220, 38, 38, 0.8);
-            box-shadow: 0 0 20px rgba(220, 38, 38, 0.8);
-            animation: pulse-red 1s infinite;
-            border-color: #fca5a5;
-        }
-
-        .nav-node::after {
-            content: attr(data-label);
-            position: absolute;
-            bottom: -35px;
-            white-space: nowrap;
-            background: black;
-            padding: 4px 12px;
-            border-radius: 8px;
-            font-size: 11px;
-            font-weight: 800;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s;
-            border: 1px solid #3b82f6;
-        }
+        .nav-node.has-unread { background: rgba(220, 38, 38, 0.8); box-shadow: 0 0 20px rgba(220, 38, 38, 0.8); animation: pulse-red 1s infinite; border-color: #fca5a5; }
+        .nav-node::after { content: attr(data-label); position: absolute; bottom: -35px; white-space: nowrap; background: black; padding: 4px 12px; border-radius: 8px; font-size: 11px; font-weight: 800; opacity: 0; pointer-events: none; transition: opacity 0.3s; border: 1px solid #3b82f6; }
         .nav-node:hover::after { opacity: 1; }
-
-        @keyframes pulse {
-            0% { transform: scale(1); box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
-            50% { transform: scale(1.1); box-shadow: 0 0 25px rgba(59, 130, 246, 0.8); }
-            100% { transform: scale(1); box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
-        }
-
-        @keyframes pulse-red {
-            0% { transform: scale(1); box-shadow: 0 0 10px rgba(220, 38, 38, 0.5); }
-            50% { transform: scale(1.15); box-shadow: 0 0 30px rgba(220, 38, 38, 0.9); }
-            100% { transform: scale(1); box-shadow: 0 0 10px rgba(220, 38, 38, 0.5); }
-        }
-
+        @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); } 50% { transform: scale(1.1); box-shadow: 0 0 25px rgba(59, 130, 246, 0.8); } 100% { transform: scale(1); box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); } }
+        @keyframes pulse-red { 0% { transform: scale(1); box-shadow: 0 0 10px rgba(220, 38, 38, 0.5); } 50% { transform: scale(1.15); box-shadow: 0 0 30px rgba(220, 38, 38, 0.9); } 100% { transform: scale(1); box-shadow: 0 0 10px rgba(220, 38, 38, 0.5); } }
         .xp-bar-container { height: 6px; width: 100%; background: rgba(0,0,0,0.4); border-radius: 10px; margin-top: 8px; border: 1px solid rgba(255,255,255,0.05); }
         .xp-bar-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); border-radius: 10px; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
@@ -161,11 +101,13 @@
     <script type="module">
         import { auth, db } from './firebase-config.js';
         import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { doc, getDoc, updateDoc, addDoc, serverTimestamp, collection, query, where, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
+        // מילון נשקים וציוד מעודכן
         const itemStats = {
-            'pistol_nemesis': { name: 'אקדח פעימה', atk: 25, icon: '🔫' },
+            'pistol_nemesis': { name: 'אקדח "נמסיס"', atk: 25, icon: '🔫' },
             'katana_thermal': { name: 'קטאנה טרמית', atk: 45, icon: '⚔️' },
+            'fire_sword': { name: 'חרב אש', atk: 90, icon: '🔥' },
             'nano_boost': { name: 'ננו-בוסט', atk: 0, icon: '💊' },
             'nano_bed': { name: 'מיטת ריפוי', atk: 0, icon: '🛌' }
         };
@@ -206,7 +148,7 @@
         }
 
         async function executeMonsterAmbush(userId, userData) {
-            const power = userData.power || 10;
+            const power = userData.attack || 10;
             const level = userData.level || 1;
             const monsterPower = (Math.random() * 15) + (level * 4);
             const winChance = (power / (power + monsterPower)) + 0.1;
@@ -267,21 +209,46 @@
             document.getElementById('xp-bar-fill').style.width = xpPercent + "%";
             document.getElementById('xp-text').innerText = `XP: ${data.xp || 0} / ${xpNeeded}`;
 
-            // עדכון רשימת ציוד
-            let totalAtk = 0;
+            // --- עדכון רשימת ציוד + נשק מצויד ---
+            let totalAtk = data.baseAttack || 10; // מתחילים מכוח בסיסי
             const inventoryContainer = document.getElementById('inventory-list');
             inventoryContainer.innerHTML = '';
+            
+            // 1. בדיקת נשק מצויד (מהשדה החדש)
+            const equippedId = data.equippedWeapon;
+            if (equippedId && itemStats[equippedId]) {
+                const weapon = itemStats[equippedId];
+                totalAtk += weapon.atk;
+                
+                const itemDiv = document.createElement('div');
+                itemDiv.className = "bg-blue-900/20 p-4 rounded-2xl border border-blue-500/30 flex flex-col items-center min-w-[100px] shadow-[0_0_15px_rgba(59,130,246,0.1)]";
+                itemDiv.innerHTML = `
+                    <span class="text-3xl mb-2">${weapon.icon}</span>
+                    <span class="text-[9px] font-bold text-blue-400 uppercase">${weapon.name}</span>
+                    <span class="text-[8px] text-slate-500 mt-1">נשק מצויד</span>
+                `;
+                inventoryContainer.appendChild(itemDiv);
+            }
+
+            // 2. בדיקת שאר הציוד (כמו מיטת ריפוי)
             const inventory = data.inventory || [];
-            if (inventory.length === 0) inventoryContainer.innerHTML = '<div class="text-slate-600 text-[10px] italic">אין ציוד חמוש</div>';
             inventory.forEach(itemId => {
-                if (itemStats[itemId]) {
+                if (itemStats[itemId] && itemId !== equippedId) { // לא מציגים פעמיים
                     totalAtk += itemStats[itemId].atk;
                     const itemDiv = document.createElement('div');
                     itemDiv.className = "bg-slate-900/40 p-4 rounded-2xl border border-slate-800 flex flex-col items-center min-w-[100px]";
-                    itemDiv.innerHTML = `<span class="text-3xl mb-2">${itemStats[itemId].icon}</span><span class="text-[9px] font-bold text-slate-400 uppercase">${itemStats[itemId].name}</span>`;
+                    itemDiv.innerHTML = `
+                        <span class="text-3xl mb-2">${itemStats[itemId].icon}</span>
+                        <span class="text-[9px] font-bold text-slate-400 uppercase">${itemStats[itemId].name}</span>
+                    `;
                     inventoryContainer.appendChild(itemDiv);
                 }
             });
+
+            if (inventoryContainer.innerHTML === '') {
+                inventoryContainer.innerHTML = '<div class="text-slate-600 text-[10px] italic">אין ציוד חמוש</div>';
+            }
+
             document.getElementById('stat-power').innerText = totalAtk;
 
             // עדכון רשימת שיקויים
