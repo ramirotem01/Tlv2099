@@ -103,7 +103,6 @@
         import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // מילון נשקים וציוד מעודכן
         const itemStats = {
             'pistol_nemesis': { name: 'אקדח "נמסיס"', atk: 25, icon: '🔫' },
             'katana_thermal': { name: 'קטאנה טרמית', atk: 45, icon: '⚔️' },
@@ -118,7 +117,9 @@
             'atk_small': { name: 'כוח קטן', icon: '🍷', color: 'text-red-400' },
             'atk_large': { name: 'כוח גדול', icon: '🍷', color: 'text-red-600' },
             'def_small': { name: 'ספיגה קטן', icon: '🍶', color: 'text-blue-400' },
-            'def_large': { name: 'ספיגה גדול', icon: '🍶', color: 'text-blue-600' }
+            'def_large': { name: 'ספיגה גדול', icon: '🍶', color: 'text-blue-600' },
+            'speed_small': { name: 'זריזות קטן', icon: '⚡', color: 'text-yellow-400' },
+            'speed_large': { name: 'זריזות גדול', icon: '⚡', color: 'text-yellow-600' }
         };
 
         onAuthStateChanged(auth, async (user) => {
@@ -209,12 +210,10 @@
             document.getElementById('xp-bar-fill').style.width = xpPercent + "%";
             document.getElementById('xp-text').innerText = `XP: ${data.xp || 0} / ${xpNeeded}`;
 
-            // --- עדכון רשימת ציוד + נשק מצויד ---
-            let totalAtk = data.baseAttack || 10; // מתחילים מכוח בסיסי
+            let totalAtk = data.baseAttack || 10; 
             const inventoryContainer = document.getElementById('inventory-list');
             inventoryContainer.innerHTML = '';
             
-            // 1. בדיקת נשק מצויד (מהשדה החדש)
             const equippedId = data.equippedWeapon;
             if (equippedId && itemStats[equippedId]) {
                 const weapon = itemStats[equippedId];
@@ -230,48 +229,9 @@
                 inventoryContainer.appendChild(itemDiv);
             }
 
-            // 2. בדיקת שאר הציוד (כמו מיטת ריפוי)
             const inventory = data.inventory || [];
             inventory.forEach(itemId => {
-                if (itemStats[itemId] && itemId !== equippedId) { // לא מציגים פעמיים
+                if (itemStats[itemId] && itemId !== equippedId) {
                     totalAtk += itemStats[itemId].atk;
                     const itemDiv = document.createElement('div');
-                    itemDiv.className = "bg-slate-900/40 p-4 rounded-2xl border border-slate-800 flex flex-col items-center min-w-[100px]";
-                    itemDiv.innerHTML = `
-                        <span class="text-3xl mb-2">${itemStats[itemId].icon}</span>
-                        <span class="text-[9px] font-bold text-slate-400 uppercase">${itemStats[itemId].name}</span>
-                    `;
-                    inventoryContainer.appendChild(itemDiv);
-                }
-            });
-
-            if (inventoryContainer.innerHTML === '') {
-                inventoryContainer.innerHTML = '<div class="text-slate-600 text-[10px] italic">אין ציוד חמוש</div>';
-            }
-
-            document.getElementById('stat-power').innerText = totalAtk;
-
-            // עדכון רשימת שיקויים
-            const potionsContainer = document.getElementById('potions-list');
-            potionsContainer.innerHTML = '';
-            const potions = data.potions || [];
-            if (potions.length === 0) potionsContainer.innerHTML = '<div class="text-slate-600 text-[10px] italic">התרמיל ריק</div>';
-            potions.forEach(pId => {
-                if (potionStats[pId]) {
-                    const pDiv = document.createElement('div');
-                    pDiv.className = "bg-blue-900/10 p-4 rounded-2xl border border-blue-900/20 flex flex-col items-center min-w-[100px]";
-                    pDiv.innerHTML = `
-                        <span class="text-3xl mb-2 filter drop-shadow-md">${potionStats[pId].icon}</span>
-                        <span class="text-[9px] font-bold ${potionStats[pId].color} uppercase">${potionStats[pId].name}</span>
-                    `;
-                    potionsContainer.appendChild(pDiv);
-                }
-            });
-        }
-
-        document.getElementById('logout-btn').addEventListener('click', () => {
-            signOut(auth).then(() => { window.location.href = 'index.html'; });
-        });
-    </script>
-</body>
-</html>
+                    itemDiv.className = "bg-slate-900/40 p-4 rounded-2xl border border-slate-800 flex flex-col items
