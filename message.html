@@ -9,7 +9,7 @@
     <style>
         body { 
             background-image: linear-gradient(rgba(2, 6, 23, 0.9), rgba(2, 6, 23, 0.9)), 
-                             url('https://res.cloudinary.com/dxygefiai/image/upload/v1776868529/TLV2099_c7nqzc.png');
+                               url('https://res.cloudinary.com/dxygefiai/image/upload/v1776868529/TLV2099_c7nqzc.png');
             background-size: cover; background-position: center; background-attachment: fixed;
             color: white; font-family: 'Assistant', sans-serif; min-height: 100vh;
         }
@@ -66,7 +66,6 @@
             const loading = document.getElementById('loading');
 
             try {
-                // שים לב: אם זה עדיין לא מציג, תפתח את ה-Console (F12) ותלחץ על הלינק ש-Firebase נותן כדי ליצור אינדקס
                 const q = query(
                     collection(db, "notifications"),
                     where("targetUserId", "==", userId),
@@ -86,15 +85,15 @@
                 querySnapshot.forEach((documentSnap) => {
                     const msg = documentSnap.data();
                     const msgId = documentSnap.id;
-                    const date = new Date(msg.createdAt).toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'});
+                    const date = msg.createdAt ? new Date(msg.createdAt.toMillis()).toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'}) : '--:--';
                     
                     const card = document.createElement('div');
                     card.className = `glass p-5 rounded-2xl msg-card cursor-pointer border border-slate-800 ${!msg.isRead ? 'msg-unread' : 'opacity-80'}`;
                     
-                    // אייקון מעטפה (סגורה לחדש, פתוחה לקרוא)
-                    const icon = msg.isRead ? '📂' : '✉️';
-                    
+                    let icon = msg.isRead ? '📂' : '✉️';
                     let contentHtml = "";
+
+                    // סוג 1: קרב PvP
                     if (msg.type === 'pvp_attack') {
                         const win = msg.result === 'win';
                         contentHtml = `
@@ -112,8 +111,29 @@
                                 </div>
                             </div>
                         `;
-                    } else {
-                        // הודעה כללית/עליית רמה
+                    } 
+                    // סוג 2: מארב מפלצת (Offline Ambush) - חדש
+                    else if (msg.type === 'monster_ambush') {
+                        const win = msg.result === 'win';
+                        icon = win ? '🛡️' : '👾';
+                        contentHtml = `
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="text-[10px] font-black ${win ? 'text-green-400' : 'text-red-500'} uppercase tracking-widest">${win ? 'מארב נהדף' : 'נפגעת ממארב'}</span>
+                                <span class="text-[10px] text-slate-500 font-mono tracking-tighter">${date}</span>
+                            </div>
+                            <p class="text-sm font-bold mb-2">${msg.text}</p>
+                            <div class="grid grid-cols-2 gap-2 text-[10px] bg-black/40 p-3 rounded-xl border border-slate-800/50">
+                                <div>נזק שספגת: <span class="text-red-400 font-bold">${msg.damageReceived || 0} HP</span></div>
+                                <div class="text-left">
+                                    <span class="${win ? 'text-yellow-400' : 'text-slate-400'} font-black italic">
+                                        ${win ? '+' + msg.reward + ' זוזים' : 'איבוד ציוד'}
+                                    </span>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    // סוג 3: הודעה כללית/עליית רמה
+                    else {
                         contentHtml = `
                             <div class="flex justify-between items-start mb-2">
                                 <span class="text-[10px] font-black text-yellow-400 uppercase tracking-widest">✨ עדכון מערכת</span>
@@ -139,14 +159,13 @@
                 loading.innerHTML = `
                     <div class="bg-red-500/10 border border-red-500/50 p-4 rounded-xl">
                         <p class="text-red-400 text-xs font-bold">שגיאת סנכרון נתונים</p>
-                        <p class="text-[10px] text-red-300/70 mt-1">וודא שיצרת אינדקס ב-Firestore עבור createdAt.</p>
                     </div>
                 `;
             }
         }
 
         async function markAsRead(msgId, element) {
-            if (!element.classList.contains('msg-unread')) return; // כבר נקרא
+            if (!element.classList.contains('msg-unread')) return; 
 
             try {
                 await updateDoc(doc(db, "notifications", msgId), {
@@ -156,7 +175,7 @@
                 element.classList.remove('msg-unread');
                 element.classList.add('opacity-80');
                 const iconDiv = element.querySelector('.envelope-icon');
-                if (iconDiv) iconDiv.innerText = '📂';
+                if (iconDiv && iconDiv.innerText === '✉️') iconDiv.innerText = '📂';
                 
             } catch (err) {
                 console.error("Error marking as read:", err);
