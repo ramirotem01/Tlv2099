@@ -9,7 +9,7 @@
     <style>
         body { 
             background-image: linear-gradient(rgba(2, 6, 23, 0.7), rgba(2, 6, 23, 0.7)), 
-                              url('https://res.cloudinary.com/dxygefiai/image/upload/v1776869126/TLVDESH_lkyxtd.png');
+                               url('https://res.cloudinary.com/dxygefiai/image/upload/v1776869126/TLVDESH_lkyxtd.png');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -48,7 +48,6 @@
         }
         .nav-node:hover { transform: scale(1.2); background: #3b82f6; box-shadow: 0 0 40px #3b82f6; }
         
-        /* נקודת הודעות חדשות - אדום מהבהב */
         .nav-node.has-unread {
             background: rgba(220, 38, 38, 0.8);
             box-shadow: 0 0 20px rgba(220, 38, 38, 0.8);
@@ -94,8 +93,8 @@
     <a href="map.html" class="nav-node" style="top: 40%; left: 20%;" data-label="מפה טקטית (לחימה)">🗺️</a>
     <a href="shop.html" class="nav-node" style="top: 65%; left: 50%;" data-label="חנות שדרוגים">🛒</a>
     <a href="inventory.html" class="nav-node" style="top: 30%; left: 80%;" data-label="נשקייה וציוד">⚔️</a>
-    
     <a href="score.html" class="nav-node" style="top: 15%; left: 45%;" data-label="דירוג ציידים (PvP)">🏆</a>
+    <a href="Winner.html" class="nav-node" style="top: 15%; left: 25%; background: rgba(16, 185, 129, 0.6);" data-label="היכל התהילה">🎖️</a>
     <a href="message.html" id="msg-node" class="nav-node" style="top: 50%; left: 85%;" data-label="תיבת הודעות">📩</a>
 
     <header class="flex justify-between items-center mb-10 pb-6 border-b border-slate-800 relative z-10">
@@ -152,7 +151,7 @@
     <script type="module">
         import { auth, db } from './firebase-config.js';
         import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { doc, getDoc, updateDoc, addDoc, serverTimestamp, collection, query, where, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const itemStats = {
             'pistol_nemesis': { name: 'אקדח פעימה', atk: 25, icon: '🔫' },
@@ -169,6 +168,9 @@
                 if (docSnap.exists()) {
                     let data = docSnap.data();
                     
+                    // בדיקת מארב מפלצת (Offline Ambush)
+                    await checkForOfflineAmbush(user.uid, data);
+                    
                     // בדיקת הודעות חדשות
                     checkUnreadMessages(user.uid);
 
@@ -183,39 +185,74 @@
             }
         });
 
-        // פונקציה לבדיקת הודעות שלא נקראו
+        // --- מנגנון תקיפת מפלצת באופליין ---
+        async function checkForOfflineAmbush(userId, userData) {
+            const now = Date.now();
+            const lastAmbush = userData.lastAmbushDate ? userData.lastAmbushDate.toMillis() : 0;
+            const cooldown = 4 * 60 * 60 * 1000; // פעם ב-4 שעות לפחות
+
+            // תנאים: 100% חיים ועבר זמן הצינון
+            if ((userData.energy || 0) >= 100 && (now - lastAmbush > cooldown)) {
+                if (Math.random() < 0.25) { // 25% סיכוי למארב
+                    await executeMonsterAmbush(userId, userData);
+                }
+            }
+        }
+
+        async function executeMonsterAmbush(userId, userData) {
+            const power = userData.power || 10;
+            const agility = userData.agility || 10;
+            const level = userData.level || 1;
+
+            const monsterPower = (Math.random() * 15) + (level * 4);
+            const winChance = (power / (power + monsterPower)) + 0.1;
+            const didWin = Math.random() < winChance;
+
+            let damage = 0;
+            if (!didWin) {
+                const baseDmg = Math.floor(Math.random() * 25) + 15;
+                damage = Math.max(8, baseDmg - Math.floor(agility / 3));
+            }
+
+            const loot = didWin ? Math.floor(Math.random() * 40) + 10 : 0;
+            const lost = didWin ? 0 : Math.floor(Math.random() * 20);
+
+            await updateDoc(doc(db, "players", userId), {
+                energy: Math.max(0, (userData.energy || 100) - damage),
+                coins: Math.max(0, (userData.coins || 0) + loot - lost),
+                lastAmbushDate: serverTimestamp()
+            });
+
+            await addDoc(collection(db, "notifications"), {
+                targetUserId: userId,
+                type: 'monster_ambush',
+                result: didWin ? 'win' : 'loss',
+                damageReceived: damage,
+                reward: loot,
+                text: didWin ? `הותקפת במארב אופליין אך ניצחת והרווחת ${loot} זוזים!` : `מפלצת הפתיעה אותך! ספגת ${damage} נזק ואיבדת ${lost} זוזים.`,
+                isRead: false,
+                createdAt: serverTimestamp()
+            });
+        }
+
+        // --- שאר הפונקציות הקיימות ---
         async function checkUnreadMessages(userId) {
-            const q = query(
-                collection(db, "notifications"), 
-                where("targetUserId", "==", userId),
-                where("isRead", "==", false),
-                limit(1)
-            );
-            
+            const q = query(collection(db, "notifications"), where("targetUserId", "==", userId), where("isRead", "==", false), limit(1));
             const querySnapshot = await getDocs(q);
             const msgNode = document.getElementById('msg-node');
-            
-            if (!querySnapshot.empty) {
-                msgNode.classList.add('has-unread');
-            } else {
-                msgNode.classList.remove('has-unread');
-            }
+            if (!querySnapshot.empty) msgNode.classList.add('has-unread');
+            else msgNode.classList.remove('has-unread');
         }
 
         async function checkLevelUp(docRef, data) {
             const currentLevel = data.level || 1;
             const currentXP = data.xp || 0;
             const xpNeeded = currentLevel * 10;
-
             if (currentXP >= xpNeeded) {
                 const newLevel = currentLevel + 1;
-                const updatedFields = {
-                    level: newLevel,
-                    xp: currentXP - xpNeeded,
-                    energy: 100
-                };
+                const updatedFields = { level: newLevel, xp: currentXP - xpNeeded, energy: 100 };
                 await updateDoc(docRef, updatedFields);
-                alert(`🚀 עליית דרגה! הגעת לרמה ${newLevel}. האנרגיה התמלאה.`);
+                alert(`🚀 עליית דרגה! הגעת לרמה ${newLevel}.`);
                 return { ...data, ...updatedFields };
             }
             return null;
@@ -225,37 +262,24 @@
             const now = Date.now();
             const lastUpdate = data.lastHpUpdate ? data.lastHpUpdate.toMillis() : now;
             const hoursPassed = (now - lastUpdate) / (1000 * 60 * 60);
-            
-            let recoveryRate = 10;
-            if (data.inventory && data.inventory.includes('nano_bed')) recoveryRate = 20;
-            
+            let recoveryRate = (data.inventory && data.inventory.includes('nano_bed')) ? 20 : 10;
             const recovered = hoursPassed * recoveryRate;
             let currentEnergy = Math.min(100, (data.energy || 0) + recovered);
-            
             updateDashboardUI(data, Math.floor(currentEnergy));
-
             if (Math.floor(currentEnergy) > (data.energy || 0)) {
-                updateDoc(docRef, {
-                    energy: Math.floor(currentEnergy),
-                    lastHpUpdate: serverTimestamp()
-                });
+                updateDoc(docRef, { energy: Math.floor(currentEnergy), lastHpUpdate: serverTimestamp() });
             }
-
-            if (currentEnergy < 100) {
-                document.getElementById('recovery-indicator').innerText = `+${recoveryRate}%/HR REGEN`;
-            }
+            if (currentEnergy < 100) document.getElementById('recovery-indicator').innerText = `+${recoveryRate}%/HR REGEN`;
         }
 
         function updateDashboardUI(data, currentEnergy) {
             const level = data.level || 1;
             const xp = data.xp || 0;
             const xpNeeded = level * 10;
-
             document.getElementById('player-username').innerText = data.username || "UNKNOWN";
             document.getElementById('stat-level').innerText = level;
             document.getElementById('stat-coins').innerText = data.coins || 0;
             document.getElementById('stat-energy-text').innerText = currentEnergy + "%";
-
             const xpPercent = Math.min(100, (xp / xpNeeded) * 100);
             document.getElementById('xp-bar-fill').style.width = xpPercent + "%";
             document.getElementById('xp-text').innerText = `XP: ${xp} / ${xpNeeded}`;
@@ -264,20 +288,15 @@
             const inventoryContainer = document.getElementById('inventory-list');
             inventoryContainer.innerHTML = '';
             const inventory = data.inventory || [];
-
             inventory.forEach(itemId => {
                 if (itemStats[itemId]) {
                     totalAtk += itemStats[itemId].atk;
                     const itemDiv = document.createElement('div');
-                    itemDiv.className = "bg-slate-900/40 p-4 rounded-2xl border border-slate-800 flex flex-col items-center min-w-[100px] backdrop-blur-sm";
-                    itemDiv.innerHTML = `
-                        <span class="text-3xl mb-2">${itemStats[itemId].icon}</span>
-                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">${itemStats[itemId].name}</span>
-                    `;
+                    itemDiv.className = "bg-slate-900/40 p-4 rounded-2xl border border-slate-800 flex flex-col items-center min-w-[100px]";
+                    itemDiv.innerHTML = `<span class="text-3xl mb-2">${itemStats[itemId].icon}</span><span class="text-[9px] font-bold text-slate-400 uppercase">${itemStats[itemId].name}</span>`;
                     inventoryContainer.appendChild(itemDiv);
                 }
             });
-            if (inventory.length === 0) inventoryContainer.innerHTML = '<div class="text-slate-600 text-xs italic p-2">אין ציוד חם בשטח...</div>';
             document.getElementById('stat-power').innerText = totalAtk;
         }
 
