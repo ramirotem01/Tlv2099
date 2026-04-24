@@ -95,8 +95,14 @@ ${isLocked ? `נעול (רמה ${w.minLvl})` : 'רכוש והצטייד'}
 }
 
 window.buyWeapon = async (id, name, price, minLvl) => {
-if (playerData.level < minLvl) return alert("רמה נמוכה מדי");
-if (playerData.coins < price) return alert("אין לך מספיק זהב");
+if (playerData.level < minLvl) return alert("הרמה שלך נמוכה מדי!");
+if (playerData.coins < price) return alert("אין לך מספיק זהב!");
+
+// חסימת רכישה אם כבר יש נשק מצויד
+if (playerData.equippedWeapon && playerData.equippedWeapon !== '') {
+alert("אינך יכול להחזיק יותר מנשק אחד! עליך למכור את הנשק הנוכחי שלך לפני רכישת חדש.");
+return;
+}
 
 if (confirm("לרכוש את " + name + " ב-" + price + " זהב?")) {
 try {
@@ -118,7 +124,7 @@ if (!confirm("למכור את הנשק תמורת " + refund + " זהב?")) retu
 try {
 const playerRef = doc(db, "players", auth.currentUser.uid);
 await updateDoc(playerRef, {
-coins: playerData.coins + refund,
+coins: (playerData.coins || 0) + refund,
 equippedWeapon: '',
 attack: (playerData.baseAttack || 10)
 });
