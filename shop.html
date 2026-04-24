@@ -51,7 +51,7 @@
     <script type="module">
         import { auth, db } from './firebase-config.js';
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { doc, getDoc, updateDoc, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const POTIONS_DATA = [
             { id: 'health_large', name: 'משקה חיים גדול', desc: 'מעלה 50% חיים', price: 1000, minLvl: 5, color: '#22c55e', icon: '🧪', type: 'hp', value: 50 },
@@ -59,7 +59,10 @@
             { id: 'atk_small', name: 'משקה כוח קטן', desc: '+10% נזק בקרב', price: 200, minLvl: 1, color: '#ef4444', icon: '🍷', type: 'atk', value: 10 },
             { id: 'atk_large', name: 'משקה כוח גדול', desc: '+30% נזק בקרב', price: 700, minLvl: 5, color: '#b91c1c', icon: '🍷', type: 'atk', value: 30 },
             { id: 'def_small', name: 'משקה ספיגה קטן', desc: '+10% הגנה', price: 200, minLvl: 1, color: '#3b82f6', icon: '🍶', type: 'def', value: 10 },
-            { id: 'def_large', name: 'משקה ספיגה גדול', desc: '+30% הגנה', price: 700, minLvl: 5, color: '#1d4ed8', icon: '🍶', type: 'def', value: 30 }
+            { id: 'def_large', name: 'משקה ספיגה גדול', desc: '+30% הגנה', price: 700, minLvl: 5, color: '#1d4ed8', icon: '🍶', type: 'def', value: 30 },
+            // שיקויי זריזות חדשים
+            { id: 'spd_small', name: 'משקה זריזות קטן', desc: '+15% סיכוי התחמקות', price: 300, minLvl: 2, color: '#f59e0b', icon: '⚡', type: 'spd', value: 15 },
+            { id: 'spd_large', name: 'משקה זריזות גדול', desc: '+35% סיכוי התחמקות', price: 850, minLvl: 6, color: '#fbbf24', icon: '⚡', type: 'spd', value: 35 }
         ];
 
         let currentUserData = null;
@@ -92,7 +95,7 @@
                     <div class="glass p-6 rounded-[2rem] potion-card shelf flex flex-col items-center ${isLocked ? 'locked' : ''}">
                         <div class="text-5xl mb-4 potion-glow" style="color: ${p.color}">${p.icon}</div>
                         <h3 class="font-bold text-lg">${p.name}</h3>
-                        <p class="text-[10px] text-slate-400 mb-4">${p.desc}</p>
+                        <p class="text-[10px] text-slate-400 mb-4 text-center">${p.desc}</p>
                         <div class="mt-auto w-full">
                             <div class="flex justify-between text-[10px] mb-2 font-bold uppercase">
                                 <span>רמה ${p.minLvl}</span>
@@ -121,6 +124,7 @@
 
             container.innerHTML = inventory.map((pId, index) => {
                 const p = POTIONS_DATA.find(x => x.id === pId);
+                if (!p) return '';
                 return `
                     <div class="glass p-3 rounded-xl border border-slate-700 flex items-center gap-3">
                         <span class="text-xl">${p.icon}</span>
@@ -168,7 +172,7 @@
             try {
                 const userRef = doc(db, "players", auth.currentUser.uid);
                 const currentPotions = [...currentUserData.potions];
-                currentPotions.splice(index, 1); // הסרת השיקוי הספציפי לפי מיקום
+                currentPotions.splice(index, 1);
 
                 await updateDoc(userRef, {
                     coins: currentUserData.coins + sellPrice,
