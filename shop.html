@@ -3,164 +3,183 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>שדרוגים טקטיים | TLV2099</title>
+    <title>המעבדה | TLV2099</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;800&display=swap" rel="stylesheet">
     <style>
-        body { background-color: #020617; color: white; font-family: 'Assistant', sans-serif; min-height: 100vh; }
-        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
-        .item-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .item-card:hover { transform: translateY(-5px); border-color: rgba(59, 130, 246, 0.5); }
-        .owned { opacity: 0.6; pointer-events: none; filter: grayscale(1); }
+        body { 
+            background-image: linear-gradient(rgba(2, 6, 23, 0.9), rgba(2, 6, 23, 0.9)), 
+                               url('https://res.cloudinary.com/dxygefiai/image/upload/v1776868529/TLV2099_c7nqzc.png');
+            background-size: cover; background-position: center; background-attachment: fixed;
+            color: white; font-family: 'Assistant', sans-serif; min-height: 100vh;
+        }
+        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
+        .potion-card { transition: all 0.3s ease; position: relative; overflow: hidden; }
+        .potion-card:hover { transform: translateY(-5px); border-color: rgba(59, 130, 246, 0.5); }
+        .potion-glow { filter: drop-shadow(0 0 10px currentColor); }
+        .shelf { border-bottom: 4px solid #1e293b; box-shadow: 0 10px 20px -10px rgba(0,0,0,0.5); }
+        .locked { filter: grayscale(1) opacity(0.5); cursor: not-allowed; }
     </style>
 </head>
-<body class="p-6">
+<body class="p-4 md:p-8">
 
-    <div class="max-w-4xl mx-auto">
-        <header class="flex justify-between items-center mb-10">
+    <div class="max-w-5xl mx-auto">
+        <header class="flex justify-between items-center mb-8">
             <div>
-                <h1 class="text-4xl font-black italic tracking-tighter uppercase">נשקייה ושדרוגים</h1>
-                <p class="text-slate-500 text-xs font-bold tracking-widest mt-1">ARMORY & BIOMETRIC UPGRADES</p>
+                <h1 class="text-4xl font-black italic tracking-tighter text-blue-400 uppercase">Alchemy Lab</h1>
+                <p class="text-slate-500 text-xs font-bold tracking-widest">מעבדת השיקויים של המחתרת</p>
             </div>
-            <div class="text-right glass p-4 rounded-2xl border-yellow-500/20">
-                <div class="text-[10px] text-slate-500 font-bold uppercase mb-1">הון זמין</div>
-                <div id="player-coins" class="text-2xl font-black text-yellow-400">0 <span class="text-sm">זוזים</span></div>
+            <div class="flex gap-4 items-center">
+                <div class="glass px-4 py-2 rounded-xl border border-yellow-500/20">
+                    <span class="text-yellow-400 font-black" id="user-coins">0</span> 🪙
+                </div>
+                <a href="dashboard.html" class="glass p-3 px-6 rounded-2xl font-bold text-xs hover:bg-slate-800 transition-all border border-blue-500/20">חזרה לחמ"ל</a>
             </div>
         </header>
 
-        <div class="flex gap-4 mb-8 overflow-x-auto pb-2">
-            <button class="glass px-6 py-2 rounded-full text-xs font-black bg-blue-600 border-blue-500">הכל</button>
-            <button class="glass px-6 py-2 rounded-full text-xs font-black hover:bg-slate-800">נשק</button>
-            <button class="glass px-6 py-2 rounded-full text-xs font-black hover:bg-slate-800">ביומטרי</button>
-            <a href="dashboard.html" class="mr-auto glass px-6 py-2 rounded-full text-xs font-black hover:bg-red-950/20 text-red-400 border-red-900/30">יציאה לחמ"ל</a>
+        <div class="glass p-4 rounded-2xl mb-8 border-dashed border-slate-700">
+            <h2 class="text-xs font-black uppercase text-slate-500 mb-4 tracking-widest text-center">התרמיל שלך (מקסימום 2 שיקויים)</h2>
+            <div id="my-potions" class="flex justify-center gap-4">
+                <p class="text-slate-600 text-xs italic">בודק מלאי בתרמיל...</p>
+            </div>
         </div>
 
-        <div id="shop-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8" id="shop-shelf">
             </div>
     </div>
 
     <script type="module">
         import { auth, db } from './firebase-config.js';
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { doc, getDoc, updateDoc, arrayUnion, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // מאגר הפריטים בחנות
-        const shopItems = [
-            {
-                id: 'pistol_nemesis',
-                name: 'אקדח נמסיס',
-                desc: 'נשק בסיסי יעיל לטווח קצר. נזק יציב.',
-                price: 150,
-                icon: '🔫',
-                category: 'נשק'
-            },
-            {
-                id: 'katana_thermal',
-                name: 'להב טרמי',
-                desc: 'חרב פלזמה חותכת שריון. נזק גבוה מאוד.',
-                price: 550,
-                icon: '⚔️',
-                category: 'נשק'
-            },
-            {
-                id: 'nano_bed',
-                name: 'מיטת ננו-ריפוי',
-                desc: 'משפרת את הריפוי הפסיבי ב-Dashboard ב-100%.',
-                price: 300,
-                icon: '🛌',
-                category: 'ביומטרי'
-            },
-            {
-                id: 'nano_boost',
-                name: 'מזרק ננו-בוסט',
-                desc: 'מאפשר פעולת ריפוי אקטיבית במהלך קרב.',
-                price: 200,
-                icon: '💊',
-                category: 'ביומטרי'
-            }
+        const POTIONS_DATA = [
+            { id: 'health_large', name: 'משקה חיים גדול', desc: 'מעלה 50% חיים', price: 1000, minLvl: 5, color: '#22c55e', icon: '🧪', type: 'hp', value: 50 },
+            { id: 'health_small', name: 'משקה חיים קטן', desc: 'מעלה 25% חיים', price: 200, minLvl: 1, color: '#4ade80', icon: '🧪', type: 'hp', value: 25 },
+            { id: 'atk_small', name: 'משקה כוח קטן', desc: '+10% נזק בקרב', price: 200, minLvl: 1, color: '#ef4444', icon: '🍷', type: 'atk', value: 10 },
+            { id: 'atk_large', name: 'משקה כוח גדול', desc: '+30% נזק בקרב', price: 700, minLvl: 5, color: '#b91c1c', icon: '🍷', type: 'atk', value: 30 },
+            { id: 'def_small', name: 'משקה ספיגה קטן', desc: '+10% הגנה', price: 200, minLvl: 1, color: '#3b82f6', icon: '🍶', type: 'def', value: 10 },
+            { id: 'def_large', name: 'משקה ספיגה גדול', desc: '+30% הגנה', price: 700, minLvl: 5, color: '#1d4ed8', icon: '🍶', type: 'def', value: 30 }
         ];
 
-        let playerData = null;
+        let currentUserData = null;
 
         onAuthStateChanged(auth, async (user) => {
             if (user) {
-                const snap = await getDoc(doc(db, "players", user.uid));
-                if (snap.exists()) {
-                    playerData = snap.data();
-                    updateUI();
-                    renderShop();
-                }
+                loadPlayerData(user.uid);
             } else {
                 window.location.href = 'index.html';
             }
         });
 
-        function renderShop() {
-            const grid = document.getElementById('shop-grid');
-            grid.innerHTML = '';
-
-            shopItems.forEach(item => {
-                const isOwned = playerData.inventory && playerData.inventory.includes(item.id);
-                
-                const card = document.createElement('div');
-                card.className = `glass p-6 rounded-[2.5rem] flex flex-col justify-between item-card border border-slate-800 ${isOwned ? 'owned' : ''}`;
-                
-                card.innerHTML = `
-                    <div>
-                        <div class="text-4xl mb-4">${item.icon}</div>
-                        <h3 class="text-xl font-black italic mb-1 uppercase">${item.name}</h3>
-                        <p class="text-slate-400 text-xs leading-relaxed mb-4">${item.desc}</p>
-                    </div>
-                    <div class="mt-4 flex flex-col gap-3">
-                        <div class="flex justify-between items-center px-1">
-                            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">${item.category}</span>
-                            <span class="text-yellow-400 font-black">${item.price} <span class="text-[10px]">זוזים</span></span>
-                        </div>
-                        <button 
-                            onclick="buyItem('${item.id}', ${item.price})" 
-                            class="w-full py-3 rounded-2xl font-black text-xs uppercase tracking-tighter transition-all ${isOwned ? 'bg-slate-700 text-slate-500' : 'bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-900/20'}"
-                        >
-                            ${isOwned ? 'בבעלותך' : 'רכישה מיידית'}
-                        </button>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
+        async function loadPlayerData(uid) {
+            const docSnap = await getDoc(doc(db, "players", uid));
+            if (docSnap.exists()) {
+                currentUserData = docSnap.data();
+                renderShop();
+                renderInventory();
+            }
         }
 
-        window.buyItem = async (itemId, price) => {
-            if (playerData.coins < price) {
-                alert("אין לך מספיק זוזים! צא לקרבות או השלם משימות.");
+        function renderShop() {
+            const shelf = document.getElementById('shop-shelf');
+            const userLvl = currentUserData.level || 1;
+            const userCoins = currentUserData.coins || 0;
+
+            shelf.innerHTML = POTIONS_DATA.map(p => {
+                const isLocked = userLvl < p.minLvl;
+                return `
+                    <div class="glass p-6 rounded-[2rem] potion-card shelf flex flex-col items-center ${isLocked ? 'locked' : ''}">
+                        <div class="text-5xl mb-4 potion-glow" style="color: ${p.color}">${p.icon}</div>
+                        <h3 class="font-bold text-lg">${p.name}</h3>
+                        <p class="text-[10px] text-slate-400 mb-4">${p.desc}</p>
+                        <div class="mt-auto w-full">
+                            <div class="flex justify-between text-[10px] mb-2 font-bold uppercase">
+                                <span>רמה ${p.minLvl}</span>
+                                <span class="text-yellow-500">${p.price} 🪙</span>
+                            </div>
+                            <button onclick="buyPotion('${p.id}')" 
+                                class="w-full py-2 bg-blue-600 rounded-xl font-black text-xs hover:bg-blue-500 transition-all ${isLocked ? 'hidden' : ''}">
+                                רכישה
+                            </button>
+                            ${isLocked ? `<div class="text-center text-red-500 text-[10px] font-bold">נעול לרמה שלך</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            document.getElementById('user-coins').innerText = userCoins.toLocaleString();
+        }
+
+        function renderInventory() {
+            const container = document.getElementById('my-potions');
+            const inventory = currentUserData.potions || [];
+
+            if (inventory.length === 0) {
+                container.innerHTML = `<p class="text-slate-600 text-xs italic">התרמיל ריק</p>`;
                 return;
             }
 
-            if (confirm("האם לאשר את הרכישה?")) {
+            container.innerHTML = inventory.map((pId, index) => {
+                const p = POTIONS_DATA.find(x => x.id === pId);
+                return `
+                    <div class="glass p-3 rounded-xl border border-slate-700 flex items-center gap-3">
+                        <span class="text-xl">${p.icon}</span>
+                        <div>
+                            <div class="text-[10px] font-bold">${p.name}</div>
+                            <button onclick="sellPotion('${p.id}', ${index})" class="text-[8px] text-red-400 font-bold hover:underline">מכירה (${p.price / 2} 🪙)</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        window.buyPotion = async (pId) => {
+            const p = POTIONS_DATA.find(x => x.id === pId);
+            const myPotions = currentUserData.potions || [];
+
+            if (myPotions.length >= 2) {
+                alert("התרמיל מלא! עליך למכור שיקוי כדי לפנות מקום.");
+                return;
+            }
+            if (currentUserData.coins < p.price) {
+                alert("אין לך מספיק זהב!");
+                return;
+            }
+
+            try {
                 const userRef = doc(db, "players", auth.currentUser.uid);
-                
-                try {
-                    await updateDoc(userRef, {
-                        coins: increment(-price),
-                        inventory: arrayUnion(itemId)
-                    });
-                    
-                    // עדכון מקומי של הנתונים כדי למנוע קריאה נוספת ל-DB
-                    playerData.coins -= price;
-                    if(!playerData.inventory) playerData.inventory = [];
-                    playerData.inventory.push(itemId);
-                    
-                    updateUI();
-                    renderShop();
-                    alert("הרכישה בוצעה בהצלחה! הציוד הותקן.");
-                } catch (e) {
-                    console.error(e);
-                    alert("שגיאה בתקשורת עם השרת.");
-                }
+                await updateDoc(userRef, {
+                    coins: currentUserData.coins - p.price,
+                    potions: arrayUnion(pId)
+                });
+                alert(`רכשת ${p.name}!`);
+                loadPlayerData(auth.currentUser.uid);
+            } catch (e) {
+                console.error(e);
             }
         };
 
-        function updateUI() {
-            document.getElementById('player-coins').innerHTML = `${playerData.coins} <span class="text-sm">זוזים</span>`;
-        }
+        window.sellPotion = async (pId, index) => {
+            const p = POTIONS_DATA.find(x => x.id === pId);
+            const sellPrice = p.price / 2;
+
+            if (!confirm(`למכור את ${p.name} תמורת ${sellPrice} זהב?`)) return;
+
+            try {
+                const userRef = doc(db, "players", auth.currentUser.uid);
+                const currentPotions = [...currentUserData.potions];
+                currentPotions.splice(index, 1); // הסרת השיקוי הספציפי לפי מיקום
+
+                await updateDoc(userRef, {
+                    coins: currentUserData.coins + sellPrice,
+                    potions: currentPotions
+                });
+                loadPlayerData(auth.currentUser.uid);
+            } catch (e) {
+                console.error(e);
+            }
+        };
+
     </script>
 </body>
 </html>
