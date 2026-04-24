@@ -101,7 +101,7 @@
     <script type="module">
         import { auth, db } from './firebase-config.js';
         import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, getDocs, limit, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const itemStats = {
             'pistol_nemesis': { name: 'אקדח "נמסיס"', atk: 25, icon: '🔫' },
@@ -179,7 +179,26 @@
             if (currentXP >= xpNeeded) {
                 const newLevel = currentLevel + 1;
                 const updatedFields = { level: newLevel, xp: currentXP - xpNeeded, energy: 100 };
+                
+                // עדכון השחקן
                 await updateDoc(docRef, updatedFields);
+
+                // יצירת הודעה ב-DB
+                try {
+                    await addDoc(collection(db, "notifications"), {
+                        targetUserId: auth.currentUser.uid,
+                        title: "עלית רמה! 🚀",
+                        message: `כל הכבוד סוכן! הגעת לרמה ${newLevel}. האנרגיה שלך התמלאה מחדש ל-100%.`,
+                        type: "level_up",
+                        isRead: false,
+                        timestamp: serverTimestamp()
+                    });
+                    // רענון מיידי של הסטטוס בדשבורד
+                    checkUnreadMessages(auth.currentUser.uid);
+                } catch (e) {
+                    console.error("שגיאה ביצירת הודעה:", e);
+                }
+
                 return { ...data, ...updatedFields };
             }
             return null;
