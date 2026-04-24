@@ -9,7 +9,7 @@
     <style>
         body { 
             background-image: linear-gradient(rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.8)), 
-                              url('https://res.cloudinary.com/dxygefiai/image/upload/v1776870001/Gemini_Generated_Image_jbr8f5jbr8f5jbr8_burebz.png');
+                               url('https://res.cloudinary.com/dxygefiai/image/upload/v1776870001/Gemini_Generated_Image_jbr8f5jbr8f5jbr8_burebz.png');
             background-size: cover; background-position: center; background-attachment: fixed;
             color: white; font-family: 'Assistant', sans-serif; 
         }
@@ -37,8 +37,7 @@
     </header>
 
     <main class="max-w-7xl mx-auto">
-        <div id="armory-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            </div>
+        <div id="armory-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"></div>
     </main>
 
     <script type="module">
@@ -92,10 +91,10 @@
                             ${isOwned ? `
                                 <div class="flex flex-col gap-2">
                                     <button class="w-full bg-green-600/50 text-white py-3 rounded-xl font-black cursor-default border border-green-500/50">מצויד</button>
-                                    <button onclick="sellWeapon('${w.id}', ${w.price})" class="text-red-400 text-xs font-bold hover:underline">מכור נשק (החזר ${w.price / 2})</button>
+                                    ${w.price > 0 ? `<button onclick="window.sellWeapon('${w.id}', ${w.price})" class="text-red-400 text-xs font-bold hover:underline">מכור נשק (החזר ${Math.floor(w.price / 2)})</button>` : ''}
                                 </div>
                             ` : `
-                                <button onclick="buyWeapon('${w.id}', '${w.name}', ${w.price}, ${w.minLvl})" 
+                                <button onclick="window.buyWeapon('${w.id}', '${w.name}', ${w.price}, ${w.minLvl})" 
                                     ${isLocked ? 'disabled' : ''}
                                     class="w-full ${isLocked ? 'bg-slate-800 text-slate-500' : 'bg-blue-600 hover:bg-blue-500'} text-white py-3 rounded-xl font-black shadow-lg transition-all active:scale-95">
                                     ${isLocked ? `נעול (רמה ${w.minLvl})` : 'רכוש והצטייד'}
@@ -111,8 +110,7 @@
             if (playerData.level < minLvl) return alert("הרמה שלך נמוכה מדי!");
             if (playerData.coins < price) return alert("אין לך מספיק זוזים!");
             
-            // בדיקה אם יש נשק מצויד (למעט אם הוא קונה את אותו נשק, שזה נחסם ב-UI)
-            if (playerData.equippedWeapon && playerData.equippedWeapon !== '') {
+            if (playerData.equippedWeapon && playerData.equippedWeapon !== '' && playerData.equippedWeapon !== 'pistol_nemesis') {
                 alert("עליך למכור את הנשק הנוכחי שלך לפני שתוכל להצטייד בחדש!");
                 return;
             }
@@ -123,7 +121,7 @@
                     await updateDoc(playerRef, {
                         coins: playerData.coins - price,
                         equippedWeapon: id,
-                        attack: playerData.baseAttack + WEAPONS.find(w => w.id === id).atk // עדכון כוח התקיפה הכולל
+                        attack: (playerData.baseAttack || 10) + WEAPONS.find(w => w.id === id).atk
                     });
                     location.reload();
                 } catch (e) { console.error(e); }
@@ -138,8 +136,8 @@
                 const playerRef = doc(db, "players", auth.currentUser.uid);
                 await updateDoc(playerRef, {
                     coins: playerData.coins + sellValue,
-                    equippedWeapon: '',
-                    attack: playerData.baseAttack // חזרה לכוח בסיסי ללא נשק
+                    equippedWeapon: 'pistol_nemesis', // מחזיר לנשק הבסיסי החינמי
+                    attack: (playerData.baseAttack || 10) + 25 // מחזיר לכוח של הנמסיס
                 });
                 location.reload();
             } catch (e) { console.error(e); }
