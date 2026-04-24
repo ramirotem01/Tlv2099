@@ -44,15 +44,15 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8" id="shop-shelf">
-            </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8" id="shop-shelf"></div>
     </div>
 
     <script type="module">
         import { auth, db } from './firebase-config.js';
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { doc, getDoc, updateDoc, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { doc, getDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
+        // מזהים מעודכנים שמתאימים לדשבורד (speed במקום spd)
         const POTIONS_DATA = [
             { id: 'health_large', name: 'משקה חיים גדול', desc: 'מעלה 50% חיים', price: 1000, minLvl: 5, color: '#22c55e', icon: '🧪', type: 'hp', value: 50 },
             { id: 'health_small', name: 'משקה חיים קטן', desc: 'מעלה 25% חיים', price: 200, minLvl: 1, color: '#4ade80', icon: '🧪', type: 'hp', value: 25 },
@@ -60,9 +60,8 @@
             { id: 'atk_large', name: 'משקה כוח גדול', desc: '+30% נזק בקרב', price: 700, minLvl: 5, color: '#b91c1c', icon: '🍷', type: 'atk', value: 30 },
             { id: 'def_small', name: 'משקה ספיגה קטן', desc: '+10% הגנה', price: 200, minLvl: 1, color: '#3b82f6', icon: '🍶', type: 'def', value: 10 },
             { id: 'def_large', name: 'משקה ספיגה גדול', desc: '+30% הגנה', price: 700, minLvl: 5, color: '#1d4ed8', icon: '🍶', type: 'def', value: 30 },
-            // שיקויי זריזות חדשים
-            { id: 'spd_small', name: 'משקה זריזות קטן', desc: '+15% סיכוי התחמקות', price: 300, minLvl: 2, color: '#f59e0b', icon: '⚡', type: 'spd', value: 15 },
-            { id: 'spd_large', name: 'משקה זריזות גדול', desc: '+35% סיכוי התחמקות', price: 850, minLvl: 6, color: '#fbbf24', icon: '⚡', type: 'spd', value: 35 }
+            { id: 'speed_small', name: 'משקה זריזות קטן', desc: '+15% סיכוי התחמקות', price: 300, minLvl: 2, color: '#f59e0b', icon: '⚡', type: 'spd', value: 15 },
+            { id: 'speed_large', name: 'משקה זריזות גדול', desc: '+35% סיכוי התחמקות', price: 850, minLvl: 6, color: '#fbbf24', icon: '⚡', type: 'spd', value: 35 }
         ];
 
         let currentUserData = null;
