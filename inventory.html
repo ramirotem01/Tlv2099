@@ -10,39 +10,15 @@
         body { 
             background-image: linear-gradient(rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.8)), 
                               url('https://res.cloudinary.com/dxygefiai/image/upload/v1776870001/Gemini_Generated_Image_jbr8f5jbr8f5jbr8_burebz.png');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            background-repeat: no-repeat;
-            color: white; 
-            font-family: 'Assistant', sans-serif; 
+            background-size: cover; background-position: center; background-attachment: fixed;
+            color: white; font-family: 'Assistant', sans-serif; 
         }
-        .glass { 
-            background: rgba(15, 23, 42, 0.85); 
-            backdrop-filter: blur(12px); 
-            border: 1px solid rgba(255,255,255,0.05); 
-        }
-        .item-card { 
-            transition: all 0.3s ease; 
-            border: 1px solid rgba(59, 130, 246, 0.1); 
-        }
-        .item-card:hover { 
-            transform: translateY(-5px); 
-            border-color: rgba(59, 130, 246, 0.5); 
-            background: rgba(30, 41, 59, 0.95); 
-            box-shadow: 0 0 25px rgba(59, 130, 246, 0.2);
-        }
-        .neon-text { 
-            text-shadow: 0 0 15px rgba(255, 255, 255, 0.3); 
-        }
-        .price-tag {
-            background: rgba(59, 130, 246, 0.2);
-            border: 1px solid rgba(59, 130, 246, 0.5);
-            padding: 2px 10px;
-            border-radius: 8px;
-            font-weight: 800;
-            color: #60a5fa;
-        }
+        .glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
+        .item-card { transition: all 0.3s ease; border: 1px solid rgba(59, 130, 246, 0.1); }
+        .item-card:hover { transform: translateY(-5px); border-color: rgba(59, 130, 246, 0.5); background: rgba(30, 41, 59, 0.95); box-shadow: 0 0 25px rgba(59, 130, 246, 0.2); }
+        .neon-text { text-shadow: 0 0 15px rgba(255, 255, 255, 0.3); }
+        .price-tag { background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.5); padding: 2px 10px; border-radius: 8px; font-weight: 800; color: #60a5fa; }
+        .locked { filter: grayscale(1) opacity(0.6); }
     </style>
 </head>
 <body class="min-h-screen p-6 md:p-10">
@@ -55,142 +31,120 @@
         <div class="flex items-center gap-4">
             <div class="glass px-5 py-2.5 rounded-full text-sm border border-slate-700 shadow-lg flex items-center gap-2">
                 <span class="text-3xl">💰</span>
-                <span class="text-slate-500">זוזים:</span>
                 <span id="player-coins" class="font-bold text-white text-lg">-</span>
             </div>
         </div>
     </header>
 
     <main class="max-w-7xl mx-auto">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            
-            <div class="glass p-8 rounded-[2.5rem] item-card flex flex-col gap-5 relative border border-slate-800">
-                <div class="flex justify-between items-center">
-                    <div class="price-tag">חינם</div>
-                    <span class="text-5xl drop-shadow-lg">🔫</span>
-                </div>
-                <div class="mt-2">
-                    <h3 class="text-2xl font-black mb-1.5 text-white">אקדח פעימה "נמסיס"</h3>
-                    <p class="text-slate-400 text-xs font-bold">נזק: 25 ATK</p>
-                    <p class="text-slate-500 text-xs mt-2">נשק בסיסי לציידים מתחילים. אמין ומהיר.</p>
-                </div>
-                <div class="mt-auto pt-5">
-                    <button id="buy-btn-pistol_nemesis" 
-                        onclick="buyItem('pistol_nemesis', 'אקדח פעימה נמסיס', 0)"
-                        class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-black shadow-lg transition-all active:scale-95">
-                        רכוש עכשיו
-                    </button>
-                </div>
+        <div id="armory-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             </div>
-
-            <div class="glass p-8 rounded-[2.5rem] item-card flex flex-col gap-5 border border-slate-800">
-                <div class="flex justify-between items-center">
-                    <div class="price-tag">250 💰</div>
-                    <span class="text-5xl drop-shadow-lg">⚔️</span>
-                </div>
-                <div class="mt-2">
-                    <h3 class="text-2xl font-black mb-1.5 text-white">להב קטאנה טרמי</h3>
-                    <p class="text-slate-400 text-xs font-bold">נזק: 45 ATK</p>
-                    <p class="text-slate-500 text-xs mt-2">להב חם המסוגל לחתוך שריון של מפלצות רמה 2 ומעלה.</p>
-                </div>
-                <div class="mt-auto pt-5">
-                    <button id="buy-btn-katana_thermal" 
-                        onclick="buyItem('katana_thermal', 'להב קטאנה טרמי', 250)"
-                        class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-black shadow-lg transition-all active:scale-95">
-                        רכוש עכשיו
-                    </button>
-                </div>
-            </div>
-
-            <div class="glass p-8 rounded-[2.5rem] item-card flex flex-col gap-5 border border-slate-800">
-                <div class="flex justify-between items-center">
-                    <div class="price-tag">100 💰</div>
-                    <span class="text-5xl drop-shadow-lg">💊</span>
-                </div>
-                <div class="mt-2">
-                    <h3 class="text-2xl font-black mb-1.5 text-white">מזרק ננו-בוסט</h3>
-                    <p class="text-slate-400 text-xs font-bold">ריפוי: 30% HP</p>
-                    <p class="text-slate-500 text-xs mt-2">מרפא חיים באופן מיידי במהלך קרב. פריט חובה.</p>
-                </div>
-                <div class="mt-auto pt-5">
-                    <button id="buy-btn-nano_boost" 
-                        onclick="buyItem('nano_boost', 'מזרק ננו-בוסט', 100)"
-                        class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-black shadow-lg transition-all active:scale-95">
-                        רכוש עכשיו
-                    </button>
-                </div>
-            </div>
-
-        </div>
     </main>
 
     <script type="module">
         import { auth, db } from './firebase-config.js';
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { doc, getDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        let playerCoins = 0;
-        let playerInventory = [];
+        const WEAPONS = [
+            { id: 'pistol_nemesis', name: 'אקדח פעימה "נמסיס"', atk: 25, price: 0, minLvl: 1, desc: 'נשק בסיסי לציידים מתחילים. אמין ומהיר.', icon: '🔫' },
+            { id: 'katana_thermal', name: 'להב קטאנה טרמי', atk: 45, price: 250, minLvl: 1, desc: 'להב חם המסוגל לחתוך שריון של מפלצות.', icon: '⚔️' },
+            { id: 'fire_sword', name: 'חרב אש', atk: 90, price: 750, minLvl: 3, desc: 'חרב אש אימתנית הדורשת מיומנות לוחם.', icon: '🔥' }
+        ];
 
-        window.buyItem = async (itemId, itemName, price) => {
-            const user = auth.currentUser;
-            if (!user) return;
-
-            if (playerInventory.includes(itemId)) {
-                alert("כבר יש לך את ה" + itemName);
-                return;
-            }
-
-            if (playerCoins < price) {
-                alert(`אין לך מספיק זוזים! חסרים לך ${price - playerCoins} זוזים.`);
-                return;
-            }
-
-            if (confirm(`לרכוש את ${itemName} ב-${price} זוזים?`)) {
-                try {
-                    const playerRef = doc(db, "players", user.uid);
-                    await updateDoc(playerRef, {
-                        coins: playerCoins - price,
-                        inventory: arrayUnion(itemId)
-                    });
-
-                    alert("הרכישה הושלמה!");
-                    location.reload();
-                } catch (error) {
-                    console.error("שגיאה:", error);
-                    alert("הרכישה נכשלה. בדוק את חיבור האינטרנט.");
-                }
-            }
-        };
+        let playerData = null;
 
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 const docRef = doc(db, "players", user.uid);
                 const docSnap = await getDoc(docRef);
-
                 if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    playerCoins = data.coins;
-                    playerInventory = data.inventory || [];
-                    document.getElementById('player-coins').innerText = playerCoins;
-                    updateUI();
+                    playerData = docSnap.data();
+                    document.getElementById('player-coins').innerText = playerData.coins.toLocaleString();
+                    renderArmory();
                 }
             } else {
                 window.location.href = 'index.html';
             }
         });
 
-        function updateUI() {
-            playerInventory.forEach(itemId => {
-                const btn = document.getElementById(`buy-btn-${itemId}`);
-                if (btn) {
-                    btn.innerText = "בבעלותך";
-                    btn.disabled = true;
-                    btn.classList.replace('bg-blue-600', 'bg-slate-700');
-                    btn.classList.add('cursor-not-allowed');
-                }
-            });
+        function renderArmory() {
+            const grid = document.getElementById('armory-grid');
+            const equipped = playerData.equippedWeapon || '';
+            const userLvl = playerData.level || 1;
+
+            grid.innerHTML = WEAPONS.map(w => {
+                const isOwned = equipped === w.id;
+                const isLocked = userLvl < w.minLvl;
+                
+                return `
+                    <div class="glass p-8 rounded-[2.5rem] item-card flex flex-col gap-5 border border-slate-800 ${isLocked ? 'locked' : ''}">
+                        <div class="flex justify-between items-center">
+                            <div class="price-tag">${w.price === 0 ? 'חינם' : w.price + ' 💰'}</div>
+                            <span class="text-5xl drop-shadow-lg">${w.icon}</span>
+                        </div>
+                        <div class="mt-2">
+                            <h3 class="text-2xl font-black mb-1.5 text-white">${w.name}</h3>
+                            <p class="text-slate-400 text-xs font-bold">נזק: ${w.atk} ATK | רמה: ${w.minLvl}+</p>
+                            <p class="text-slate-500 text-xs mt-2">${w.desc}</p>
+                        </div>
+                        <div class="mt-auto pt-5">
+                            ${isOwned ? `
+                                <div class="flex flex-col gap-2">
+                                    <button class="w-full bg-green-600/50 text-white py-3 rounded-xl font-black cursor-default border border-green-500/50">מצויד</button>
+                                    <button onclick="sellWeapon('${w.id}', ${w.price})" class="text-red-400 text-xs font-bold hover:underline">מכור נשק (החזר ${w.price / 2})</button>
+                                </div>
+                            ` : `
+                                <button onclick="buyWeapon('${w.id}', '${w.name}', ${w.price}, ${w.minLvl})" 
+                                    ${isLocked ? 'disabled' : ''}
+                                    class="w-full ${isLocked ? 'bg-slate-800 text-slate-500' : 'bg-blue-600 hover:bg-blue-500'} text-white py-3 rounded-xl font-black shadow-lg transition-all active:scale-95">
+                                    ${isLocked ? `נעול (רמה ${w.minLvl})` : 'רכוש והצטייד'}
+                                </button>
+                            `}
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
+
+        window.buyWeapon = async (id, name, price, minLvl) => {
+            if (playerData.level < minLvl) return alert("הרמה שלך נמוכה מדי!");
+            if (playerData.coins < price) return alert("אין לך מספיק זוזים!");
+            
+            // בדיקה אם יש נשק מצויד (למעט אם הוא קונה את אותו נשק, שזה נחסם ב-UI)
+            if (playerData.equippedWeapon && playerData.equippedWeapon !== '') {
+                alert("עליך למכור את הנשק הנוכחי שלך לפני שתוכל להצטייד בחדש!");
+                return;
+            }
+
+            if (confirm(`לרכוש את ${name} ב-${price} זוזים?`)) {
+                try {
+                    const playerRef = doc(db, "players", auth.currentUser.uid);
+                    await updateDoc(playerRef, {
+                        coins: playerData.coins - price,
+                        equippedWeapon: id,
+                        attack: playerData.baseAttack + WEAPONS.find(w => w.id === id).atk // עדכון כוח התקיפה הכולל
+                    });
+                    location.reload();
+                } catch (e) { console.error(e); }
+            }
+        };
+
+        window.sellWeapon = async (id, originalPrice) => {
+            const sellValue = Math.floor(originalPrice / 2);
+            if (!confirm(`למכור את הנשק תמורת ${sellValue} זוזים?`)) return;
+
+            try {
+                const playerRef = doc(db, "players", auth.currentUser.uid);
+                await updateDoc(playerRef, {
+                    coins: playerData.coins + sellValue,
+                    equippedWeapon: '',
+                    attack: playerData.baseAttack // חזרה לכוח בסיסי ללא נשק
+                });
+                location.reload();
+            } catch (e) { console.error(e); }
+        };
+
     </script>
 </body>
 </html>
