@@ -15,28 +15,54 @@
         }
         .glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
         .neon-text { text-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
-        .rank-card { transition: all 0.3s ease; }
-        .rank-card:hover { transform: scale(1.02); background: rgba(30, 41, 59, 0.9); }
-        .top-1 { border: 1px solid rgba(234, 179, 8, 0.5); box-shadow: 0 0 20px rgba(234, 179, 8, 0.2); }
+        
+        /* עיצוב הטבלה */
+        table { width: 100%; border-collapse: separate; border-spacing: 0 8px; }
+        th { text-align: right; padding: 12px 20px; color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; }
+        td { padding: 12px 20px; }
+        tr.rank-row { transition: all 0.2s ease; }
+        tr.rank-row:hover { transform: scale(1.01); }
+        tr.rank-row td { background: rgba(15, 23, 42, 0.7); border-top: 1px solid rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.03); }
+        tr.rank-row td:first-child { border-right: 1px solid rgba(255,255,255,0.03); border-radius: 0 1.5rem 1.5rem 0; }
+        tr.rank-row td:last-child { border-left: 1px solid rgba(255,255,255,0.03); border-radius: 1.5rem 0 0 1.5rem; }
+
+        .hero-thumb {
+            width: 45px; height: 45px; border-radius: 50%; object-fit: cover;
+            border: 2px solid rgba(59, 130, 246, 0.5); box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+        }
+        .gold-glow { border-color: #fbbf24; box-shadow: 0 0 15px rgba(251, 191, 36, 0.4); }
     </style>
 </head>
 <body class="p-4 md:p-8">
 
     <div class="max-w-4xl mx-auto">
-        <header class="flex justify-between items-center mb-12">
+        <header class="flex justify-between items-center mb-10">
             <div>
-                <h1 class="text-4xl font-black italic tracking-tighter neon-text uppercase">היכל התהילה</h1>
-                <p class="text-blue-400 text-xs font-bold uppercase tracking-widest">דירוג ציידים גלובלי | TLV2099</p>
+                <h1 class="text-4xl font-black italic tracking-tighter neon-text uppercase leading-none">Winner Wall</h1>
+                <p class="text-blue-400 text-[10px] font-bold uppercase tracking-[0.3em] mt-1">דירוג סוכנים פעילים</p>
             </div>
             <a href="dashboard.html" class="glass p-3 px-6 rounded-2xl font-bold text-xs hover:bg-slate-800 transition-all flex items-center gap-2 border border-blue-500/20">
                 <span>חזרה לחמ"ל</span> 🛰️
             </a>
         </header>
 
-        <div id="leaderboard-container" class="space-y-4">
+        <div class="glass rounded-[2.5rem] overflow-hidden p-4 md:p-8 border border-slate-800/50">
+            <table id="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th class="w-16">דירוג</th>
+                        <th>סוכן</th>
+                        <th class="text-center">דמות</th>
+                        <th class="text-left">רמה</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard-body">
+                    </tbody>
+            </table>
+
             <div id="loading" class="text-center py-20">
-                <div class="animate-spin text-3xl mb-4 inline-block">🌀</div>
-                <p class="text-slate-500 font-bold tracking-widest animate-pulse">מושך נתוני סוכנים...</p>
+                <div class="animate-spin text-2xl mb-4 inline-block">🌀</div>
+                <p class="text-slate-500 text-xs font-bold tracking-widest animate-pulse">מתחבר למסד הנתונים...</p>
             </div>
         </div>
     </div>
@@ -46,11 +72,10 @@
         import { collection, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         async function loadLeaderboard() {
-            const container = document.getElementById('leaderboard-container');
+            const body = document.getElementById('leaderboard-body');
             const loading = document.getElementById('loading');
 
             try {
-                // שליפת טופ 20 שחקנים לפי רמה ואז לפי XP
                 const q = query(
                     collection(db, "players"),
                     orderBy("level", "desc"),
@@ -60,45 +85,46 @@
 
                 const querySnapshot = await getDocs(q);
                 loading.classList.add('hidden');
-                container.innerHTML = '';
+                body.innerHTML = '';
 
                 let rank = 1;
                 querySnapshot.forEach((docSnap) => {
                     const player = docSnap.data();
-                    // שימוש בשדה username כפי שביקשת
                     const displayName = player.username || "Unknown Hunter";
+                    const heroImg = player.heroImage || "https://via.placeholder.com/100?text=Agent"; // תמונת גיבוי
+                    
                     const isTop1 = rank === 1;
 
-                    const card = document.createElement('div');
-                    card.className = `glass p-4 rounded-2xl rank-card flex items-center justify-between border border-slate-800 ${isTop1 ? 'top-1' : ''}`;
+                    const row = document.createElement('tr');
+                    row.className = "rank-row";
                     
-                    card.innerHTML = `
-                        <div class="flex items-center gap-5">
-                            <div class="w-10 h-10 flex items-center justify-center font-black text-xl ${isTop1 ? 'text-yellow-400' : 'text-slate-500'}">
-                                ${rank <= 3 ? ['🥇', '🥈', '🥉'][rank-1] : '#' + rank}
-                            </div>
-                            <div>
-                                <div class="font-bold text-lg ${isTop1 ? 'text-yellow-100' : 'text-white'}">${displayName}</div>
-                                <div class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">רמת סוכן: ${player.level || 1}</div>
-                            </div>
-                        </div>
-                        <div class="text-left">
-                            <div class="text-blue-400 font-mono font-bold">${player.coins || 0} 🪙</div>
-                            <div class="text-[9px] text-slate-600 uppercase font-black italic">זוזים שנצברו</div>
-                        </div>
+                    row.innerHTML = `
+                        <td class="font-black text-center ${isTop1 ? 'text-yellow-400 text-xl' : 'text-slate-500'}">
+                            ${rank <= 3 ? ['🥇', '🥈', '🥉'][rank-1] : rank}
+                        </td>
+                        <td>
+                            <div class="font-bold text-white tracking-tight">${displayName}</div>
+                            <div class="text-[9px] text-slate-500 uppercase font-mono tracking-tighter">ID: ${docSnap.id.substring(0, 8)}</div>
+                        </td>
+                        <td class="flex justify-center">
+                            <img src="${heroImg}" alt="Hero" class="hero-thumb ${isTop1 ? 'gold-glow' : ''}">
+                        </td>
+                        <td class="text-left">
+                            <div class="text-blue-400 font-black text-xl italic leading-none">${player.level || 1}</div>
+                            <div class="text-[8px] text-slate-600 font-bold uppercase tracking-widest mt-1">LVL</div>
+                        </td>
                     `;
                     
-                    container.appendChild(card);
+                    body.appendChild(row);
                     rank++;
                 });
 
             } catch (err) {
-                console.error("Error loading leaderboard:", err);
-                loading.innerHTML = `<p class="text-red-500">שגיאה בסריקת רשת הסוכנים</p>`;
+                console.error("Error:", err);
+                loading.innerHTML = `<p class="text-red-500 text-xs font-bold uppercase">שגיאת רשת: לא ניתן לשלוף דירוגים</p>`;
             }
         }
 
-        // הפעלה ראשונית
         loadLeaderboard();
     </script>
 </body>
