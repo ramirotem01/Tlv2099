@@ -21,6 +21,7 @@
         }
         .enemy-glow { filter: drop-shadow(0 0 30px rgba(239, 68, 68, 0.4)); }
         .potion-btn { border-color: rgba(34, 211, 238, 0.3) !important; color: #22d3ee !important; }
+        .weapon-btn { border-color: rgba(59, 130, 246, 0.5) !important; background: rgba(59, 130, 246, 0.1) !important; box-shadow: 0 0 15px rgba(59, 130, 246, 0.2); }
     </style>
 </head>
 <body class="flex flex-col items-center justify-between p-4 md:p-8">
@@ -67,23 +68,21 @@
     <script type="module">
         import { auth, db } from './firebase-config.js';
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { doc, getDoc, updateDoc, increment, serverTimestamp, addDoc, collection } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { doc, getDoc, updateDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // מסד נתונים של פריטים ויכולות
         const itemDatabase = {
             'basic_attack': { name: 'מכה בסיסית', baseAtk: 15, icon: '👊' },
             'pistol_nemesis': { name: 'ירי נמסיס', baseAtk: 30, icon: '🔫' },
-            'katana_thermal': { name: 'להב טרמי', baseAtk: 50, icon: '⚔️' },
-            // שיקויים (Potions)
+            'katana_thermal': { name: 'להב טרמי', baseAtk: 45, icon: '⚔️' },
+            'fire_sword': { name: 'להבת גיהנום', baseAtk: 90, icon: '🔥' },
+            // שיקויים
             'health_small': { name: 'חיים קטן', heal: 25, icon: '🧪', type: 'potion' },
             'health_large': { name: 'חיים גדול', heal: 50, icon: '🧪', type: 'potion' },
-            'atk_small': { name: 'בוסט כוח', buffAtk: 1.2, icon: '🍷', type: 'potion' },
-            'def_small': { name: 'בוסט הגנה', buffDef: 1.2, icon: '🍶', type: 'potion' }
+            'atk_small': { name: 'בוסט כוח', buffAtk: 1.3, icon: '🍷', type: 'potion' }
         };
 
-        let player = { hp: 100, maxHp: 100, inventory: [], potions: [], isMyTurn: true, stats: { atkMod: 1, defMod: 1, evaMod: 0.1 }, username: "" };
-        let enemy = { id: null, name: "", hp: 0, maxHp: 0, atk: 0, level: 1, reward: 0, isPvP: false };
-        let damageStats = { dealt: 0, received: 0 };
+        let player = { hp: 100, maxHp: 100, inventory: [], potions: [], equippedWeapon: null, isMyTurn: true, stats: { atkMod: 1, defMod: 1, evaMod: 0.1 }, username: "" };
+        let enemy = { id: null, name: "", hp: 0, maxHp: 0, atk: 0, level: 1, reward: 0 };
 
         onAuthStateChanged(auth, async (user) => {
             if (!user) { window.location.href = 'index.html'; return; }
@@ -96,7 +95,6 @@
                 name: battleData.name,
                 level: battleData.level,
                 reward: battleData.reward,
-                isPvP: !!battleData.isPvP,
                 maxHp: 50 + (battleData.level * 35),
                 hp: 50 + (battleData.level * 35),
                 atk: 15 + (battleData.level * 6)
@@ -113,15 +111,15 @@
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 player.username = data.username;
-                player.stats = data.stats || player.stats;
                 player.maxHp = 100 + ((data.level || 1) * 15);
                 player.hp = (data.energy !== undefined) ? data.energy : player.maxHp;
                 player.inventory = data.inventory || [];
-                player.potions = data.potions || []; // טעינת שיקויים מה-DB
+                player.potions = data.potions || [];
+                player.equippedWeapon = data.equippedWeapon || null; // טעינת הנשק המצויד
                 
                 renderActions();
                 updateUI();
-                addLog(`מערכת זיהתה: ${enemy.name}. התחל סריקה טקטית.`, 'text-red-500 font-bold');
+                addLog(`מערכת זיהתה: ${enemy.name}. מוכן לקרב.`, 'text-red-500 font-bold');
             }
         });
 
@@ -133,7 +131,6 @@
             player.isMyTurn = false;
 
             if (isPotion) {
-                // לוגיקת שיקויים
                 if (item.heal) {
                     const healAmount = Math.floor(player.maxHp * (item.heal / 100));
                     player.hp = Math.min(player.maxHp, player.hp + healAmount);
@@ -141,25 +138,16 @@
                 }
                 if (item.buffAtk) {
                     player.stats.atkMod *= item.buffAtk;
-                    addLog(`שימוש ב${item.name}: עוצמת התקפה עלתה!`, 'text-orange-400 font-bold');
+                    addLog(`שימוש ב${item.name}: הנזק עלה!`, 'text-orange-400 font-bold');
                 }
-
-                // הסרת השיקוי מהמערך ועדכון ה-DB
                 player.potions.splice(potionIndex, 1);
-                await updateDoc(doc(db, "players", auth.currentUser.uid), {
-                    potions: player.potions
-                });
-                
-                renderActions(); // רענון הכפתורים (הסרת השיקוי שנוצל)
+                await updateDoc(doc(db, "players", auth.currentUser.uid), { potions: player.potions });
+                renderActions();
             } else {
-                // לוגיקת התקפה רגילה
                 const res = calculateDamage(item.baseAtk, player.stats.atkMod, true);
-                if (res.val > 0) {
-                    enemy.hp -= res.val;
-                    damageStats.dealt += res.val;
-                    addLog(`התקפת עם ${item.name}: ${res.type === 'CRIT' ? '⚡ ' : ''}${res.val} נזק`, 'text-white font-black italic');
-                    triggerShake('enemy-area');
-                }
+                enemy.hp -= res.val;
+                addLog(`השתמשת ב${item.name}: ${res.type === 'CRIT' ? '⚡ ' : ''}${res.val} נזק`, 'text-white font-black italic');
+                triggerShake('enemy-area');
             }
 
             updateUI();
@@ -170,61 +158,22 @@
         function enemyTurn() {
             if (enemy.hp <= 0) return;
             const res = calculateDamage(enemy.atk, 1, false);
-            
             if (res.type !== 'MISS') {
                 player.hp -= res.val;
-                damageStats.received += res.val;
-                addLog(`${enemy.name} פגע בך: ${res.val} נזק`, 'text-red-400 font-bold');
+                addLog(`${enemy.name} תקף: ${res.val} נזק`, 'text-red-400 font-bold');
                 triggerShake('player-hp-bar');
             } else {
-                addLog(`זריזות הלוחם! ${enemy.name} פספס!`, 'text-blue-400 font-bold');
+                addLog(`התחמקות! הלוחם פספס אותך.`, 'text-blue-400 font-bold');
             }
-
             updateUI();
             if (player.hp <= 0) processDefeat();
             else player.isMyTurn = true;
         }
 
-        async function processVictory() {
-            addLog(`🏆 ניצחון! נאספו ${enemy.reward} זוזים.`, 'text-yellow-400 font-black italic uppercase');
-            document.getElementById('action-buttons').innerHTML = '<div class="text-green-500 font-bold animate-pulse text-center w-full">הנתונים נשמרים...</div>';
-
-            try {
-                const myUpdates = {
-                    coins: increment(enemy.reward),
-                    xp: increment(enemy.level * 2),
-                    energy: Math.max(0, Math.floor(player.hp)),
-                    lastHpUpdate: serverTimestamp()
-                };
-                await updateDoc(doc(db, "players", auth.currentUser.uid), myUpdates);
-            } catch (error) { console.error(error); }
-
-            setTimeout(() => { window.location.href = 'dashboard.html'; }, 2000);
-        }
-
-        async function processDefeat() {
-            addLog(`💀 תבוסה... המערכות קרסו.`, 'text-red-600 font-black');
-            player.hp = 0;
-            updateUI();
-            document.getElementById('action-buttons').innerHTML = '<div class="text-red-500 font-bold animate-pulse text-center w-full">מתנתק...</div>';
-
-            try {
-                await updateDoc(doc(db, "players", auth.currentUser.uid), { 
-                    energy: 0,
-                    lastHpUpdate: serverTimestamp() 
-                });
-            } catch (e) { console.error(e); }
-
-            setTimeout(() => { window.location.href = 'dashboard.html'; }, 2000);
-        }
-
         function calculateDamage(base, modifier, isPlayerAttacking) {
             const variance = (Math.random() * 0.3) + 0.85;
             let finalDmg = base * (modifier || 1) * variance;
-            if (!isPlayerAttacking) {
-                if (Math.random() < (player.stats.evaMod || 0.1)) return { val: 0, type: 'MISS' };
-                finalDmg /= (player.stats.defMod || 1);
-            }
+            if (!isPlayerAttacking && Math.random() < 0.1) return { val: 0, type: 'MISS' };
             return { val: Math.floor(finalDmg), type: Math.random() > 0.9 ? 'CRIT' : 'HIT' };
         }
 
@@ -232,27 +181,35 @@
             const container = document.getElementById('action-buttons');
             container.innerHTML = '';
             
-            // כפתור התקפה בסיסי
-            container.appendChild(createActionBtn('basic_attack', false));
+            // 1. נשק מצויד - מקבל עדיפות עליונה ועיצוב מיוחד
+            if (player.equippedWeapon && itemDatabase[player.equippedWeapon]) {
+                container.appendChild(createActionBtn(player.equippedWeapon, false, -1, true));
+            } else {
+                // רק אם אין נשק מצויד, מציגים מכה בסיסית
+                container.appendChild(createActionBtn('basic_attack', false));
+            }
 
-            // נשקים מהאינוונטורי
+            // 2. פריטים אחרים מהאינוונטורי (שאינם הנשק המצויד)
             player.inventory.forEach(itemId => {
-                if (itemDatabase[itemId]) container.appendChild(createActionBtn(itemId, false));
+                if (itemDatabase[itemId] && itemId !== player.equippedWeapon) {
+                    container.appendChild(createActionBtn(itemId, false));
+                }
             });
 
-            // שיקויים מהתרמיל
+            // 3. שיקויים
             player.potions.forEach((itemId, index) => {
                 if (itemDatabase[itemId]) container.appendChild(createActionBtn(itemId, true, index));
             });
         }
 
-        function createActionBtn(itemId, isPotion, index = -1) {
+        function createActionBtn(itemId, isPotion, index = -1, isEquipped = false) {
             const item = itemDatabase[itemId];
             const btn = document.createElement('button');
-            const potionClass = isPotion ? "potion-btn" : "border-slate-700";
+            let extraClass = isPotion ? "potion-btn" : "border-slate-700";
+            if (isEquipped) extraClass = "weapon-btn";
             
-            btn.className = `glass p-4 rounded-2xl font-black text-xs hover:bg-slate-800 border uppercase italic transition-all active:scale-95 flex items-center justify-center gap-2 ${potionClass}`;
-            btn.innerHTML = `<span>${item.icon}</span> ${item.name}`;
+            btn.className = `glass p-4 rounded-2xl font-black text-xs hover:bg-slate-800 border uppercase italic transition-all active:scale-95 flex items-center justify-center gap-2 ${extraClass}`;
+            btn.innerHTML = `<span>${item.icon}</span> ${item.name} ${isEquipped ? '<span class="text-[8px] opacity-50">(חמוש)</span>' : ''}`;
             btn.onclick = () => handleAction(itemId, isPotion, index);
             return btn;
         }
@@ -262,7 +219,24 @@
             document.getElementById('enemy-hp-text').innerText = `${Math.max(0, Math.floor(enemy.hp))}/${enemy.maxHp} HP`;
             document.getElementById('player-hp-bar').style.width = Math.max(0, (player.hp / player.maxHp * 100)) + "%";
             document.getElementById('player-hp-text').innerText = Math.max(0, Math.floor(player.hp));
-            document.getElementById('player-max-hp-display').innerText = `/${player.maxHp} HP`;
+            document.getElementById('player-max-hp-display').innerText = `/${player.maxHp} %`;
+        }
+
+        async function processVictory() {
+            addLog(`🏆 ניצחון! נאספו ${enemy.reward} זוזים.`, 'text-yellow-400 font-black italic uppercase');
+            await updateDoc(doc(db, "players", auth.currentUser.uid), {
+                coins: increment(enemy.reward),
+                xp: increment(enemy.level * 2),
+                energy: Math.floor(player.hp),
+                lastHpUpdate: serverTimestamp()
+            });
+            setTimeout(() => { window.location.href = 'dashboard.html'; }, 2000);
+        }
+
+        async function processDefeat() {
+            addLog(`💀 תבוסה...`, 'text-red-600 font-black');
+            await updateDoc(doc(db, "players", auth.currentUser.uid), { energy: 0, lastHpUpdate: serverTimestamp() });
+            setTimeout(() => { window.location.href = 'dashboard.html'; }, 2000);
         }
 
         function addLog(msg, colorClass) {
