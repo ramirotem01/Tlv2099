@@ -21,7 +21,14 @@
         }
         .enemy-glow { filter: drop-shadow(0 0 30px rgba(239, 68, 68, 0.4)); }
         .potion-btn { border-color: rgba(34, 211, 238, 0.3) !important; color: #22d3ee !important; }
-        .weapon-btn { border-color: rgba(59, 130, 246, 0.5) !important; background: rgba(59, 130, 246, 0.1) !important; box-shadow: 0 0 15px rgba(59, 130, 246, 0.2); }
+        .weapon-btn { border-color: rgba(59, 130, 246, 0.5) !important; background: rgba(59, 130, 246, 0.2) !important; box-shadow: 0 0 15px rgba(59, 130, 246, 0.3); }
+        
+        /* עיצוב לוג הקרב לקריאות מקסימלית */
+        #battle-log p {
+            margin-bottom: 4px;
+            padding: 2px 8px;
+            border-right: 2px solid transparent;
+        }
     </style>
 </head>
 <body class="flex flex-col items-center justify-between p-4 md:p-8">
@@ -32,7 +39,7 @@
             <div id="enemy-level" class="text-slate-500 text-[10px] font-black tracking-[0.3em]">LEVEL --</div>
         </div>
         
-        <div class="relative w-40 h-40 md:w-52 md:h-52 mx-auto mb-6 bg-slate-900/40 rounded-full flex items-center justify-center border border-red-900/20 shadow-2xl overflow-hidden">
+        <div class="relative w-36 h-36 md:w-48 md:h-48 mx-auto mb-4 bg-slate-900/40 rounded-full flex items-center justify-center border border-red-900/20 shadow-2xl overflow-hidden">
             <span id="enemy-icon" class="text-7xl md:text-8xl enemy-glow">👾</span>
         </div>
 
@@ -44,15 +51,15 @@
         </div>
     </div>
 
-    <div id="battle-log" class="glass w-full max-w-xl p-5 rounded-[2rem] h-32 overflow-y-auto text-sm border border-slate-800 my-4 font-mono">
-        <p class="text-blue-500 font-bold">► מערכת קרב מאותחלת...</p>
+    <div id="battle-log" class="glass w-full max-w-xl p-5 rounded-[2rem] h-40 overflow-y-auto text-xs md:text-sm border border-slate-800 my-2 font-mono">
+        <p class="text-blue-500 font-bold border-blue-500">► מערכת קרב מאותחלת...</p>
     </div>
 
     <div class="w-full max-w-xl bg-slate-900/50 p-6 rounded-[2.5rem] border border-slate-800">
-        <div class="flex justify-between items-end mb-5">
+        <div class="flex justify-between items-end mb-4">
             <div class="flex flex-col gap-1">
-                <span id="player-class-name" class="text-[10px] font-black text-blue-500 uppercase tracking-widest italic">טוען לוחם...</span>
-                <div class="w-48 bg-slate-950 h-2.5 rounded-full border border-slate-800 p-0.5">
+                <span id="player-class-name" class="text-[10px] font-black text-blue-500 uppercase tracking-widest italic">לוחם בחיבור...</span>
+                <div class="w-40 bg-slate-950 h-2.5 rounded-full border border-slate-800 p-0.5">
                     <div id="player-hp-bar" class="hp-bar bg-green-500 h-full rounded-full" style="width: 100%"></div>
                 </div>
             </div>
@@ -62,7 +69,7 @@
             </div>
         </div>
 
-        <div id="action-buttons" class="grid grid-cols-2 gap-3"></div>
+        <div id="action-buttons" class="grid grid-cols-1 gap-2 overflow-y-auto max-h-48 pr-2"></div>
     </div>
 
     <script type="module">
@@ -85,12 +92,11 @@
             'speed_large': { name: 'זריזות גדול', buffEva: 0.35, icon: '⚡', type: 'potion' }
         };
 
-        let player = { hp: 100, maxHp: 100, inventory: [], potions: [], equippedWeapon: null, isMyTurn: true, stats: { atkMod: 1, defMod: 1, evaMod: 0.1 }, username: "" };
+        let player = { hp: 100, maxHp: 100, inventory: [], potions: [], equippedWeapon: null, isMyTurn: true, stats: { atkMod: 1, defMod: 1, evaMod: 0.1 } };
         let enemy = { id: null, name: "", hp: 0, maxHp: 0, atk: 0, level: 1, reward: 0 };
 
         onAuthStateChanged(auth, async (user) => {
             if (!user) { window.location.href = 'index.html'; return; }
-            
             const battleData = JSON.parse(localStorage.getItem('currentBattle'));
             if (!battleData) { window.location.href = 'map.html'; return; }
 
@@ -114,7 +120,6 @@
             const docSnap = await getDoc(doc(db, "players", user.uid));
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                player.username = data.username;
                 player.maxHp = 100 + ((data.level || 1) * 15);
                 player.hp = (data.energy !== undefined) ? data.energy : player.maxHp;
                 player.inventory = data.inventory || [];
@@ -123,7 +128,7 @@
                 
                 renderActions();
                 updateUI();
-                addLog(`מערכת זיהתה: ${enemy.name}. מוכן לקרב.`, 'text-red-500 font-bold');
+                addLog(`מערכת זיהתה: ${enemy.name}.`, 'text-red-500 font-bold border-red-900/50');
             }
         });
 
@@ -138,20 +143,11 @@
                 if (item.heal) {
                     const healAmount = Math.floor(player.maxHp * (item.heal / 100));
                     player.hp = Math.min(player.maxHp, player.hp + healAmount);
-                    addLog(`שימוש ב${item.name}: +${healAmount} HP`, 'text-cyan-400 font-bold');
+                    addLog(`שימוש ב${item.name}: +${healAmount} HP`, 'text-cyan-400 font-bold border-cyan-900/50');
                 }
-                if (item.buffAtk) {
-                    player.stats.atkMod *= item.buffAtk;
-                    addLog(`שימוש ב${item.name}: הנזק עלה!`, 'text-orange-400 font-bold');
-                }
-                if (item.buffDef) {
-                    player.stats.defMod *= item.buffDef;
-                    addLog(`שימוש ב${item.name}: ההגנה עלתה!`, 'text-blue-400 font-bold');
-                }
-                if (item.buffEva) {
-                    player.stats.evaMod += item.buffEva;
-                    addLog(`שימוש ב${item.name}: הזריזות עלתה!`, 'text-yellow-400 font-bold');
-                }
+                if (item.buffAtk) { player.stats.atkMod *= item.buffAtk; addLog(`שימוש ב${item.name}: הנזק עלה!`, 'text-orange-400 font-bold border-orange-900/50'); }
+                if (item.buffDef) { player.stats.defMod *= item.buffDef; addLog(`שימוש ב${item.name}: ההגנה עלתה!`, 'text-blue-400 font-bold border-blue-900/50'); }
+                if (item.buffEva) { player.stats.evaMod += item.buffEva; addLog(`שימוש ב${item.name}: הזריזות עלתה!`, 'text-yellow-400 font-bold border-yellow-900/50'); }
 
                 player.potions.splice(potionIndex, 1);
                 await updateDoc(doc(db, "players", auth.currentUser.uid), { potions: player.potions });
@@ -159,7 +155,7 @@
             } else {
                 const res = calculateDamage(item.baseAtk, player.stats.atkMod, true);
                 enemy.hp -= res.val;
-                addLog(`השתמשת ב${item.name}: ${res.type === 'CRIT' ? '⚡ ' : ''}${res.val} נזק`, 'text-white font-black italic');
+                addLog(`השתמשת ב${item.name}: ${res.type === 'CRIT' ? '⚡ ' : ''}${res.val} נזק`, 'text-white font-black italic border-slate-700');
                 triggerShake('enemy-area');
             }
 
@@ -174,10 +170,10 @@
             
             if (res.type !== 'MISS') {
                 player.hp -= res.val;
-                addLog(`${enemy.name} תקף: ${res.val} נזק`, 'text-red-400 font-bold');
+                addLog(`${enemy.name} תקף: ${res.val} נזק`, 'text-red-400 font-bold border-red-500/30');
                 triggerShake('player-hp-bar');
             } else {
-                addLog(`התחמקות! הלוחם פספס אותך.`, 'text-blue-400 font-bold');
+                addLog(`התחמקות! הלוחם פספס אותך.`, 'text-blue-400 font-bold border-blue-500/30');
             }
             updateUI();
             if (player.hp <= 0) processDefeat();
@@ -187,9 +183,7 @@
         function calculateDamage(base, modifier, isPlayerAttacking) {
             const variance = (Math.random() * 0.3) + 0.85;
             let finalDmg = base * (modifier || 1) * variance;
-            if (!isPlayerAttacking && Math.random() < player.stats.evaMod) {
-                return { val: 0, type: 'MISS' };
-            }
+            if (!isPlayerAttacking && Math.random() < player.stats.evaMod) return { val: 0, type: 'MISS' };
             return { val: Math.floor(finalDmg), type: Math.random() > 0.9 ? 'CRIT' : 'HIT' };
         }
 
@@ -222,9 +216,9 @@
             let extraClass = isPotion ? "potion-btn" : "border-slate-700";
             if (isEquipped) extraClass = "weapon-btn";
             
-            // שינוי ה-padding מ-p-4 ל-p-3 כדי להקטין במעט את הגובה
-            btn.className = `glass p-3 rounded-2xl font-black text-xs hover:bg-slate-800 border uppercase italic transition-all active:scale-95 flex items-center justify-center gap-2 ${extraClass}`;
-            btn.innerHTML = `<span>${item.icon}</span> ${item.name} ${isEquipped ? '<span class="text-[8px] opacity-50">(חמוש)</span>' : ''}`;
+            // הכפתור עכשיו תופס את כל הרוחב (w-full) וגובהו קבוע (h-12) לסדר בעיניים
+            btn.className = `glass w-full h-12 rounded-xl font-black text-[11px] hover:bg-slate-800 border uppercase italic transition-all active:scale-[0.98] flex items-center px-4 gap-3 mb-1 shrink-0 ${extraClass}`;
+            btn.innerHTML = `<span class="text-lg">${item.icon}</span> <span>${item.name}</span> ${isEquipped ? '<span class="mr-auto text-[8px] text-blue-400 font-bold tracking-tighter">ACTIVE WEAPON</span>' : ''}`;
             btn.onclick = () => handleAction(itemId, isPotion, index);
             return btn;
         }
@@ -238,7 +232,7 @@
         }
 
         async function processVictory() {
-            addLog(`🏆 ניצחון! נאספו ${enemy.reward} זוזים.`, 'text-yellow-400 font-black italic uppercase');
+            addLog(`🏆 ניצחון! +${enemy.reward} זוזים`, 'text-yellow-400 font-black italic border-yellow-500');
             await updateDoc(doc(db, "players", auth.currentUser.uid), {
                 coins: increment(enemy.reward),
                 xp: increment(enemy.level * 2),
@@ -249,7 +243,7 @@
         }
 
         async function processDefeat() {
-            addLog(`💀 תבוסה...`, 'text-red-600 font-black');
+            addLog(`💀 תבוסה...`, 'text-red-600 font-black border-red-600');
             await updateDoc(doc(db, "players", auth.currentUser.uid), { energy: 0, lastHpUpdate: serverTimestamp() });
             setTimeout(() => { window.location.href = 'dashboard.html'; }, 2000);
         }
