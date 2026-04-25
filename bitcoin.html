@@ -39,8 +39,13 @@
 
         <main class="flex flex-col md:flex-row gap-6 items-stretch flex-grow my-6">
             <div class="glass rounded-[3rem] p-10 text-center neon-border flex-1 flex flex-col justify-center items-center">
-                <div class="text-8xl mb-6 drop-shadow-[0_0_25px_rgba(234,179,8,0.6)]">₿</div>
-                <h2 class="text-3xl font-black mb-4 italic uppercase">סריקת שטח זמינה</h2>
+                <div class="text-8xl mb-4 drop-shadow-[0_0_25px_rgba(234,179,8,0.6)]">₿</div>
+                <h2 class="text-3xl font-black mb-2 italic uppercase tracking-tighter">הסריקה מוכנה</h2>
+                
+                <p class="text-slate-400 text-sm mb-8 leading-relaxed max-w-xs mx-auto font-medium">
+                    צא אל השממה הדיגיטלית. אתה עשוי למצוא עושר רב, אך היזהר - המפלצות אורבות בכל פינה.
+                </p>
+                
                 <div class="w-full max-w-sm space-y-4">
                     <button id="start-quest" class="btn-gold w-full py-5 rounded-3xl text-xl shadow-2xl uppercase italic tracking-tighter">
                         צא לחפש ביטקויין
@@ -144,14 +149,12 @@
                     result = { title: 'נשק אגדי', icon: '⚔️', desc: `מצאת ${w}.` };
                 }
 
-                // הצגת תוצאה
                 document.getElementById('result-area').classList.remove('hidden');
                 document.getElementById('story-text').innerText = story.text;
                 document.getElementById('loot-title').innerText = result.title;
                 document.getElementById('loot-desc').innerText = result.desc;
                 document.getElementById('loot-icon').innerText = result.icon;
 
-                // שליחת הודעה
                 await addDoc(collection(db, "messages"), {
                     userId: auth.currentUser.uid,
                     username: player.username || "סוכן",
@@ -160,7 +163,7 @@
                     type: 'quest'
                 });
 
-                startTimer(300);
+                startTimer(100);
             } catch (e) {
                 console.error(e);
                 btn.disabled = false;
