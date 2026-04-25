@@ -18,7 +18,6 @@
         .msg-card:hover { transform: translateX(-5px); background: rgba(30, 41, 59, 0.9); }
         .msg-unread { border-right-color: #3b82f6; background: rgba(30, 41, 59, 0.8); box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.1); }
         .neon-text { text-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
-        .envelope-icon { filter: drop-shadow(0 0 5px rgba(59, 130, 246, 0.5)); }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -50,7 +49,7 @@
     <script type="module">
         import { auth, db } from './firebase-config.js';
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { collection, query, where, orderBy, limit, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { collection, query, where, orderBy, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
@@ -66,11 +65,11 @@
             const loading = document.getElementById('loading');
 
             try {
+                // יצירת השאילתה - שים לב ל-createdAt
                 const q = query(
                     collection(db, "notifications"),
                     where("targetUserId", "==", userId),
-                    orderBy("createdAt", "desc"),
-                    limit(15)
+                    orderBy("createdAt", "desc")
                 );
 
                 const querySnapshot = await getDocs(q);
@@ -78,13 +77,14 @@
 
                 if (querySnapshot.empty) {
                     noMsg.classList.remove('hidden');
+                    container.innerHTML = '';
                     return;
                 }
 
                 container.innerHTML = '';
-                querySnapshot.forEach((documentSnap) => {
-                    const msg = documentSnap.data();
-                    const msgId = documentSnap.id;
+                querySnapshot.forEach((docSnap) => {
+                    const msg = docSnap.data();
+                    const msgId = docSnap.id;
                     const date = msg.createdAt ? new Date(msg.createdAt.toMillis()).toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'}) : '--:--';
                     
                     const card = document.createElement('div');
@@ -93,53 +93,26 @@
                     let icon = msg.isRead ? '📂' : '✉️';
                     let contentHtml = "";
 
-                    // סוג 1: קרב PvP
                     if (msg.type === 'pvp_attack') {
                         const win = msg.result === 'win';
                         contentHtml = `
                             <div class="flex justify-between items-start mb-2">
                                 <span class="text-[10px] font-black ${win ? 'text-green-400' : 'text-red-400'} uppercase tracking-widest">${win ? '🛡️ הגנה מוצלחת' : '💀 המערכת נפרצה'}</span>
-                                <span class="text-[10px] text-slate-500 font-mono tracking-tighter">${date}</span>
-                            </div>
-                            <p class="text-sm font-bold mb-2">הצייד <span class="text-blue-400 underline decoration-blue-500/30 underline-offset-4">${msg.attackerName}</span> ניסה לאגף אותך!</p>
-                            <div class="grid grid-cols-2 gap-2 text-[10px] bg-black/40 p-3 rounded-xl border border-slate-800/50">
-                                <div>נזק שספגת: <span class="${win ? 'text-slate-400' : 'text-red-400'} font-bold">${msg.damageReceived || 0}</span></div>
-                                <div>נזק שגרמת: <span class="text-blue-400 font-bold">${msg.damageDealt || 0}</span></div>
-                                <div class="col-span-2 pt-2 border-t border-slate-800 mt-1 flex justify-between">
-                                    <span>סטטוס משאבים:</span>
-                                    <span class="${win ? 'text-yellow-400' : 'text-red-500'} font-black">${win ? '+' + (msg.reward || 50) + ' זוזים' : '-' + (msg.lostCoins || 0) + ' זוזים'}</span>
-                                </div>
-                            </div>
-                        `;
-                    } 
-                    // סוג 2: מארב מפלצת (Offline Ambush) - חדש
-                    else if (msg.type === 'monster_ambush') {
-                        const win = msg.result === 'win';
-                        icon = win ? '🛡️' : '👾';
-                        contentHtml = `
-                            <div class="flex justify-between items-start mb-2">
-                                <span class="text-[10px] font-black ${win ? 'text-green-400' : 'text-red-500'} uppercase tracking-widest">${win ? 'מארב נהדף' : 'נפגעת ממארב'}</span>
-                                <span class="text-[10px] text-slate-500 font-mono tracking-tighter">${date}</span>
-                            </div>
-                            <p class="text-sm font-bold mb-2">${msg.text}</p>
-                            <div class="grid grid-cols-2 gap-2 text-[10px] bg-black/40 p-3 rounded-xl border border-slate-800/50">
-                                <div>נזק שספגת: <span class="text-red-400 font-bold">${msg.damageReceived || 0} HP</span></div>
-                                <div class="text-left">
-                                    <span class="${win ? 'text-yellow-400' : 'text-slate-400'} font-black italic">
-                                        ${win ? '+' + msg.reward + ' זוזים' : 'איבוד ציוד'}
-                                    </span>
-                                </div>
-                            </div>
-                        `;
-                    }
-                    // סוג 3: הודעה כללית/עליית רמה
-                    else {
-                        contentHtml = `
-                            <div class="flex justify-between items-start mb-2">
-                                <span class="text-[10px] font-black text-yellow-400 uppercase tracking-widest">✨ עדכון מערכת</span>
                                 <span class="text-[10px] text-slate-500 font-mono">${date}</span>
                             </div>
-                            <p class="text-sm font-bold">${msg.text || 'הודעה מוצפנת מהחמ"ל'}</p>
+                            <p class="text-sm font-bold mb-2">הצייד ${msg.attackerName || 'אנונימי'} תקף אותך!</p>
+                            <div class="grid grid-cols-2 gap-2 text-[10px] bg-black/40 p-3 rounded-xl border border-slate-800/50">
+                                <div>נזק שספגת: <span class="text-red-400 font-bold">${msg.damageReceived || 0}</span></div>
+                                <div class="text-left font-black ${win ? 'text-yellow-400' : 'text-red-500'}">${win ? '+' + (msg.reward || 0) : '-' + (msg.lostCoins || 0)} זוזים</div>
+                            </div>
+                        `;
+                    } else {
+                        contentHtml = `
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="text-[10px] font-black text-yellow-400 uppercase tracking-widest">✨ עדכון</span>
+                                <span class="text-[10px] text-slate-500 font-mono">${date}</span>
+                            </div>
+                            <p class="text-sm font-bold">${msg.text || 'הודעה חדשה מהמערכת'}</p>
                         `;
                     }
 
@@ -156,27 +129,19 @@
 
             } catch (err) {
                 console.error("Error loading messages:", err);
-                loading.innerHTML = `
-                    <div class="bg-red-500/10 border border-red-500/50 p-4 rounded-xl">
-                        <p class="text-red-400 text-xs font-bold">שגיאת סנכרון נתונים</p>
-                    </div>
-                `;
+                // אם חסר אינדקס, תופיע כאן שגיאה בקונסול עם לינק ליצירת האינדקס
+                loading.innerHTML = `<p class="text-red-400 text-xs">שגיאה בטעינה. בדוק את ה-Console.</p>`;
             }
         }
 
         async function markAsRead(msgId, element) {
             if (!element.classList.contains('msg-unread')) return; 
-
             try {
-                await updateDoc(doc(db, "notifications", msgId), {
-                    isRead: true
-                });
-                
+                await updateDoc(doc(db, "notifications", msgId), { isRead: true });
                 element.classList.remove('msg-unread');
                 element.classList.add('opacity-80');
-                const iconDiv = element.querySelector('.envelope-icon');
-                if (iconDiv && iconDiv.innerText === '✉️') iconDiv.innerText = '📂';
-                
+                const icon = element.querySelector('.envelope-icon');
+                if (icon) icon.innerText = '📂';
             } catch (err) {
                 console.error("Error marking as read:", err);
             }
