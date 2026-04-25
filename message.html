@@ -63,13 +63,12 @@
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { collection, query, where, getDocs, updateDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        let currentPlayerLevel = 1; // ברירת מחדל
+        let currentPlayerLevel = 1;
 
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 document.getElementById('debug-status').innerText = `מזהה משתמש: ${user.uid.substring(0,8)}...`;
                 
-                // שליפת רמת השחקן מה-DB לפני טעינת ההודעות
                 const playerDoc = await getDoc(doc(db, "players", user.uid));
                 if (playerDoc.exists()) {
                     currentPlayerLevel = playerDoc.data().level || 1;
@@ -145,21 +144,36 @@
         }
 
         function formatMessageBody(msg) {
-            let title = msg.text || 'הודעה חדשה';
-            let body = msg.text || 'התקבלה הודעה חדשה במערכת.';
+            // חילוץ הטקסט המקורי מהשדה text או message ב-Firestore
+            const originalContent = msg.text || msg.message || "";
+            
+            let title = "הודעה חדשה";
+            let body = originalContent || "התקבלה הודעה חדשה במערכת.";
             let icon = '✉️';
 
-            // זיהוי עליית רמה
-            if (msg.type === 'LEVEL_UP' || title.includes('עלה שלב') || title.includes('רמה')) {
+            // אם זו הודעת רמה
+            if (msg.type === 'LEVEL_UP' || (originalContent && originalContent.includes('רמה'))) {
                 icon = '⬆️';
                 title = 'בשורות נהדרות!';
-                // אנחנו משתמשים ברמה ששלפנו מהשחקן (currentPlayerLevel)
                 const oldLevel = currentPlayerLevel > 1 ? currentPlayerLevel - 1 : 1;
-                body = `הצלחת לעלות שלב מרמה ${oldLevel} לרמה ${currentPlayerLevel}! היכולות שלך שודרגו, המשך כך!`;
+                // אם יש תוכן מקורי, נציג אותו. אם לא, נציג את הנוסח הקבוע.
+                body = originalContent ? originalContent : `הצלחת לעלות שלב מרמה ${oldLevel} לרמה ${currentPlayerLevel}!`;
+                
+                // הוספת הפירוט המבוקש אם הוא לא קיים בטקסט המקורי
+                if (!body.includes('מרמה')) {
+                    body = `הצלחת לעלות שלב מרמה ${oldLevel} לרמה ${currentPlayerLevel}! ` + body;
+                }
             } 
-            else if (msg.type === 'REWARD' || title.includes('זוזים')) {
+            // הודעות פרס
+            else if (msg.type === 'REWARD' || (originalContent && originalContent.includes('זוזים'))) {
                 icon = '💰';
-                body = `הפקדה בוצעה בהצלחה לחשבונך: ${msg.text}`;
+                title = 'תגמול התקבל';
+                body = originalContent;
+            }
+            // הודעות מערכת אחרות
+            else {
+                title = msg.title || "עדכון מערכת";
+                body = originalContent || "אין תוכן להודעה זו.";
             }
 
             return { title, body, icon };
