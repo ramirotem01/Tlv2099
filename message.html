@@ -17,6 +17,20 @@
         .msg-card { transition: all 0.3s ease; border-right: 4px solid transparent; }
         .msg-unread { border-right-color: #3b82f6; background: rgba(30, 41, 59, 0.8); }
         .neon-text { text-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
+        
+        /* כפתור חזרה משודרג */
+        .back-btn {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(30, 41, 59, 0.5));
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.1);
+            transition: all 0.3s ease;
+        }
+        .back-btn:hover {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+            transform: translateX(5px);
+        }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -27,7 +41,10 @@
                 <h1 class="text-4xl font-black italic tracking-tighter neon-text uppercase">In-Box</h1>
                 <p id="debug-status" class="text-blue-400 text-[10px] font-bold uppercase tracking-widest">מערכת מוצפנת: סורק...</p>
             </div>
-            <a href="dashboard.html" class="glass p-3 px-6 rounded-2xl font-bold text-xs hover:bg-slate-800 transition-all border border-blue-500/20">חזרה</a>
+            <a href="dashboard.html" class="back-btn p-3 px-6 rounded-xl font-black text-[11px] uppercase tracking-tighter flex items-center gap-2">
+                <span>חזרה לחמ"ל</span>
+                <span class="text-blue-400">◄</span>
+            </a>
         </header>
 
         <div id="messages-container" class="space-y-4">
@@ -45,7 +62,7 @@
     <script type="module">
         import { auth, db } from './firebase-config.js';
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { collection, query, where, orderBy, getDocs, updateDoc, doc, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { collection, query, where, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
@@ -63,18 +80,12 @@
 
             try {
                 const notificationsRef = collection(db, "notifications");
-                
-                // שאילתה רחבה יותר למקרה שיש בעיית מיון או שדות
-                const q = query(
-                    notificationsRef,
-                    where("targetUserId", "==", userId)
-                );
+                const q = query(notificationsRef, where("targetUserId", "==", userId));
 
                 const querySnapshot = await getDocs(q);
                 loading.classList.add('hidden');
 
                 if (querySnapshot.empty) {
-                    console.warn("⚠️ Snapshot empty for ID:", userId);
                     noMsg.classList.remove('hidden');
                     container.innerHTML = '';
                     return;
@@ -82,11 +93,8 @@
 
                 noMsg.classList.add('hidden');
                 
-                // הפיכת ה-Snapshot למערך כדי שנוכל למיין אותו מקומית (עוקף בעיות אינדקס)
                 const allMsgs = [];
                 querySnapshot.forEach(doc => allMsgs.push({ id: doc.id, ...doc.data() }));
-
-                // מיון מקומי לפי זמן (יורד)
                 allMsgs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
                 container.innerHTML = '';
@@ -97,20 +105,24 @@
                         timeDisplay = d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
                     }
 
+                    // פונקציית העשרת המלל
+                    const displayData = formatMessageBody(msg);
+
                     const card = document.createElement('div');
-                    const isUnread = msg.isRead === false; // בודק מול false מפורש
+                    const isUnread = msg.isRead === false;
                     
                     card.className = `glass p-5 rounded-2xl msg-card cursor-pointer border border-slate-800 ${isUnread ? 'msg-unread' : 'opacity-70'}`;
                     
                     card.innerHTML = `
                         <div class="flex gap-4 items-start">
-                            <div class="text-2xl">${isUnread ? '✉️' : '📂'}</div>
+                            <div class="text-2xl">${isUnread ? displayData.icon : '📂'}</div>
                             <div class="flex-1">
                                 <div class="flex justify-between mb-1">
                                     <span class="text-[10px] font-black text-blue-400 uppercase">${msg.type || 'SYSTEM'}</span>
                                     <span class="text-[10px] text-slate-500 font-mono">${timeDisplay}</span>
                                 </div>
-                                <p class="text-sm font-bold">${msg.text || 'הודעה נכנסת'}</p>
+                                <h3 class="text-sm font-black mb-1 ${isUnread ? 'text-white' : 'text-slate-300'}">${displayData.title}</h3>
+                                <p class="text-xs text-slate-400 leading-relaxed">${displayData.body}</p>
                             </div>
                         </div>
                     `;
@@ -121,8 +133,41 @@
 
             } catch (err) {
                 console.error("🔥 Error:", err);
-                loading.innerHTML = `<p class="text-red-400 font-bold">שגיאה: ${err.message}</p>`;
+                loading.innerHTML = `<p class="text-red-400 font-bold">שגיאה בתקשורת</p>`;
             }
+        }
+
+        // פונקציה לעיבוד תוכן ההודעה בצורה חכמה
+        function formatMessageBody(msg) {
+            let title = msg.text || 'הודעה חדשה';
+            let body = 'התקבלה הודעה חדשה במערכת.';
+            let icon = '✉️';
+
+            // אם ההודעה קשורה לעליית רמה
+            if (msg.type === 'LEVEL_UP' || title.includes('רמה') || title.includes('Level')) {
+                icon = '⬆️';
+                title = 'שורות משמחות: עליית דרגה!';
+                
+                // נסיעה לחלץ רמות מהטקסט אם קיימות (למשל: "עלית לרמה 5")
+                const levelMatch = msg.text.match(/\d+/);
+                if (levelMatch) {
+                    const newLevel = parseInt(levelMatch[0]);
+                    body = `הודעה רשמית: השחקן עלה מרמה ${newLevel - 1} לרמה ${newLevel}. היכולות שלך שודרגו, המשך כך!`;
+                } else {
+                    body = msg.text;
+                }
+            } 
+            // הודעות פרס / זוזים
+            else if (msg.type === 'REWARD' || title.includes('זוזים')) {
+                icon = '💰';
+                body = `הפקדה בוצעה בהצלחה לחשבונך. ${msg.text}`;
+            }
+            // הודעות מערכת כלליות
+            else {
+                body = msg.text;
+            }
+
+            return { title, body, icon };
         }
 
         async function markAsRead(msgId, element) {
