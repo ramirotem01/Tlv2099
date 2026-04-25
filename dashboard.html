@@ -16,13 +16,23 @@
         .glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
         .neon-text { text-shadow: 0 0 15px rgba(255, 255, 255, 0.3); }
         .neon-border { border: 1px solid rgba(59, 130, 246, 0.3); box-shadow: 0 0 15px rgba(59, 130, 246, 0.1); }
-        .nav-node { position: absolute; width: 40px; height: 40px; background: rgba(59, 130, 246, 0.6); border: 2px solid white; border-radius: 50%; cursor: pointer; box-shadow: 0 0 20px rgba(59, 130, 246, 0.8); animation: pulse 2s infinite; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; z-index: 20; }
+        
+        /* Node Styling */
+        .nav-node { position: absolute; width: 40px; height: 40px; background: rgba(59, 130, 246, 0.6); border: 2px solid white; border-radius: 50%; cursor: pointer; box-shadow: 0 0 20px rgba(59, 130, 246, 0.8); animation: pulse 2s infinite; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; z-index: 20; text-decoration: none; }
         .nav-node:hover { transform: scale(1.2); background: #3b82f6; box-shadow: 0 0 40px #3b82f6; }
+        
+        /* Gold Node for Bitcoin */
+        .node-gold { background: rgba(234, 179, 8, 0.6); box-shadow: 0 0 20px rgba(234, 179, 8, 0.8); border-color: #fef08a; animation: pulse-gold 2s infinite; }
+        .node-gold:hover { background: #eab308; box-shadow: 0 0 40px #eab308; }
+
         .nav-node.has-unread { background: rgba(220, 38, 38, 0.8); box-shadow: 0 0 20px rgba(220, 38, 38, 0.8); animation: pulse-red 1s infinite; border-color: #fca5a5; }
         .nav-node::after { content: attr(data-label); position: absolute; bottom: -35px; white-space: nowrap; background: black; padding: 4px 12px; border-radius: 8px; font-size: 11px; font-weight: 800; opacity: 0; pointer-events: none; transition: opacity 0.3s; border: 1px solid #3b82f6; }
         .nav-node:hover::after { opacity: 1; }
+
         @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); } 50% { transform: scale(1.1); box-shadow: 0 0 25px rgba(59, 130, 246, 0.8); } 100% { transform: scale(1); box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); } }
+        @keyframes pulse-gold { 0% { transform: scale(1); box-shadow: 0 0 10px rgba(234, 179, 8, 0.5); } 50% { transform: scale(1.1); box-shadow: 0 0 25px rgba(234, 179, 8, 0.8); } 100% { transform: scale(1); box-shadow: 0 0 10px rgba(234, 179, 8, 0.5); } }
         @keyframes pulse-red { 0% { transform: scale(1); box-shadow: 0 0 10px rgba(220, 38, 38, 0.5); } 50% { transform: scale(1.15); box-shadow: 0 0 30px rgba(220, 38, 38, 0.9); } 100% { transform: scale(1); box-shadow: 0 0 10px rgba(220, 38, 38, 0.5); } }
+        
         .xp-bar-container { height: 6px; width: 100%; background: rgba(0,0,0,0.4); border-radius: 10px; margin-top: 8px; border: 1px solid rgba(255,255,255,0.05); }
         .xp-bar-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); border-radius: 10px; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
@@ -36,6 +46,8 @@
     <a href="score.html" class="nav-node" style="top: 15%; left: 45%;" data-label="קרב ציידים (PvP)">🏆</a>
     <a href="Winner.html" class="nav-node" style="top: 15%; left: 25%; background: rgba(16, 185, 129, 0.6);" data-label="היכל התהילה">🎖️</a>
     <a href="message.html" id="msg-node" class="nav-node" style="top: 50%; left: 85%;" data-label="תיבת הודעות">📩</a>
+    
+    <a href="bitcoin.html" class="nav-node node-gold" style="top: 45%; left: 35%;" data-label="מסע אל הביטקויין">₿</a>
 
     <header class="flex justify-between items-center mb-10 pb-6 border-b border-slate-800 relative z-10">
         <div class="flex items-center gap-4">
@@ -179,11 +191,7 @@
             if (currentXP >= xpNeeded) {
                 const newLevel = currentLevel + 1;
                 const updatedFields = { level: newLevel, xp: currentXP - xpNeeded, energy: 100 };
-                
-                // עדכון השחקן
                 await updateDoc(docRef, updatedFields);
-
-                // יצירת הודעה ב-DB
                 try {
                     await addDoc(collection(db, "notifications"), {
                         targetUserId: auth.currentUser.uid,
@@ -193,12 +201,8 @@
                         isRead: false,
                         timestamp: serverTimestamp()
                     });
-                    // רענון מיידי של הסטטוס בדשבורד
                     checkUnreadMessages(auth.currentUser.uid);
-                } catch (e) {
-                    console.error("שגיאה ביצירת הודעה:", e);
-                }
-
+                } catch (e) { console.error(e); }
                 return { ...data, ...updatedFields };
             }
             return null;
@@ -237,13 +241,11 @@
             if (equippedId && itemStats[equippedId]) {
                 const weapon = itemStats[equippedId];
                 totalAtk += weapon.atk;
-                
                 const itemDiv = document.createElement('div');
-                itemDiv.className = "bg-blue-900/20 p-4 rounded-2xl border border-blue-500/30 flex flex-col items-center min-w-[100px] shadow-[0_0_15px_rgba(59,130,246,0.1)]";
+                itemDiv.className = "bg-blue-900/20 p-4 rounded-2xl border border-blue-500/30 flex flex-col items-center min-w-[100px]";
                 itemDiv.innerHTML = `
                     <span class="text-3xl mb-2">${weapon.icon}</span>
                     <span class="text-[9px] font-bold text-blue-400 uppercase">${weapon.name}</span>
-                    <span class="text-[8px] text-slate-500 mt-1">נשק מצויד</span>
                 `;
                 inventoryContainer.appendChild(itemDiv);
             }
@@ -262,31 +264,18 @@
                 }
             });
 
-            if (inventoryContainer.innerHTML === '') {
-                inventoryContainer.innerHTML = '<div class="text-slate-600 text-[10px] italic">אין ציוד חמוש</div>';
-            }
-
             document.getElementById('stat-power').innerText = totalAtk;
 
             const potionsContainer = document.getElementById('potions-list');
             potionsContainer.innerHTML = '';
-            const potions = data.potions || [];
-            
-            if (potions.length === 0) {
-                potionsContainer.innerHTML = '<div class="text-slate-600 text-[10px] italic">התרמיל ריק</div>';
-            } else {
-                potions.forEach(pId => {
-                    if (potionStats[pId]) {
-                        const pDiv = document.createElement('div');
-                        pDiv.className = "bg-blue-900/10 p-4 rounded-2xl border border-blue-900/20 flex flex-col items-center min-w-[100px]";
-                        pDiv.innerHTML = `
-                            <span class="text-3xl mb-2 filter drop-shadow-md">${potionStats[pId].icon}</span>
-                            <span class="text-[9px] font-bold ${potionStats[pId].color} uppercase">${potionStats[pId].name}</span>
-                        `;
-                        potionsContainer.appendChild(pDiv);
-                    }
-                });
-            }
+            (data.potions || []).forEach(pId => {
+                if (potionStats[pId]) {
+                    const pDiv = document.createElement('div');
+                    pDiv.className = "bg-blue-900/10 p-4 rounded-2xl border border-blue-900/20 flex flex-col items-center min-w-[100px]";
+                    pDiv.innerHTML = `<span class="text-3xl mb-2">${potionStats[pId].icon}</span><span class="text-[9px] font-bold ${potionStats[pId].color} uppercase">${potionStats[pId].name}</span>`;
+                    potionsContainer.appendChild(pDiv);
+                }
+            });
         }
 
         document.getElementById('logout-btn').addEventListener('click', () => {
