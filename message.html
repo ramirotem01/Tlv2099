@@ -18,7 +18,6 @@
         .msg-unread { border-right-color: #3b82f6; background: rgba(30, 41, 59, 0.8); }
         .neon-text { text-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
         
-        /* כפתור חזרה משודרג */
         .back-btn {
             background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(30, 41, 59, 0.5));
             border: 1px solid rgba(59, 130, 246, 0.3);
@@ -62,11 +61,20 @@
     <script type="module">
         import { auth, db } from './firebase-config.js';
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { collection, query, where, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { collection, query, where, getDocs, updateDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        onAuthStateChanged(auth, (user) => {
+        let currentPlayerLevel = 1; // ברירת מחדל
+
+        onAuthStateChanged(auth, async (user) => {
             if (user) {
                 document.getElementById('debug-status').innerText = `מזהה משתמש: ${user.uid.substring(0,8)}...`;
+                
+                // שליפת רמת השחקן מה-DB לפני טעינת ההודעות
+                const playerDoc = await getDoc(doc(db, "players", user.uid));
+                if (playerDoc.exists()) {
+                    currentPlayerLevel = playerDoc.data().level || 1;
+                }
+
                 loadMessages(user.uid);
             } else {
                 window.location.href = 'index.html';
@@ -105,7 +113,6 @@
                         timeDisplay = d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
                     }
 
-                    // פונקציית העשרת המלל
                     const displayData = formatMessageBody(msg);
 
                     const card = document.createElement('div');
@@ -137,34 +144,22 @@
             }
         }
 
-        // פונקציה לעיבוד תוכן ההודעה בצורה חכמה
         function formatMessageBody(msg) {
             let title = msg.text || 'הודעה חדשה';
-            let body = 'התקבלה הודעה חדשה במערכת.';
+            let body = msg.text || 'התקבלה הודעה חדשה במערכת.';
             let icon = '✉️';
 
-            // אם ההודעה קשורה לעליית רמה
-            if (msg.type === 'LEVEL_UP' || title.includes('רמה') || title.includes('Level')) {
+            // זיהוי עליית רמה
+            if (msg.type === 'LEVEL_UP' || title.includes('עלה שלב') || title.includes('רמה')) {
                 icon = '⬆️';
-                title = 'שורות משמחות: עליית דרגה!';
-                
-                // נסיעה לחלץ רמות מהטקסט אם קיימות (למשל: "עלית לרמה 5")
-                const levelMatch = msg.text.match(/\d+/);
-                if (levelMatch) {
-                    const newLevel = parseInt(levelMatch[0]);
-                    body = `הודעה רשמית: השחקן עלה מרמה ${newLevel - 1} לרמה ${newLevel}. היכולות שלך שודרגו, המשך כך!`;
-                } else {
-                    body = msg.text;
-                }
+                title = 'בשורות נהדרות!';
+                // אנחנו משתמשים ברמה ששלפנו מהשחקן (currentPlayerLevel)
+                const oldLevel = currentPlayerLevel > 1 ? currentPlayerLevel - 1 : 1;
+                body = `הצלחת לעלות שלב מרמה ${oldLevel} לרמה ${currentPlayerLevel}! היכולות שלך שודרגו, המשך כך!`;
             } 
-            // הודעות פרס / זוזים
             else if (msg.type === 'REWARD' || title.includes('זוזים')) {
                 icon = '💰';
-                body = `הפקדה בוצעה בהצלחה לחשבונך. ${msg.text}`;
-            }
-            // הודעות מערכת כלליות
-            else {
-                body = msg.text;
+                body = `הפקדה בוצעה בהצלחה לחשבונך: ${msg.text}`;
             }
 
             return { title, body, icon };
