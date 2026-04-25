@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>המסע אל הביטקויין | TLV2099</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;800&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            background: radial-gradient(circle, #0f172a 0%, #020617 100%);
+            color: white; font-family: 'Assistant', sans-serif; min-height: 100vh;
+        }
+        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
+        .neon-border { border: 1px solid rgba(59, 130, 246, 0.5); box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); }
+        .btn-gold { background: linear-gradient(135deg, #f59e0b, #d97706); color: #451a03; font-weight: 900; }
+        .btn-gold:active { transform: scale(0.95); }
+        .fade-in { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="p-4 md:p-8 flex flex-col items-center">
+
+    <div class="max-w-md w-full">
+        <header class="flex justify-between items-center mb-10">
+            <div>
+                <h1 class="text-3xl font-black italic text-yellow-500 tracking-tighter uppercase">BITCOIN QUEST</h1>
+                <p class="text-[10px] text-slate-400 font-bold tracking-widest uppercase">המסע אל הזהב הדיגיטלי</p>
+            </div>
+            <a href="dashboard.html" class="glass p-2 px-4 rounded-lg text-[10px] font-bold border border-slate-700">סגור</a>
+        </header>
+
+        <div class="glass rounded-[2.5rem] p-8 text-center neon-border mb-8">
+            <div class="text-6xl mb-6">₿</div>
+            <h2 class="text-xl font-bold mb-4">מוכן למסע הבא?</h2>
+            <p class="text-slate-400 text-sm mb-8 leading-relaxed">
+                צא אל השממה הדיגיטלית. אתה עשוי למצוא עושר רב, אך היזהר - המפלצות אורבות בכל פינה.
+            </p>
+            
+            <button id="start-quest" class="btn-gold w-full py-4 rounded-2xl text-lg shadow-xl uppercase italic tracking-tighter">
+                צא לחפש ביטקויין
+            </button>
+        </div>
+
+        <div id="result-area" class="hidden space-y-4 fade-in">
+            <div class="glass p-6 rounded-[2rem] border border-slate-800">
+                <p id="story-text" class="italic text-slate-300 text-sm mb-4 leading-relaxed"></p>
+                <div id="loot-display" class="flex items-center gap-4 p-4 bg-slate-950/50 rounded-xl border border-yellow-500/30">
+                    <span id="loot-icon" class="text-3xl">💰</span>
+                    <div>
+                        <h4 id="loot-title" class="font-black text-white">מצאת שלל!</h4>
+                        <p id="loot-desc" class="text-xs text-yellow-500"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { auth, db } from './firebase-config.js';
+        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { doc, getDoc, updateDoc, increment, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { adventureStories } from './story.js';
+
+        let player = null;
+        const btn = document.getElementById('start-quest');
+
+        const potions = ['health_small', 'health_large', 'atk_small', 'def_small'];
+        const weapons = ['pistol_nemesis', 'katana_thermal', 'fire_sword'];
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) window.location.href = 'index.html';
+            const docSnap = await getDoc(doc(db, "players", user.uid));
+            if (docSnap.exists()) player = docSnap.data();
+        });
+
+        btn.onclick = async () => {
+            if (!player) return;
+            btn.disabled = true;
+            btn.innerText = "מחפש...";
+            
+            const rand = Math.random() * 100;
+            let result = {};
+
+            if (rand <= 95) {
+                // 95% זהב: (רמה + רנדומלי של הרמה) * (1 עד 3)
+                const bonus = Math.floor(Math.random() * player.level);
+                const multiplier = Math.floor(Math.random() * 3) + 1;
+                const goldFound = (player.level + bonus) * multiplier;
+                
+                await updateDoc(doc(db, "players", auth.currentUser.uid), {
+                    coins: increment(goldFound)
+                });
+                result = { type: 'GOLD', val: goldFound, title: 'זהב טהור', icon: '💰', desc: `מצאת ${goldFound} זוזים במכולה נטושה.` };
+            } 
+            else if (rand <= 97) {
+                // 2% מפלצת -> מעבר לקרב
+                const enemy = {
+                    name: "שומר נתונים עוין",
+                    level: player.level,
+                    reward: player.level * 10,
+                    img: "https://res.cloudinary.com/dxygefiai/image/upload/v1776868529/monster_placeholder.png"
+                };
+                localStorage.setItem('currentBattle', JSON.stringify(enemy));
+                window.location.href = 'combat.html';
+                return;
+            }
+            else if (rand <= 99) {
+                // 2% שיקוי
+                const potion = potions[Math.floor(Math.random() * potions.length)];
+                await updateDoc(doc(db, "players", auth.currentUser.uid), {
+                    potions: arrayUnion(potion)
+                });
+                result = { type: 'ITEM', title: 'שיקוי נדיר', icon: '🧪', desc: `מצאת ${potion} והכנסת לתרמיל.` };
+            }
+            else {
+                // 1% נשק
+                const weapon = weapons[Math.floor(Math.random() * weapons.length)];
+                await updateDoc(doc(db, "players", auth.currentUser.uid), {
+                    inventory: arrayUnion(weapon)
+                });
+                result = { type: 'ITEM', title: 'נשק אגדי', icon: '⚔️', desc: `מצאת ${weapon}! הציוד עודכן.` };
+            }
+
+            showResult(result);
+            btn.disabled = false;
+            btn.innerText = "צא לחפש ביטקויין";
+        };
+
+        function showResult(res) {
+            const area = document.getElementById('result-area');
+            const story = document.getElementById('story-text');
+            const lTitle = document.getElementById('loot-title');
+            const lDesc = document.getElementById('loot-desc');
+            const lIcon = document.getElementById('loot-icon');
+
+            // הגרלת סיפור מתוך story.js
+            const randomStory = adventureStories[Math.floor(Math.random() * adventureStories.length)];
+            story.innerText = randomStory.text;
+
+            lTitle.innerText = res.title;
+            lDesc.innerText = res.desc;
+            lIcon.innerText = res.icon;
+
+            area.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
