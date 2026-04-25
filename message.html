@@ -67,11 +67,20 @@
 
         onAuthStateChanged(auth, async (user) => {
             if (user) {
-                document.getElementById('debug-status').innerText = `מזהה משתמש: ${user.uid.substring(0,8)}...`;
-                
+                // שליפת נתוני השחקן מה-DB
                 const playerDoc = await getDoc(doc(db, "players", user.uid));
+                
                 if (playerDoc.exists()) {
-                    currentPlayerLevel = playerDoc.data().level || 1;
+                    const playerData = playerDoc.data();
+                    
+                    // עדכון שם המשתמש בתצוגה (במקום ה-UID)
+                    const displayName = playerData.username || "סוכן לא מזוהה";
+                    document.getElementById('debug-status').innerText = `משתמש פעיל: ${displayName}`;
+                    
+                    // שמירת הרמה לשימוש בהודעות
+                    currentPlayerLevel = playerData.level || 1;
+                } else {
+                    document.getElementById('debug-status').innerText = `מזהה משתמש: ${user.uid.substring(0,8)}...`;
                 }
 
                 loadMessages(user.uid);
