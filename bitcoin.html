@@ -134,9 +134,8 @@
         btn.onclick = async () => {
             if (!player || btn.disabled) return;
             
-            // חסימה מיידית לצד לקוח
             btn.disabled = true;
-            btn.innerText = "מעבד נתונים...";
+            btn.innerText = "סורק רשתות...";
 
             const rand = Math.random() * 100;
             let result = {};
@@ -144,7 +143,6 @@
             const playerRef = doc(db, "players", auth.currentUser.uid);
 
             try {
-                // שמירת חותמת זמן מקומית לצורך עדכון מיידי של האובייקט
                 const localNow = new Date();
 
                 if (rand <= 95) {
@@ -169,30 +167,29 @@
                     result = { title: 'נשק אגדי', icon: '⚔️', desc: `מצאת ${w}.` };
                 }
 
-                // עדכון אובייקט השחקן המקומי כדי שהלוגיקה תדע שבוצעה פעולה
                 player.lastQuestTime = localNow;
 
-                // הצגת תוצאות
+                // עדכון ממשק
                 document.getElementById('result-area').classList.remove('hidden');
                 document.getElementById('story-text').innerText = story.text;
                 document.getElementById('loot-title').innerText = result.title;
                 document.getElementById('loot-desc').innerText = result.desc;
                 document.getElementById('loot-icon').innerText = result.icon;
 
-                // שליחת הודעה ללוג
-                await addDoc(collection(db, "messages"), {
-                    userId: auth.currentUser.uid,
-                    username: player.username || "סוכן",
-                    content: `מסע ביטקויין: ${story.text} | תוצאה: ${result.title}`,
-                    timestamp: serverTimestamp(),
-                    type: 'quest'
+                // --- תיקון ההודעות: שליחה ל-notifications ---
+                await addDoc(collection(db, "notifications"), {
+                    targetUserId: auth.currentUser.uid,
+                    title: result.title,
+                    message: `מסע ביטקויין: ${story.text} | תוצאה: ${result.desc}`,
+                    type: 'QUEST',
+                    isRead: false,
+                    createdAt: serverTimestamp()
                 });
 
-                // הפעלת הטיימר מיד ל-5 דקות
                 startTimer(300);
 
             } catch (e) {
-                console.error("Error in quest:", e);
+                console.error("Error:", e);
                 btn.disabled = false;
                 btn.innerText = "צא לחפש ביטקויין";
             }
