@@ -43,8 +43,8 @@
                     צא אל השממה הדיגיטלית. אתה עשוי למצוא עושר רב, אך היזהר - המפלצות אורבות בכל פינה.
                 </p>
                 <div class="w-full max-w-sm space-y-4">
-                    <button id="start-quest" class="btn-gold w-full py-5 rounded-3xl text-xl shadow-2xl uppercase italic tracking-tighter">
-                        צא לחפש ביטקויין
+                    <button id="start-quest" class="btn-gold w-full py-5 rounded-3xl text-xl shadow-2xl uppercase italic tracking-tighter" disabled>
+                        טוען נתונים...
                     </button>
                     <p id="cooldown-timer" class="text-red-500 font-black text-sm h-6 italic tracking-widest"></p>
                 </div>
@@ -88,15 +88,23 @@
         });
 
         function checkCooldown() {
-            if (!player || !player.lastQuestTime) return;
+            if (!player) return;
+            if (!player.lastQuestTime) {
+                btn.disabled = false;
+                btn.innerText = "צא לחפש ביטקויין";
+                return;
+            }
+            
             const now = Date.now();
             const lastQuest = player.lastQuestTime.toMillis ? player.lastQuestTime.toMillis() : player.lastQuestTime;
             const diffSeconds = (now - lastQuest) / 1000;
+            
             if (diffSeconds < 300) {
                 startTimer(Math.floor(300 - diffSeconds));
             } else {
                 btn.disabled = false;
                 btn.innerText = "צא לחפש ביטקויין";
+                timerText.innerText = "";
             }
         }
 
@@ -106,16 +114,17 @@
             if (cooldownInterval) clearInterval(cooldownInterval);
             
             const updateTimerUI = () => {
-                const m = Math.floor(remaining / 60);
-                const s = Math.floor(remaining % 60);
-                timerText.innerText = `מערכות בטעינה: ${m}:${s < 10 ? '0' : ''}${s}`;
-                btn.innerText = "ממתין לסריקה...";
                 if (remaining <= 0) {
                     clearInterval(cooldownInterval);
                     btn.disabled = false;
                     btn.innerText = "צא לחפש ביטקויין";
                     timerText.innerText = "";
+                    return;
                 }
+                const m = Math.floor(remaining / 60);
+                const s = Math.floor(remaining % 60);
+                timerText.innerText = `מערכות בטעינה: ${m}:${s < 10 ? '0' : ''}${s}`;
+                btn.innerText = "ממתין לסריקה...";
                 remaining--;
             };
             updateTimerUI();
@@ -125,7 +134,7 @@
         btn.onclick = async () => {
             if (!player || btn.disabled) return;
             
-            // נעילה מיידית למניעת לחיצות כפולות
+            // חסימה מיידית לצד לקוח
             btn.disabled = true;
             btn.innerText = "מעבד נתונים...";
 
@@ -135,39 +144,42 @@
             const playerRef = doc(db, "players", auth.currentUser.uid);
 
             try {
-                const nowTimestamp = serverTimestamp();
+                // שמירת חותמת זמן מקומית לצורך עדכון מיידי של האובייקט
+                const localNow = new Date();
 
                 if (rand <= 95) {
-                    const bonus = Math.floor(Math.random() * player.level);
-                    const gold = (player.level + bonus) * (Math.floor(Math.random() * 3) + 1);
-                    await updateDoc(playerRef, { coins: increment(gold), lastQuestTime: nowTimestamp });
+                    const bonus = Math.floor(Math.random() * (player.level || 1));
+                    const gold = ((player.level || 1) + bonus) * (Math.floor(Math.random() * 3) + 1);
+                    await updateDoc(playerRef, { coins: increment(gold), lastQuestTime: serverTimestamp() });
                     result = { title: 'זהב טהור', icon: '💰', desc: `מצאת ${gold} זוזים.` };
                 } 
                 else if (rand <= 97) {
-                    // בקרב לא מעדכנים זמן מסע כדי לא "לבזבז" אותו אם השחקן ברח/מת
                     localStorage.setItem('currentBattle', JSON.stringify({ name: "שומר נתונים", level: player.level, reward: player.level * 10 }));
                     window.location.href = 'combat.html';
                     return;
                 }
                 else if (rand <= 99) {
                     const p = ['health_small', 'health_large', 'atk_small'][Math.floor(Math.random() * 3)];
-                    await updateDoc(playerRef, { potions: arrayUnion(p), lastQuestTime: nowTimestamp });
+                    await updateDoc(playerRef, { potions: arrayUnion(p), lastQuestTime: serverTimestamp() });
                     result = { title: 'שיקוי נדיר', icon: '🧪', desc: `מצאת ${p}.` };
                 }
                 else {
                     const w = 'katana_thermal';
-                    await updateDoc(playerRef, { inventory: arrayUnion(w), lastQuestTime: nowTimestamp });
+                    await updateDoc(playerRef, { inventory: arrayUnion(w), lastQuestTime: serverTimestamp() });
                     result = { title: 'נשק אגדי', icon: '⚔️', desc: `מצאת ${w}.` };
                 }
 
-                // עדכון ממשק תוצאות
+                // עדכון אובייקט השחקן המקומי כדי שהלוגיקה תדע שבוצעה פעולה
+                player.lastQuestTime = localNow;
+
+                // הצגת תוצאות
                 document.getElementById('result-area').classList.remove('hidden');
                 document.getElementById('story-text').innerText = story.text;
                 document.getElementById('loot-title').innerText = result.title;
                 document.getElementById('loot-desc').innerText = result.desc;
                 document.getElementById('loot-icon').innerText = result.icon;
 
-                // שליחת הודעה
+                // שליחת הודעה ללוג
                 await addDoc(collection(db, "messages"), {
                     userId: auth.currentUser.uid,
                     username: player.username || "סוכן",
@@ -176,12 +188,11 @@
                     type: 'quest'
                 });
 
-                // עדכון אובייקט השחקן המקומי והפעלת טיימר של 5 דקות (300 שניות)
-                player.lastQuestTime = new Date(); 
+                // הפעלת הטיימר מיד ל-5 דקות
                 startTimer(300);
 
             } catch (e) {
-                console.error(e);
+                console.error("Error in quest:", e);
                 btn.disabled = false;
                 btn.innerText = "צא לחפש ביטקויין";
             }
