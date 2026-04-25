@@ -201,15 +201,22 @@
             });
         }
 
-        function createActionBtn(itemId, isPotion, index = -1, isEquipped = false) {
+       function createActionBtn(itemId, isPotion, index = -1, isEquipped = false) {
             const item = itemDatabase[itemId];
             const btn = document.createElement('button');
             let extraClass = isPotion ? "potion-btn" : "border-slate-700";
             if (isEquipped) extraClass = "weapon-btn";
             
-            // עיצוב כפתור דחוס יותר כדי שייכנס ב-3 עמודות
-            btn.className = `glass w-full py-3 rounded-xl font-black text-[9px] hover:bg-slate-800 border uppercase italic transition-all active:scale-90 flex flex-col items-center justify-center gap-1 leading-none ${extraClass}`;
-            btn.innerHTML = `<span class="text-lg">${item.icon}</span> <span>${item.name}</span> ${isEquipped ? '<span class="text-[6px] text-blue-400 opacity-60">ACTIVE</span>' : ''}`;
+            // עיצוב משופר שתומך בשמות ארוכים וירידת שורה
+            btn.className = `glass w-full py-2 px-1 rounded-xl font-bold text-[10px] hover:bg-slate-800 border italic transition-all active:scale-90 flex flex-col items-center justify-center gap-1 min-h-[70px] break-words text-center ${extraClass}`;
+            
+            // יצירת התוכן: האייקון למעלה, השם המלא מתחתיו
+            btn.innerHTML = `
+                <span class="text-lg">${item.icon}</span> 
+                <span class="leading-tight block w-full px-0.5">${item.name}</span> 
+                ${isEquipped ? '<span class="text-[7px] text-blue-400 opacity-80 font-black tracking-tighter">ACTIVE</span>' : ''}
+            `;
+            
             btn.onclick = () => handleAction(itemId, isPotion, index);
             return btn;
         }
