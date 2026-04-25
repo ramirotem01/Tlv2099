@@ -8,8 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;800&display=swap" rel="stylesheet">
     <style>
         body { 
-            /* שימוש בתמונת הרקע החדשה */
-            background: linear-gradient(rgba(2, 6, 23, 0.75), rgba(2, 6, 23, 0.75)), 
+            background: linear-gradient(rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.8)), 
                         url('https://res.cloudinary.com/dxygefiai/image/upload/v1777130914/%D7%91%D7%99%D7%98%D7%A7%D7%95%D7%95%D7%99%D7%9F_rm4xa9.png');
             background-size: cover;
             background-position: center;
@@ -21,7 +20,6 @@
         .neon-border { border: 1px solid rgba(234, 179, 8, 0.4); box-shadow: 0 0 30px rgba(234, 179, 8, 0.1); }
         .btn-gold { background: linear-gradient(135deg, #f59e0b, #d97706); color: #451a03; font-weight: 900; transition: all 0.3s; }
         .btn-gold:disabled { background: #334155; color: #94a3b8; cursor: not-allowed; opacity: 0.7; transform: scale(1) !important; }
-        .btn-gold:active { transform: scale(0.95); }
         .fade-in { animation: fadeIn 0.6s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -40,7 +38,6 @@
         </header>
 
         <main class="flex flex-col md:flex-row gap-6 items-stretch flex-grow my-6">
-            
             <div class="glass rounded-[3rem] p-10 text-center neon-border flex-1 flex flex-col justify-center items-center">
                 <div class="text-8xl mb-6 drop-shadow-[0_0_25px_rgba(234,179,8,0.6)]">₿</div>
                 <h2 class="text-3xl font-black mb-4 italic uppercase">סריקת שטח זמינה</h2>
@@ -53,24 +50,20 @@
             </div>
 
             <div id="result-area" class="hidden glass rounded-[3rem] p-10 flex-1 flex flex-col justify-center border border-slate-800 fade-in">
-                <div class="mb-8">
-                    <span class="text-[10px] font-black text-blue-400 uppercase tracking-widest block mb-3 border-b border-blue-400/20 pb-2 w-fit">דו"ח סוכן שטח</span>
+                <div class="mb-8 border-r-4 border-blue-500 pr-4">
+                    <span class="text-[10px] font-black text-blue-400 uppercase tracking-widest block mb-2">סיכום אירוע</span>
                     <p id="story-text" class="text-xl font-medium text-slate-100 italic leading-relaxed"></p>
                 </div>
                 
-                <div id="loot-display" class="flex items-center gap-6 p-6 bg-slate-950/80 rounded-[2rem] border border-yellow-500/30 shadow-inner">
-                    <span id="loot-icon" class="text-5xl drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]"></span>
+                <div id="loot-display" class="flex items-center gap-6 p-6 bg-slate-950/80 rounded-[2rem] border border-yellow-500/30">
+                    <span id="loot-icon" class="text-5xl"></span>
                     <div>
-                        <h4 id="loot-title" class="text-2xl font-black text-white italic uppercase tracking-tighter"></h4>
+                        <h4 id="loot-title" class="text-2xl font-black text-white italic uppercase"></h4>
                         <p id="loot-desc" class="text-lg text-yellow-500 font-bold italic"></p>
                     </div>
                 </div>
             </div>
         </main>
-
-        <footer class="text-center text-slate-500 text-[9px] font-bold uppercase tracking-[0.5em] pb-2">
-            TERMINAL ACCESS: TLV-2099-PRO-SECURE
-        </footer>
     </div>
 
     <script type="module">
@@ -86,7 +79,8 @@
 
         onAuthStateChanged(auth, async (user) => {
             if (!user) { window.location.href = 'index.html'; return; }
-            const docSnap = await getDoc(doc(db, "players", user.uid));
+            const docRef = doc(db, "players", user.uid);
+            const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
                 player = docSnap.data();
                 checkCooldown();
@@ -97,26 +91,19 @@
             if (!player || !player.lastQuestTime) return;
             const now = Date.now();
             const lastQuest = player.lastQuestTime.toMillis ? player.lastQuestTime.toMillis() : player.lastQuestTime;
-            const diffInSeconds = (now - lastQuest) / 1000;
-            const cooldownLimit = 300; // 5 דקות
-
-            if (diffInSeconds < cooldownLimit) {
-                startTimer(Math.floor(cooldownLimit - diffInSeconds));
-            }
+            const diffSeconds = (now - lastQuest) / 1000;
+            if (diffSeconds < 300) startTimer(Math.floor(300 - diffSeconds));
         }
 
         function startTimer(seconds) {
             btn.disabled = true;
             let remaining = seconds;
             if (cooldownInterval) clearInterval(cooldownInterval);
-
             cooldownInterval = setInterval(() => {
                 const m = Math.floor(remaining / 60);
                 const s = Math.floor(remaining % 60);
-                timerText.innerText = `טעינת מערכות: ${m}:${s < 10 ? '0' : ''}${s}`;
-                remaining--;
-
-                if (remaining < 0) {
+                timerText.innerText = `מערכות בטעינה: ${m}:${s < 10 ? '0' : ''}${s}`;
+                if (remaining-- <= 0) {
                     clearInterval(cooldownInterval);
                     btn.disabled = false;
                     timerText.innerText = "";
@@ -126,83 +113,60 @@
 
         btn.onclick = async () => {
             if (!player) return;
-            
             btn.disabled = true;
             btn.innerText = "מעבד נתונים...";
 
             const rand = Math.random() * 100;
             let result = {};
-            const storyObj = adventureStories[Math.floor(Math.random() * adventureStories.length)];
+            const story = adventureStories[Math.floor(Math.random() * adventureStories.length)];
+            const playerRef = doc(db, "players", auth.currentUser.uid);
 
             try {
                 if (rand <= 95) {
                     const bonus = Math.floor(Math.random() * player.level);
-                    const multiplier = Math.floor(Math.random() * 3) + 1;
-                    const goldFound = (player.level + bonus) * multiplier;
-                    
-                    await updateDoc(doc(db, "players", auth.currentUser.uid), { 
-                        coins: increment(goldFound),
-                        lastQuestTime: serverTimestamp() 
-                    });
-                    result = { title: 'זהב טהור', icon: '💰', desc: `מצאת ${goldFound} זוזים.` };
+                    const gold = (player.level + bonus) * (Math.floor(Math.random() * 3) + 1);
+                    await updateDoc(playerRef, { coins: increment(gold), lastQuestTime: serverTimestamp() });
+                    result = { title: 'זהב טהור', icon: '💰', desc: `מצאת ${gold} זוזים.` };
                 } 
                 else if (rand <= 97) {
-                    // מפלצת - עובר מיד
-                    localStorage.setItem('currentBattle', JSON.stringify({
-                        name: "שומר נתונים עוין",
-                        level: player.level,
-                        reward: player.level * 10
-                    }));
+                    localStorage.setItem('currentBattle', JSON.stringify({ name: "שומר נתונים", level: player.level, reward: player.level * 10 }));
                     window.location.href = 'combat.html';
                     return;
                 }
                 else if (rand <= 99) {
-                    const pots = ['health_small', 'health_large', 'atk_small'];
-                    const p = pots[Math.floor(Math.random() * pots.length)];
-                    await updateDoc(doc(db, "players", auth.currentUser.uid), { 
-                        potions: arrayUnion(p),
-                        lastQuestTime: serverTimestamp()
-                    });
-                    result = { title: 'שיקוי נדיר', icon: '🧪', desc: `מצאת ${p} והוא נוסף לתרמיל.` };
+                    const p = ['health_small', 'health_large', 'atk_small'][Math.floor(Math.random() * 3)];
+                    await updateDoc(playerRef, { potions: arrayUnion(p), lastQuestTime: serverTimestamp() });
+                    result = { title: 'שיקוי נדיר', icon: '🧪', desc: `מצאת ${p}.` };
                 }
                 else {
-                    const weapon = 'katana_thermal';
-                    await updateDoc(doc(db, "players", auth.currentUser.uid), { 
-                        inventory: arrayUnion(weapon),
-                        lastQuestTime: serverTimestamp()
-                    });
-                    result = { title: 'נשק אגדי', icon: '⚔️', desc: `מצאת ${weapon}! הציוד עודכן.` };
+                    const w = 'katana_thermal';
+                    await updateDoc(playerRef, { inventory: arrayUnion(w), lastQuestTime: serverTimestamp() });
+                    result = { title: 'נשק אגדי', icon: '⚔️', desc: `מצאת ${w}.` };
                 }
 
-                // עדכון הודעות
+                // הצגת תוצאה
+                document.getElementById('result-area').classList.remove('hidden');
+                document.getElementById('story-text').innerText = story.text;
+                document.getElementById('loot-title').innerText = result.title;
+                document.getElementById('loot-desc').innerText = result.desc;
+                document.getElementById('loot-icon').innerText = result.icon;
+
+                // שליחת הודעה
                 await addDoc(collection(db, "messages"), {
                     userId: auth.currentUser.uid,
                     username: player.username || "סוכן",
-                    content: `${storyObj.text} | שלל: ${result.title} (${result.desc})`,
+                    content: `${story.text} | שלל: ${result.title}`,
                     timestamp: serverTimestamp(),
                     type: 'quest'
                 });
 
-                // הצגת תוצאה ונעילה
-                showResult(result, storyObj.text);
                 startTimer(300);
-                btn.innerText = "צא לחפש ביטקויין";
-
-            } catch (err) {
-                console.error(err);
+            } catch (e) {
+                console.error(e);
                 btn.disabled = false;
-                btn.innerText = "צא לחפש ביטקויין";
             }
+            btn.innerText = "צא לחפש ביטקויין";
         };
-
-        function showResult(res, story) {
-            const area = document.getElementById('result-area');
-            area.classList.remove('hidden');
-            document.getElementById('story-text').innerText = story;
-            document.getElementById('loot-title').innerText = res.title;
-            document.getElementById('loot-desc').innerText = res.desc;
-            document.getElementById('loot-icon').innerText = res.icon;
-        }
     </script>
 </body>
 </html>
