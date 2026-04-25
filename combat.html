@@ -22,6 +22,20 @@
         .enemy-glow { filter: drop-shadow(0 0 30px rgba(239, 68, 68, 0.4)); }
         .potion-btn { border-color: rgba(34, 211, 238, 0.3) !important; color: #22d3ee !important; }
         .weapon-btn { border-color: rgba(59, 130, 246, 0.5) !important; background: rgba(59, 130, 246, 0.2) !important; box-shadow: 0 0 15px rgba(59, 130, 246, 0.3); }
+        
+        /* התאמה אישית לכפתורי הפעולה */
+        .action-btn {
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            word-wrap: break-word;
+            word-break: break-word;
+            line-height: 1.1;
+            padding: 8px 4px;
+        }
     </style>
 </head>
 <body class="flex flex-col items-center justify-between p-4 md:p-8">
@@ -62,7 +76,7 @@
             </div>
         </div>
 
-        <div id="action-buttons" class="grid grid-cols-3 gap-2 overflow-y-auto max-h-40"></div>
+        <div id="action-buttons" class="grid grid-cols-3 gap-2 overflow-y-auto max-h-48 p-1"></div>
     </div>
 
     <script type="module">
@@ -71,18 +85,18 @@
         import { doc, getDoc, updateDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const itemDatabase = {
-            'basic_attack': { name: 'מכה', baseAtk: 15, icon: '👊' },
-            'pistol_nemesis': { name: 'נמסיס', baseAtk: 30, icon: '🔫' },
-            'katana_thermal': { name: 'טרמי', baseAtk: 45, icon: '⚔️' },
-            'fire_sword': { name: 'גיהנום', baseAtk: 90, icon: '🔥' },
-            'health_small': { name: 'חיים קט', heal: 25, icon: '🧪', type: 'potion' },
-            'health_large': { name: 'חיים גד', heal: 50, icon: '🧪', type: 'potion' },
-            'atk_small': { name: 'כוח קט', buffAtk: 1.15, icon: '🍷', type: 'potion' },
-            'atk_large': { name: 'כוח גד', buffAtk: 1.35, icon: '🍷', type: 'potion' },
-            'def_small': { name: 'מגן קט', buffDef: 0.85, icon: '🍶', type: 'potion' },
-            'def_large': { name: 'מגן גד', buffDef: 0.70, icon: '🍶', type: 'potion' },
-            'speed_small': { name: 'זריז קט', buffEva: 0.15, icon: '⚡', type: 'potion' },
-            'speed_large': { name: 'זריז גד', buffEva: 0.35, icon: '⚡', type: 'potion' }
+            'basic_attack': { name: 'מכה בסיסית', baseAtk: 15, icon: '👊' },
+            'pistol_nemesis': { name: 'אקדח נמסיס', baseAtk: 30, icon: '🔫' },
+            'katana_thermal': { name: 'קטאנה טרמית', baseAtk: 45, icon: '⚔️' },
+            'fire_sword': { name: 'חרב גיהנום', baseAtk: 90, icon: '🔥' },
+            'health_small': { name: 'שיקוי חיים קטן', heal: 25, icon: '🧪', type: 'potion' },
+            'health_large': { name: 'שיקוי חיים גדול', heal: 50, icon: '🧪', type: 'potion' },
+            'atk_small': { name: 'שיקוי כוח קטן', buffAtk: 1.15, icon: '🍷', type: 'potion' },
+            'atk_large': { name: 'שיקוי כוח גדול', buffAtk: 1.35, icon: '🍷', type: 'potion' },
+            'def_small': { name: 'שיקוי מגן קטן', buffDef: 0.85, icon: '🍶', type: 'potion' },
+            'def_large': { name: 'שיקוי מגן גדול', buffDef: 0.70, icon: '🍶', type: 'potion' },
+            'speed_small': { name: 'זריזות קטנה', buffEva: 0.15, icon: '⚡', type: 'potion' },
+            'speed_large': { name: 'זריזות גדולה', buffEva: 0.35, icon: '⚡', type: 'potion' }
         };
 
         let player = { hp: 100, maxHp: 100, inventory: [], potions: [], equippedWeapon: null, isMyTurn: true, stats: { atkMod: 1, defMod: 1, evaMod: 0.1 } };
@@ -182,18 +196,21 @@
             const container = document.getElementById('action-buttons');
             container.innerHTML = '';
             
+            // נשק מצויד
             if (player.equippedWeapon && itemDatabase[player.equippedWeapon]) {
                 container.appendChild(createActionBtn(player.equippedWeapon, false, -1, true));
             } else {
                 container.appendChild(createActionBtn('basic_attack', false));
             }
 
+            // שאר הכלים
             player.inventory.forEach(itemId => {
                 if (itemDatabase[itemId] && itemId !== player.equippedWeapon) {
                     container.appendChild(createActionBtn(itemId, false));
                 }
             });
 
+            // שיקויים
             player.potions.forEach((itemId, index) => {
                 if (itemDatabase[itemId]) {
                     container.appendChild(createActionBtn(itemId, true, index));
@@ -201,20 +218,18 @@
             });
         }
 
-       function createActionBtn(itemId, isPotion, index = -1, isEquipped = false) {
+        function createActionBtn(itemId, isPotion, index = -1, isEquipped = false) {
             const item = itemDatabase[itemId];
             const btn = document.createElement('button');
             let extraClass = isPotion ? "potion-btn" : "border-slate-700";
             if (isEquipped) extraClass = "weapon-btn";
             
-            // עיצוב משופר שתומך בשמות ארוכים וירידת שורה
-            btn.className = `glass w-full py-2 px-1 rounded-xl font-bold text-[10px] hover:bg-slate-800 border italic transition-all active:scale-90 flex flex-col items-center justify-center gap-1 min-h-[70px] break-words text-center ${extraClass}`;
+            btn.className = `glass action-btn w-full rounded-xl font-bold text-[10px] hover:bg-slate-800 border transition-all active:scale-95 ${extraClass}`;
             
-            // יצירת התוכן: האייקון למעלה, השם המלא מתחתיו
             btn.innerHTML = `
-                <span class="text-lg">${item.icon}</span> 
-                <span class="leading-tight block w-full px-0.5">${item.name}</span> 
-                ${isEquipped ? '<span class="text-[7px] text-blue-400 opacity-80 font-black tracking-tighter">ACTIVE</span>' : ''}
+                <span class="text-xl mb-1">${item.icon}</span>
+                <span class="w-full px-1">${item.name}</span>
+                ${isEquipped ? '<span class="text-[7px] text-blue-400 mt-1 font-black opacity-80">פעיל</span>' : ''}
             `;
             
             btn.onclick = () => handleAction(itemId, isPotion, index);
