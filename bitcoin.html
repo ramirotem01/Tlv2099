@@ -127,6 +127,7 @@
             const playerRef = doc(db, "players", auth.currentUser.uid);
 
             try {
+                // 1. קביעת השלל
                 if (rand <= 95) {
                     const bonus = Math.floor(Math.random() * player.level);
                     const gold = (player.level + bonus) * (Math.floor(Math.random() * 3) + 1);
@@ -149,23 +150,27 @@
                     result = { title: 'נשק אגדי', icon: '⚔️', desc: `מצאת ${w}.` };
                 }
 
+                // 2. הצגת תוצאה על המסך (מיד)
                 document.getElementById('result-area').classList.remove('hidden');
                 document.getElementById('story-text').innerText = story.text;
                 document.getElementById('loot-title').innerText = result.title;
                 document.getElementById('loot-desc').innerText = result.desc;
                 document.getElementById('loot-icon').innerText = result.icon;
 
+                // 3. כתיבה ל-DB של ההודעות (חשוב: לוודא ששם ה-collection תואם למערכת שלך)
                 await addDoc(collection(db, "messages"), {
                     userId: auth.currentUser.uid,
                     username: player.username || "סוכן",
-                    content: `${story.text} | שלל: ${result.title}`,
+                    content: `מסע ביטקויין: ${story.text} | תוצאה: ${result.title} (${result.desc})`,
                     timestamp: serverTimestamp(),
                     type: 'quest'
                 });
 
-                startTimer(100);
+                // 4. הפעלת טיימר
+                startTimer(300);
+
             } catch (e) {
-                console.error(e);
+                console.error("Error in quest:", e);
                 btn.disabled = false;
             }
             btn.innerText = "צא לחפש ביטקויין";
