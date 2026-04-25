@@ -1,81 +1,207 @@
-<script type="module">
-    // הוספנו את auth לייבוא
-    import { auth, db } from './firebase-config.js';
-    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+<!DOCTYPE html>
 
-    const monsterList = document.getElementById('monster-list');
-    const addBtn = document.getElementById('add-btn');
+<html lang="he" dir="rtl">
 
-    // בדיקה שהמשתמש מחובר - ללא זה ה-Rules יחסמו אותך
-    onAuthStateChanged(auth, (user) => {
-        if (!user) {
-            console.error("User not authenticated! Redirecting...");
-            window.location.href = 'index.html'; // שלח אותו להתחבר
-            return;
-        }
-        console.log("Admin authenticated:", user.email);
-        loadMonsters(); // הפעלת ההאזנה רק אחרי זיהוי המשתמש
-    });
+<head>
 
-    function loadMonsters() {
-        const q = query(collection(db, "monsters"), orderBy("maxLevel", "asc"));
-        onSnapshot(q, (snapshot) => {
-            monsterList.innerHTML = '';
-            snapshot.forEach((docSnap) => {
-                const m = docSnap.data();
-                const div = document.createElement('div');
-                div.className = "flex items-center justify-between bg-slate-900/50 p-4 rounded-2xl border border-slate-800";
-                div.innerHTML = `
-                    <div class="flex items-center gap-4">
-                        <img src="${m.img}" class="w-12 h-12 rounded-lg object-cover">
-                        <div>
-                            <div class="font-bold ${m.isBoss ? 'text-red-500' : 'text-white'}">${m.name} ${m.isBoss ? '[BOSS]' : ''}</div>
-                            <div class="text-[10px] text-slate-500 uppercase font-black">Level Cap: ${m.maxLevel}</div>
-                        </div>
-                    </div>
-                    <button onclick="deleteMonster('${docSnap.id}')" class="text-red-500 text-xs hover:underline">מחק</button>
-                `;
-                monsterList.appendChild(div);
-            });
-        }, (error) => {
-            console.error("Snapshot error:", error);
-        });
-    }
+    <meta charset="UTF-8">
 
-    addBtn.onclick = async () => {
-        const name = document.getElementById('m-name').value;
-        const img = document.getElementById('m-img').value;
-        const maxLevel = parseInt(document.getElementById('m-level').value);
-        const isBoss = document.getElementById('m-isboss').checked;
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-        if(!name || !img) return alert("נא למלא שם ותמונה");
-        if(!auth.currentUser) return alert("אינך מחובר למערכת");
+    <title>ניהול מפלצות | TLV2099 Admin</title>
 
-        try {
-            await addDoc(collection(db, "monsters"), {
-                name,
-                img,
-                maxLevel,
-                isBoss,
-                createdAt: new Date()
-            });
-            alert("המפלצת נוספה בהצלחה!");
-            document.getElementById('m-name').value = '';
-            document.getElementById('m-img').value = '';
-        } catch (e) { 
-            alert("שגיאת הרשאות: " + e.message);
-            console.error(e); 
-        }
-    };
+    <script src="https://cdn.tailwindcss.com"></script>
 
-    window.deleteMonster = async (id) => {
-        if(confirm("למחוק את המפלצת?")) {
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;800&display=swap" rel="stylesheet">
+
+    <style>
+
+        body { background: #020617; color: white; font-family: 'Assistant', sans-serif; }
+
+        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
+
+        input, select { background: #0f172a !important; border: 1px solid #1e293b !important; color: white !important; }
+
+    </style>
+
+</head>
+
+<body class="p-8">
+
+
+
+    <div class="max-w-4xl mx-auto">
+
+        <h1 class="text-3xl font-black mb-8 text-red-500 italic uppercase">Monster Database Management</h1>
+
+
+
+        <div class="glass p-6 rounded-[2rem] mb-10">
+
+            <h2 class="text-xl font-bold mb-4">הוספת מפלצת חדשה</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                <input type="text" id="m-name" placeholder="שם המפלצת (למשל: סייבר-וולף)" class="p-3 rounded-xl">
+
+                <input type="text" id="m-img" placeholder="קישור לתמונה (URL)" class="p-3 rounded-xl">
+
+                <div class="flex items-center gap-4">
+
+                    <label class="text-sm font-bold">עד רמה:</label>
+
+                    <input type="number" id="m-level" value="1" min="1" class="p-3 rounded-xl w-24">
+
+                </div>
+
+                <div class="flex items-center gap-4">
+
+                    <input type="checkbox" id="m-isboss" class="w-5 h-5 cursor-pointer">
+
+                    <label for="m-isboss" class="font-bold text-red-400">הגדר כבוס (Boss Unit)</label>
+
+                </div>
+
+            </div>
+
+            <button id="add-btn" class="mt-6 w-full bg-red-600 hover:bg-red-500 p-4 rounded-xl font-black uppercase transition-all">הוסף למסד הנתונים</button>
+
+        </div>
+
+
+
+        <div class="glass p-6 rounded-[2rem]">
+
+            <h2 class="text-xl font-bold mb-4 italic">Active Entities</h2>
+
+            <div id="monster-list" class="grid grid-cols-1 gap-3">
+
+                </div>
+
+        </div>
+
+    </div>
+
+
+
+    <script type="module">
+
+        import { db } from './firebase-config.js';
+
+        import { collection, addDoc, getDocs, deleteDoc, doc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+
+
+        const monsterList = document.getElementById('monster-list');
+
+        const addBtn = document.getElementById('add-btn');
+
+
+
+        // הוספת מפלצת
+
+        addBtn.onclick = async () => {
+
+            const name = document.getElementById('m-name').value;
+
+            const img = document.getElementById('m-img').value;
+
+            const maxLevel = parseInt(document.getElementById('m-level').value);
+
+            const isBoss = document.getElementById('m-isboss').checked;
+
+
+
+            if(!name || !img) return alert("נא למלא שם ותמונה");
+
+
+
             try {
+
+                await addDoc(collection(db, "monsters"), {
+
+                    name,
+
+                    img,
+
+                    maxLevel,
+
+                    isBoss,
+
+                    createdAt: new Date()
+
+                });
+
+                alert("המפלצת נוספה בהצלחה!");
+
+                // איפוס טופס
+
+                document.getElementById('m-name').value = '';
+
+                document.getElementById('m-img').value = '';
+
+            } catch (e) { console.error(e); }
+
+        };
+
+
+
+        // האזנה לרשימת המפלצות
+
+        const q = query(collection(db, "monsters"), orderBy("maxLevel", "asc"));
+
+        onSnapshot(q, (snapshot) => {
+
+            monsterList.innerHTML = '';
+
+            snapshot.forEach((docSnap) => {
+
+                const m = docSnap.data();
+
+                const div = document.createElement('div');
+
+                div.className = "flex items-center justify-between bg-slate-900/50 p-4 rounded-2xl border border-slate-800";
+
+                div.innerHTML = `
+
+                    <div class="flex items-center gap-4">
+
+                        <img src="${m.img}" class="w-12 h-12 rounded-lg object-cover">
+
+                        <div>
+
+                            <div class="font-bold ${m.isBoss ? 'text-red-500' : 'text-white'}">${m.name} ${m.isBoss ? '[BOSS]' : ''}</div>
+
+                            <div class="text-[10px] text-slate-500 uppercase font-black">Level Cap: ${m.maxLevel}</div>
+
+                        </div>
+
+                    </div>
+
+                    <button onclick="deleteMonster('${docSnap.id}')" class="text-red-500 text-xs hover:underline">מחק</button>
+
+                `;
+
+                monsterList.appendChild(div);
+
+            });
+
+        });
+
+
+
+        window.deleteMonster = async (id) => {
+
+            if(confirm("למחוק את המפלצת?")) {
+
                 await deleteDoc(doc(db, "monsters", id));
-            } catch (e) {
-                alert("שגיאה במחיקה: " + e.message);
+
             }
-        }
-    };
-</script>
+
+        };
+
+    </script>
+
+</body>
+
+</html>
