@@ -8,19 +8,17 @@
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;800&display=swap" rel="stylesheet">
     <style>
         body { 
-            /* שימוש ברקע של מסך הרישום */
             background: linear-gradient(rgba(2, 6, 23, 0.85), rgba(2, 6, 23, 0.85)), 
-                        url('https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=2070');
+                        url('http://googleusercontent.com/image_collection/image_retrieval/12778346765710848626_0');
             background-size: cover;
             background-position: center;
             color: white; font-family: 'Assistant', sans-serif; 
-            height: 100vh; overflow: hidden; /* ביטול גלילה */
+            height: 100vh; overflow: hidden;
         }
         .glass { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.1); }
         .neon-border { border: 1px solid rgba(234, 179, 8, 0.4); box-shadow: 0 0 30px rgba(234, 179, 8, 0.1); }
         .btn-gold { background: linear-gradient(135deg, #f59e0b, #d97706); color: #451a03; font-weight: 900; transition: all 0.3s; }
-        .btn-gold:disabled { background: #334155; color: #94a3b8; cursor: not-allowed; transform: scale(1) !important; }
-        .btn-gold:active { transform: scale(0.95); }
+        .btn-gold:disabled { background: #334155; color: #94a3b8; cursor: not-allowed; opacity: 0.7; }
         .fade-in { animation: fadeIn 0.6s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -39,14 +37,9 @@
         </header>
 
         <main class="flex flex-col md:flex-row gap-6 items-stretch flex-grow my-6">
-            
             <div class="glass rounded-[3rem] p-10 text-center neon-border flex-1 flex flex-col justify-center items-center">
                 <div class="text-8xl mb-6 drop-shadow-[0_0_20px_rgba(234,179,8,0.5)]">₿</div>
-                <h2 class="text-3xl font-black mb-4 italic">הסריקה מוכנה</h2>
-                <p class="text-slate-400 text-lg mb-8 max-w-sm leading-relaxed">
-                    מערכות האיתור זיהו ריכוזי אנרגיה בשממה. האם תסתכן ביציאה למסע?
-                </p>
-                
+                <h2 class="text-3xl font-black mb-4 italic italic">הסריקה מוכנה</h2>
                 <div class="w-full max-w-sm space-y-3">
                     <button id="start-quest" class="btn-gold w-full py-5 rounded-3xl text-xl shadow-2xl uppercase italic tracking-tighter">
                         צא לחפש ביטקויין
@@ -60,20 +53,15 @@
                     <span class="text-[10px] font-black text-blue-500 uppercase tracking-widest block mb-2">סיכום מסע</span>
                     <p id="story-text" class="text-xl font-medium text-slate-100 italic leading-snug"></p>
                 </div>
-                
                 <div id="loot-display" class="flex items-center gap-6 p-6 bg-slate-950/80 rounded-[2rem] border border-yellow-500/30">
-                    <span id="loot-icon" class="text-5xl">💰</span>
+                    <span id="loot-icon" class="text-5xl"></span>
                     <div>
-                        <h4 id="loot-title" class="text-2xl font-black text-white italic uppercase">מצאת שלל!</h4>
+                        <h4 id="loot-title" class="text-2xl font-black text-white italic uppercase"></h4>
                         <p id="loot-desc" class="text-lg text-yellow-500 font-bold"></p>
                     </div>
                 </div>
             </div>
         </main>
-
-        <footer class="text-center text-slate-600 text-[10px] font-bold uppercase tracking-widest pb-4">
-            © 2099 PCS365 Digital Frontier Navigation System
-        </footer>
     </div>
 
     <script type="module">
@@ -83,12 +71,12 @@
         import { adventureStories } from './story.js';
 
         let player = null;
-        let cooldownActive = false;
+        let cooldownInterval = null;
         const btn = document.getElementById('start-quest');
         const timerText = document.getElementById('cooldown-timer');
 
         onAuthStateChanged(auth, async (user) => {
-            if (!user) window.location.href = 'index.html';
+            if (!user) { window.location.href = 'index.html'; return; }
             const docSnap = await getDoc(doc(db, "players", user.uid));
             if (docSnap.exists()) {
                 player = docSnap.data();
@@ -97,30 +85,31 @@
         });
 
         function checkCooldown() {
-            if (!player.lastQuestTime) return;
+            if (!player || !player.lastQuestTime) return;
             const now = Date.now();
             const lastQuest = player.lastQuestTime.toMillis ? player.lastQuestTime.toMillis() : player.lastQuestTime;
-            const diff = (now - lastQuest) / 1000 / 60; // דקות
+            const diffInSeconds = (now - lastQuest) / 1000;
+            const cooldownTime = 5 * 60; // 300 שניות
 
-            if (diff < 5) {
-                startTimer(Math.ceil(5 - diff));
+            if (diffInSeconds < cooldownTime) {
+                startTimer(Math.floor(cooldownTime - diffInSeconds));
             }
         }
 
-        function startTimer(minutes) {
-            cooldownActive = true;
+        function startTimer(seconds) {
             btn.disabled = true;
-            let remaining = minutes * 60;
+            let remaining = seconds;
             
-            const interval = setInterval(() => {
+            if (cooldownInterval) clearInterval(cooldownInterval);
+
+            cooldownInterval = setInterval(() => {
                 const m = Math.floor(remaining / 60);
-                const s = remaining % 60;
+                const s = Math.floor(remaining % 60);
                 timerText.innerText = `מערכות בטעינה: ${m}:${s < 10 ? '0' : ''}${s}`;
                 remaining--;
-                
+
                 if (remaining < 0) {
-                    clearInterval(interval);
-                    cooldownActive = false;
+                    clearInterval(cooldownInterval);
                     btn.disabled = false;
                     timerText.innerText = "";
                 }
@@ -128,55 +117,66 @@
         }
 
         btn.onclick = async () => {
-            if (!player || cooldownActive) return;
+            if (!player) return;
             
-            btn.disabled = true;
-            btn.innerText = "סורק שטח...";
-            
+            // הגרלת תוצאה מידית
             const rand = Math.random() * 100;
             let result = {};
-            const randomStory = adventureStories[Math.floor(Math.random() * adventureStories.length)];
+            const storyObj = adventureStories[Math.floor(Math.random() * adventureStories.length)];
 
+            // לוגיקת שלל
             if (rand <= 95) {
                 const bonus = Math.floor(Math.random() * player.level);
                 const multiplier = Math.floor(Math.random() * 3) + 1;
                 const goldFound = (player.level + bonus) * multiplier;
-                await updateDoc(doc(db, "players", auth.currentUser.uid), { coins: increment(goldFound) });
+                await updateDoc(doc(db, "players", auth.currentUser.uid), { 
+                    coins: increment(goldFound),
+                    lastQuestTime: serverTimestamp() 
+                });
                 result = { title: 'זהב טהור', icon: '💰', desc: `מצאת ${goldFound} זוזים.` };
             } 
             else if (rand <= 97) {
-                const enemy = { name: "שומר נתונים", level: player.level, reward: player.level * 10, img: "https://res.cloudinary.com/dxygefiai/image/upload/v1776868529/monster_placeholder.png" };
-                localStorage.setItem('currentBattle', JSON.stringify(enemy));
+                // מפלצת - מעבר מיידי
+                localStorage.setItem('currentBattle', JSON.stringify({
+                    name: "שומר נתונים עוין",
+                    level: player.level,
+                    reward: player.level * 10
+                }));
                 window.location.href = 'combat.html';
                 return;
             }
             else if (rand <= 99) {
                 const pots = ['health_small', 'health_large', 'atk_small'];
                 const p = pots[Math.floor(Math.random() * pots.length)];
-                await updateDoc(doc(db, "players", auth.currentUser.uid), { potions: arrayUnion(p) });
-                result = { title: 'שיקוי נדיר', icon: '🧪', desc: `מצאת ${p} נדיר.` };
+                await updateDoc(doc(db, "players", auth.currentUser.uid), { 
+                    potions: arrayUnion(p),
+                    lastQuestTime: serverTimestamp()
+                });
+                result = { title: 'שיקוי נדיר', icon: '🧪', desc: `מצאת ${p}.` };
             }
             else {
                 const weapon = 'katana_thermal';
-                await updateDoc(doc(db, "players", auth.currentUser.uid), { inventory: arrayUnion(weapon) });
-                result = { title: 'נשק אגדי', icon: '⚔️', desc: `מצאת ${weapon} קטלני!` };
+                await updateDoc(doc(db, "players", auth.currentUser.uid), { 
+                    inventory: arrayUnion(weapon),
+                    lastQuestTime: serverTimestamp()
+                });
+                result = { title: 'נשק אגדי', icon: '⚔️', desc: `מצאת ${weapon}.` };
             }
 
-            // עדכון זמן מסע אחרון ב-DB
-            await updateDoc(doc(db, "players", auth.currentUser.uid), { lastQuestTime: serverTimestamp() });
-
-            // שליחת הודעה למערכת ההודעות
+            // כתיבה להודעות (מיד)
             await addDoc(collection(db, "messages"), {
                 userId: auth.currentUser.uid,
                 username: player.username || "סוכן",
-                content: `${randomStory.text} | תוצאה: ${result.title} (${result.desc})`,
+                content: `${storyObj.text} | תוצאה: ${result.title}`,
                 timestamp: serverTimestamp(),
                 type: 'quest'
             });
 
-            showResult(result, randomStory.text);
-            startTimer(5);
-            btn.innerText = "צא לחפש ביטקויין";
+            // הצגת תוצאה מידית על המסך
+            showResult(result, storyObj.text);
+            
+            // הפעלת הטיימר ל-5 דקות מעכשיו
+            startTimer(5 * 60);
         };
 
         function showResult(res, story) {
