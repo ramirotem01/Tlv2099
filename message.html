@@ -25,7 +25,7 @@
         <header class="flex justify-between items-center mb-8">
             <div>
                 <h1 class="text-4xl font-black italic tracking-tighter neon-text uppercase">In-Box</h1>
-                <p id="debug-status" class="text-blue-400 text-[10px] font-bold uppercase tracking-widest">מערכת מוצפנת: ממתין לזיהוי...</p>
+                <p id="debug-status" class="text-blue-400 text-[10px] font-bold uppercase tracking-widest">מערכת מוצפנת: סורק...</p>
             </div>
             <a href="dashboard.html" class="glass p-3 px-6 rounded-2xl font-bold text-xs hover:bg-slate-800 transition-all border border-blue-500/20">חזרה</a>
         </header>
@@ -47,15 +47,11 @@
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { collection, query, where, orderBy, getDocs, updateDoc, doc, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        console.log("🚀 Script Started");
-
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                console.log("✅ User Authenticated:", user.uid);
-                document.getElementById('debug-status').innerText = `מחובר כ: ${user.uid.substring(0,5)}...`;
+                document.getElementById('debug-status').innerText = `מזהה משתמש: ${user.uid.substring(0,8)}...`;
                 loadMessages(user.uid);
             } else {
-                console.warn("❌ No User Found - Redirecting");
                 window.location.href = 'index.html';
             }
         });
@@ -66,79 +62,78 @@
             const loading = document.getElementById('loading');
 
             try {
-                console.log("🔍 Attempting to fetch notifications for:", userId);
-                
-                // שלב 1: יצירת השאילתה
-                // הערה: אם זה נכשל, נסה להסיר זמנית את ה-orderBy כדי לבדוק אם זו בעיית אינדקס
                 const notificationsRef = collection(db, "notifications");
+                
+                // שאילתה רחבה יותר למקרה שיש בעיית מיון או שדות
                 const q = query(
                     notificationsRef,
-                    where("targetUserId", "==", userId),
-                    orderBy("createdAt", "desc"),
-                    limit(20)
+                    where("targetUserId", "==", userId)
                 );
 
                 const querySnapshot = await getDocs(q);
-                console.log("📊 Snapshot received. Size:", querySnapshot.size);
-                
                 loading.classList.add('hidden');
 
                 if (querySnapshot.empty) {
-                    console.log("❓ Snapshot is empty - no messages found for this user.");
+                    console.warn("⚠️ Snapshot empty for ID:", userId);
                     noMsg.classList.remove('hidden');
                     container.innerHTML = '';
                     return;
                 }
 
-                container.innerHTML = '';
-                querySnapshot.forEach((docSnap) => {
-                    const msg = docSnap.data();
-                    const msgId = docSnap.id;
-                    console.log("📩 Processing msg:", msgId, msg);
+                noMsg.classList.add('hidden');
+                
+                // הפיכת ה-Snapshot למערך כדי שנוכל למיין אותו מקומית (עוקף בעיות אינדקס)
+                const allMsgs = [];
+                querySnapshot.forEach(doc => allMsgs.push({ id: doc.id, ...doc.data() }));
 
-                    const date = msg.createdAt ? new Date(msg.createdAt.toMillis()).toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'}) : '--:--';
-                    
+                // מיון מקומי לפי זמן (יורד)
+                allMsgs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+                container.innerHTML = '';
+                allMsgs.forEach((msg) => {
+                    let timeDisplay = '--:--';
+                    if (msg.createdAt) {
+                        const d = msg.createdAt.seconds ? new Date(msg.createdAt.seconds * 1000) : new Date(msg.createdAt);
+                        timeDisplay = d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+                    }
+
                     const card = document.createElement('div');
-                    card.className = `glass p-5 rounded-2xl msg-card cursor-pointer border border-slate-800 ${!msg.isRead ? 'msg-unread' : 'opacity-80'}`;
+                    const isUnread = msg.isRead === false; // בודק מול false מפורש
+                    
+                    card.className = `glass p-5 rounded-2xl msg-card cursor-pointer border border-slate-800 ${isUnread ? 'msg-unread' : 'opacity-70'}`;
                     
                     card.innerHTML = `
                         <div class="flex gap-4 items-start">
-                            <div class="text-2xl">${msg.isRead ? '📂' : '✉️'}</div>
+                            <div class="text-2xl">${isUnread ? '✉️' : '📂'}</div>
                             <div class="flex-1">
                                 <div class="flex justify-between mb-1">
                                     <span class="text-[10px] font-black text-blue-400 uppercase">${msg.type || 'SYSTEM'}</span>
-                                    <span class="text-[10px] text-slate-500 font-mono">${date}</span>
+                                    <span class="text-[10px] text-slate-500 font-mono">${timeDisplay}</span>
                                 </div>
-                                <p class="text-sm font-bold">${msg.text || 'הודעה מוצפנת'}</p>
+                                <p class="text-sm font-bold">${msg.text || 'הודעה נכנסת'}</p>
                             </div>
                         </div>
                     `;
 
-                    card.onclick = () => markAsRead(msgId, card);
+                    card.onclick = () => markAsRead(msg.id, card);
                     container.appendChild(card);
                 });
 
             } catch (err) {
-                console.error("🔥 CRITICAL ERROR:", err.code, err.message);
-                loading.innerHTML = `
-                    <div class="bg-red-500/20 p-4 rounded-xl border border-red-500/50 text-right">
-                        <p class="text-red-400 font-bold">שגיאת מערכת:</p>
-                        <p class="text-[10px] font-mono text-red-300 mt-2">${err.message}</p>
-                        <p class="text-[10px] text-slate-400 mt-2">בדוק אם חסר אינדקס ב-Console (F12)</p>
-                    </div>
-                `;
+                console.error("🔥 Error:", err);
+                loading.innerHTML = `<p class="text-red-400 font-bold">שגיאה: ${err.message}</p>`;
             }
         }
 
         async function markAsRead(msgId, element) {
-            if (!element.classList.contains('msg-unread')) return; 
+            if (!element.classList.contains('msg-unread')) return;
             try {
-                console.log("📝 Marking as read:", msgId);
                 await updateDoc(doc(db, "notifications", msgId), { isRead: true });
                 element.classList.remove('msg-unread');
-                element.classList.add('opacity-80');
+                element.classList.add('opacity-70');
+                element.querySelector('.text-2xl').innerText = '📂';
             } catch (err) {
-                console.error("❌ Failed to mark as read:", err);
+                console.error("❌ Update failed:", err);
             }
         }
     </script>
