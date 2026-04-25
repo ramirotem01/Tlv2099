@@ -109,8 +109,11 @@
         }
 
         function startTimer(seconds) {
+            // נעילה קשיחה של הכפתור
             btn.disabled = true;
             let remaining = seconds;
+            
+            // ניקוי אינטרוול קודם אם קיים
             if (cooldownInterval) clearInterval(cooldownInterval);
             
             const updateTimerUI = () => {
@@ -127,15 +130,18 @@
                 btn.innerText = "ממתין לסריקה...";
                 remaining--;
             };
+            
             updateTimerUI();
             cooldownInterval = setInterval(updateTimerUI, 1000);
         }
 
         btn.onclick = async () => {
+            // 1. הגנה מיידית
             if (!player || btn.disabled) return;
             
+            // 2. נעילה פיזית של הכפתור לפני כל פעולת רשת
             btn.disabled = true;
-            btn.innerText = "סורק רשתות...";
+            btn.innerText = "מעבד נתונים...";
 
             const rand = Math.random() * 100;
             let result = {};
@@ -143,8 +149,10 @@
             const playerRef = doc(db, "players", auth.currentUser.uid);
 
             try {
+                // חותמת זמן מקומית לעדכון ה-UI
                 const localNow = new Date();
 
+                // 3. ביצוע עדכוני ה-DB
                 if (rand <= 95) {
                     const bonus = Math.floor(Math.random() * (player.level || 1));
                     const gold = ((player.level || 1) + bonus) * (Math.floor(Math.random() * 3) + 1);
@@ -167,16 +175,17 @@
                     result = { title: 'נשק אגדי', icon: '⚔️', desc: `מצאת ${w}.` };
                 }
 
+                // 4. עדכון המצב המקומי
                 player.lastQuestTime = localNow;
 
-                // עדכון ממשק
+                // 5. הצגת התוצאות
                 document.getElementById('result-area').classList.remove('hidden');
                 document.getElementById('story-text').innerText = story.text;
                 document.getElementById('loot-title').innerText = result.title;
                 document.getElementById('loot-desc').innerText = result.desc;
                 document.getElementById('loot-icon').innerText = result.icon;
 
-                // --- תיקון ההודעות: שליחה ל-notifications ---
+                // 6. שליחת הודעה
                 await addDoc(collection(db, "notifications"), {
                     targetUserId: auth.currentUser.uid,
                     title: result.title,
@@ -186,12 +195,13 @@
                     createdAt: serverTimestamp()
                 });
 
+                // 7. הפעלה מפורשת של הטיימר ל-300 שניות
                 startTimer(300);
 
             } catch (e) {
-                console.error("Error:", e);
-                btn.disabled = false;
-                btn.innerText = "צא לחפש ביטקויין";
+                console.error("Error in quest:", e);
+                // במקרה של שגיאה קריטית, נשחרר את הכפתור או נבדוק שוב קולדאון
+                checkCooldown();
             }
         };
     </script>
