@@ -10,16 +10,14 @@
         body { 
             background: linear-gradient(rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.8)), 
                         url('https://res.cloudinary.com/dxygefiai/image/upload/v1777130914/%D7%91%D7%99%D7%98%D7%A7%D7%95%D7%95%D7%99%D7%9F_rm4xa9.png');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
+            background-size: cover; background-position: center; background-attachment: fixed;
             color: white; font-family: 'Assistant', sans-serif; 
             height: 100vh; overflow: hidden;
         }
         .glass { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.1); }
         .neon-border { border: 1px solid rgba(234, 179, 8, 0.4); box-shadow: 0 0 30px rgba(234, 179, 8, 0.1); }
         .btn-gold { background: linear-gradient(135deg, #f59e0b, #d97706); color: #451a03; font-weight: 900; transition: all 0.3s; }
-        .btn-gold:disabled { background: #334155; color: #94a3b8; cursor: not-allowed; opacity: 0.7; transform: scale(1) !important; }
+        .btn-gold:disabled { background: #334155 !important; color: #94a3b8 !important; cursor: not-allowed; opacity: 0.7; transform: scale(1) !important; box-shadow: none !important; }
         .fade-in { animation: fadeIn 0.6s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -41,11 +39,9 @@
             <div class="glass rounded-[3rem] p-10 text-center neon-border flex-1 flex flex-col justify-center items-center">
                 <div class="text-8xl mb-4 drop-shadow-[0_0_25px_rgba(234,179,8,0.6)]">₿</div>
                 <h2 class="text-3xl font-black mb-2 italic uppercase tracking-tighter">הסריקה מוכנה</h2>
-                
                 <p class="text-slate-400 text-sm mb-8 leading-relaxed max-w-xs mx-auto font-medium">
                     צא אל השממה הדיגיטלית. אתה עשוי למצוא עושר רב, אך היזהר - המפלצות אורבות בכל פינה.
                 </p>
-                
                 <div class="w-full max-w-sm space-y-4">
                     <button id="start-quest" class="btn-gold w-full py-5 rounded-3xl text-xl shadow-2xl uppercase italic tracking-tighter">
                         צא לחפש ביטקויין
@@ -59,7 +55,6 @@
                     <span class="text-[10px] font-black text-blue-400 uppercase tracking-widest block mb-2">סיכום אירוע</span>
                     <p id="story-text" class="text-xl font-medium text-slate-100 italic leading-relaxed"></p>
                 </div>
-                
                 <div id="loot-display" class="flex items-center gap-6 p-6 bg-slate-950/80 rounded-[2rem] border border-yellow-500/30">
                     <span id="loot-icon" class="text-5xl"></span>
                     <div>
@@ -97,27 +92,40 @@
             const now = Date.now();
             const lastQuest = player.lastQuestTime.toMillis ? player.lastQuestTime.toMillis() : player.lastQuestTime;
             const diffSeconds = (now - lastQuest) / 1000;
-            if (diffSeconds < 300) startTimer(Math.floor(300 - diffSeconds));
+            if (diffSeconds < 300) {
+                startTimer(Math.floor(300 - diffSeconds));
+            } else {
+                btn.disabled = false;
+                btn.innerText = "צא לחפש ביטקויין";
+            }
         }
 
         function startTimer(seconds) {
             btn.disabled = true;
             let remaining = seconds;
             if (cooldownInterval) clearInterval(cooldownInterval);
-            cooldownInterval = setInterval(() => {
+            
+            const updateTimerUI = () => {
                 const m = Math.floor(remaining / 60);
                 const s = Math.floor(remaining % 60);
                 timerText.innerText = `מערכות בטעינה: ${m}:${s < 10 ? '0' : ''}${s}`;
-                if (remaining-- <= 0) {
+                btn.innerText = "ממתין לסריקה...";
+                if (remaining <= 0) {
                     clearInterval(cooldownInterval);
                     btn.disabled = false;
+                    btn.innerText = "צא לחפש ביטקויין";
                     timerText.innerText = "";
                 }
-            }, 1000);
+                remaining--;
+            };
+            updateTimerUI();
+            cooldownInterval = setInterval(updateTimerUI, 1000);
         }
 
         btn.onclick = async () => {
-            if (!player) return;
+            if (!player || btn.disabled) return;
+            
+            // נעילה מיידית למניעת לחיצות כפולות
             btn.disabled = true;
             btn.innerText = "מעבד נתונים...";
 
@@ -127,53 +135,56 @@
             const playerRef = doc(db, "players", auth.currentUser.uid);
 
             try {
-                // 1. קביעת השלל
+                const nowTimestamp = serverTimestamp();
+
                 if (rand <= 95) {
                     const bonus = Math.floor(Math.random() * player.level);
                     const gold = (player.level + bonus) * (Math.floor(Math.random() * 3) + 1);
-                    await updateDoc(playerRef, { coins: increment(gold), lastQuestTime: serverTimestamp() });
+                    await updateDoc(playerRef, { coins: increment(gold), lastQuestTime: nowTimestamp });
                     result = { title: 'זהב טהור', icon: '💰', desc: `מצאת ${gold} זוזים.` };
                 } 
                 else if (rand <= 97) {
+                    // בקרב לא מעדכנים זמן מסע כדי לא "לבזבז" אותו אם השחקן ברח/מת
                     localStorage.setItem('currentBattle', JSON.stringify({ name: "שומר נתונים", level: player.level, reward: player.level * 10 }));
                     window.location.href = 'combat.html';
                     return;
                 }
                 else if (rand <= 99) {
                     const p = ['health_small', 'health_large', 'atk_small'][Math.floor(Math.random() * 3)];
-                    await updateDoc(playerRef, { potions: arrayUnion(p), lastQuestTime: serverTimestamp() });
+                    await updateDoc(playerRef, { potions: arrayUnion(p), lastQuestTime: nowTimestamp });
                     result = { title: 'שיקוי נדיר', icon: '🧪', desc: `מצאת ${p}.` };
                 }
                 else {
                     const w = 'katana_thermal';
-                    await updateDoc(playerRef, { inventory: arrayUnion(w), lastQuestTime: serverTimestamp() });
+                    await updateDoc(playerRef, { inventory: arrayUnion(w), lastQuestTime: nowTimestamp });
                     result = { title: 'נשק אגדי', icon: '⚔️', desc: `מצאת ${w}.` };
                 }
 
-                // 2. הצגת תוצאה על המסך (מיד)
+                // עדכון ממשק תוצאות
                 document.getElementById('result-area').classList.remove('hidden');
                 document.getElementById('story-text').innerText = story.text;
                 document.getElementById('loot-title').innerText = result.title;
                 document.getElementById('loot-desc').innerText = result.desc;
                 document.getElementById('loot-icon').innerText = result.icon;
 
-                // 3. כתיבה ל-DB של ההודעות (חשוב: לוודא ששם ה-collection תואם למערכת שלך)
+                // שליחת הודעה
                 await addDoc(collection(db, "messages"), {
                     userId: auth.currentUser.uid,
                     username: player.username || "סוכן",
-                    content: `מסע ביטקויין: ${story.text} | תוצאה: ${result.title} (${result.desc})`,
+                    content: `מסע ביטקויין: ${story.text} | תוצאה: ${result.title}`,
                     timestamp: serverTimestamp(),
                     type: 'quest'
                 });
 
-                // 4. הפעלת טיימר
+                // עדכון אובייקט השחקן המקומי והפעלת טיימר של 5 דקות (300 שניות)
+                player.lastQuestTime = new Date(); 
                 startTimer(300);
 
             } catch (e) {
-                console.error("Error in quest:", e);
+                console.error(e);
                 btn.disabled = false;
+                btn.innerText = "צא לחפש ביטקויין";
             }
-            btn.innerText = "צא לחפש ביטקויין";
         };
     </script>
 </body>
