@@ -1,0 +1,27 @@
+name: Global Energy Recovery
+
+on:
+  schedule:
+    # רץ כל 5 דקות
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # מאפשר לך להריץ ידנית מהלשונית Actions
+
+jobs:
+  update-db:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          
+      - name: Install Firebase Admin
+        run: npm install firebase-admin
+        
+      - name: Run Energy Update Script
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node scripts/update-energy.js
