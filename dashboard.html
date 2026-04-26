@@ -224,6 +224,14 @@
         }
 
         function updateDashboardUI(data, currentEnergy) {
+            if (data.level >= 5) {
+    // שינוי צבע הצומת של איילון לסגול/אדום כדי לסמן "משימה מיוחדת"
+    const raceNode = document.querySelector('a[href="ayalon-race.html"]');
+    if (raceNode) {
+        raceNode.style.boxShadow = "0 0 30px #a855f7"; // זוהר סגול מסתורי
+        raceNode.setAttribute('data-label', "מבצע: פרוטוקול ארכניד");
+                  }
+                                }
             document.getElementById('player-username').innerText = data.username || "UNKNOWN";
             document.getElementById('stat-level').innerText = data.level || 1;
             document.getElementById('stat-coins').innerText = (data.coins || 0).toLocaleString();
