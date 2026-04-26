@@ -326,7 +326,7 @@
 
                 if (collided) {
                     if (item.type === 'energy') {
-                        playerEnergy = Math.min(100, playerEnergy + 2);
+                        playerEnergy = Math.min(100, playerEnergy + 1);
                         items.splice(i, 1);
                         updateUI();
                         if (playerEnergy >= 100) { endGame('full'); return; }
