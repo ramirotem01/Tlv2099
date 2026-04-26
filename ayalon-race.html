@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>נתיבי איילון | שאיבת אנרגיה</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;800&display=swap" rel="stylesheet">
+    <style>
+        body, html { 
+            margin: 0; padding: 0; overflow: hidden; height: 100%; 
+            background: #020617; font-family: 'Assistant', sans-serif;
+        }
+        #game-container {
+            position: relative; width: 100vw; height: 100vh;
+            background: url('https://res.cloudinary.com/dxygefiai/image/upload/v1777200152/Gemini_Generated_Image_zg6xdizg6xdizg6x_xahmo1.png') no-repeat center center;
+            background-size: cover;
+        }
+        canvas { display: block; }
+        .ui-overlay {
+            position: absolute; top: 20px; left: 0; right: 0;
+            display: flex; justify-content: space-between; padding: 0 20px;
+            pointer-events: none; z-index: 10;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            padding: 10px 20px; border-radius: 15px;
+        }
+        .energy-bar-bg { width: 200px; height: 10px; background: rgba(0,0,0,0.5); border-radius: 5px; overflow: hidden; margin-top: 5px; }
+        #energy-fill { width: 0%; height: 100%; background: #22c55e; transition: width 0.3s; box-shadow: 0 0 10px #22c55e; }
+        
+        #start-screen {
+            position: absolute; inset: 0; background: rgba(0,0,0,0.8);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100;
+        }
+        .btn-start {
+            background: #3b82f6; color: white; padding: 15px 40px; border-radius: 50px;
+            font-weight: 800; text-transform: uppercase; letter-spacing: 2px;
+            cursor: pointer; border: none; box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="start-screen">
+            <h1 class="text-4xl font-black text-white italic mb-4 neon-text text-center">מירוץ נתיבי איילון<br><span class="text-blue-400 text-xl">איסוף אנרגיה אקטיבי</span></h1>
+            <p class="text-slate-400 mb-6 text-center px-6">התחמק מהמחסומים האדומים ואסוף קפסולות כחולות.<br>כל קפסולה = +2% HP</p>
+            <button class="btn-start" onclick="startGame()">התחל בנסיעה</button>
+        </div>
+
+        <div class="ui-overlay">
+            <div class="glass-panel">
+                <div class="text-[10px] text-blue-400 font-bold uppercase tracking-widest">מצב סוללה</div>
+                <div class="text-2xl font-black italic text-white"><span id="energy-val">0</span>%</div>
+                <div class="energy-bar-bg"><div id="energy-fill"></div></div>
+            </div>
+            <div class="glass-panel text-right">
+                <div class="text-[10px] text-slate-400 font-bold uppercase">מרחק</div>
+                <div id="distance-val" class="text-2xl font-black italic text-white">0m</div>
+            </div>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <script type="module">
+        import { auth, db } from './firebase-config.js';
+        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let gameActive = false;
+        let playerEnergy = 0;
+        let startEnergy = 0;
+        let distance = 0;
+        let userDocRef = null;
+
+        const player = {
+            lane: 1, // 0: left, 1: center, 2: right
+            targetX: 0,
+            currentX: 0,
+            y: 0,
+            size: 60
+        };
+
+        let items = [];
+        let speed = 5;
+        const lanes = [];
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userDocRef = doc(db, "players", user.uid);
+                const snap = await getDoc(userDocRef);
+                if (snap.exists()) {
+                    startEnergy = snap.data().energy || 0;
+                    playerEnergy = startEnergy;
+                    updateUI();
+                }
+            } else { window.location.href = 'index.html'; }
+        });
+
+        function initCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            lanes[0] = canvas.width * 0.25;
+            lanes[1] = canvas.width * 0.5;
+            lanes[2] = canvas.width * 0.75;
+            player.currentX = lanes[1];
+            player.targetX = lanes[1];
+            player.y = canvas.height - 150;
+        }
+
+        window.startGame = () => {
+            if (playerEnergy >= 100) {
+                alert("אתה כבר טעון ב-100%!");
+                window.location.href = 'dashboard.html';
+                return;
+            }
+            document.getElementById('start-screen').style.display = 'none';
+            gameActive = true;
+            initCanvas();
+            animate();
+        };
+
+        // Inputs
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' && player.lane > 0) player.lane--;
+            if (e.key === 'ArrowRight' && player.lane < 2) player.lane++;
+        });
+
+        window.addEventListener('touchstart', (e) => {
+            const touchX = e.touches[0].clientX;
+            if (touchX < canvas.width / 2 && player.lane > 0) player.lane--;
+            else if (touchX > canvas.width / 2 && player.lane < 2) player.lane++;
+        });
+
+        function spawnItem() {
+            if (Math.random() < 0.03) {
+                const isObstacle = Math.random() < 0.3;
+                items.push({
+                    lane: Math.floor(Math.random() * 3),
+                    y: -50,
+                    type: isObstacle ? 'obstacle' : 'energy'
+                });
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('energy-val').innerText = Math.floor(playerEnergy);
+            document.getElementById('energy-fill').style.width = playerEnergy + "%";
+            document.getElementById('distance-val').innerText = Math.floor(distance) + "m";
+        }
+
+        async function endGame(reason) {
+            gameActive = false;
+            const finalEnergy = Math.min(100, Math.floor(playerEnergy));
+            
+            // שמירה ל-Firebase
+            if (userDocRef) {
+                await updateDoc(userDocRef, {
+                    energy: finalEnergy,
+                    lastHpUpdate: serverTimestamp()
+                });
+            }
+
+            alert(reason === 'crash' ? "התרסקת! האנרגיה שצברת נשמרה." : "הסוללה מלאה! חוזר לחמ"ל.");
+            window.location.href = 'dashboard.html';
+        }
+
+        function animate() {
+            if (!gameActive) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            distance += 0.2;
+            speed += 0.001;
+
+            // Player movement smoothing
+            player.targetX = lanes[player.lane];
+            player.currentX += (player.targetX - player.currentX) * 0.15;
+
+            // Draw Player (Bike)
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = "#3b82f6";
+            ctx.fillStyle = "#fff";
+            ctx.beginPath();
+            ctx.arc(player.currentX, player.y, 15, 0, Math.PI * 2);
+            ctx.fill();
+            // Bike body
+            ctx.fillStyle = "#3b82f6";
+            ctx.fillRect(player.currentX - 5, player.y, 10, 40);
+
+            // Items
+            spawnItem();
+            items.forEach((item, index) => {
+                item.y += speed;
+                const x = lanes[item.lane];
+
+                if (item.type === 'energy') {
+                    ctx.shadowColor = "#22d3ee";
+                    ctx.fillStyle = "#22d3ee";
+                    ctx.beginPath();
+                    ctx.arc(x, item.y, 10, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    ctx.shadowColor = "#ef4444";
+                    ctx.fillStyle = "#ef4444";
+                    ctx.fillRect(x - 20, item.y, 40, 10);
+                }
+
+                // Collision
+                if (Math.abs(item.y - player.y) < 30 && item.lane === player.lane) {
+                    if (item.type === 'energy') {
+                        playerEnergy = Math.min(100, playerEnergy + 2);
+                        items.splice(index, 1);
+                        updateUI();
+                        if (playerEnergy >= 100) endGame('full');
+                    } else {
+                        endGame('crash');
+                    }
+                }
+
+                if (item.y > canvas.height) items.splice(index, 1);
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', initCanvas);
+    </script>
+</body>
+</html>
