@@ -16,6 +16,7 @@
         .glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
         .msg-card { transition: all 0.3s ease; border-right: 4px solid transparent; }
         .msg-unread { border-right-color: #3b82f6; background: rgba(30, 41, 59, 0.8); }
+        .msg-quest { border-right-color: #a855f7; background: rgba(88, 28, 135, 0.2); } /* עיצוב מיוחד למשימות */
         .neon-text { text-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
         
         .back-btn {
@@ -86,7 +87,6 @@
 
             try {
                 const notificationsRef = collection(db, "notifications");
-                // הוספת orderBy כדי שההודעות החדשות יהיו למעלה
                 const q = query(
                     notificationsRef, 
                     where("targetUserId", "==", userId)
@@ -106,10 +106,10 @@
                 const allMsgs = [];
                 querySnapshot.forEach(doc => allMsgs.push({ id: doc.id, ...doc.data() }));
                 
-                // מיון לפי זמן (החדש ביותר למעלה)
+                // מיון: הודעות חדשות למעלה
                 allMsgs.sort((a, b) => {
-                    const timeA = a.createdAt?.seconds || 0;
-                    const timeB = b.createdAt?.seconds || 0;
+                    const timeA = a.timestamp?.seconds || 0;
+                    const timeB = b.timestamp?.seconds || 0;
                     return timeB - timeA;
                 });
 
@@ -117,22 +117,24 @@
                 allMsgs.forEach((msg) => {
                     const displayData = formatMessageBody(msg);
                     const isUnread = msg.isRead === false;
+                    const isQuest = msg.type === 'quest_start';
                     
                     let timeDisplay = '--:--';
-                    if (msg.createdAt) {
-                        const d = msg.createdAt.seconds ? new Date(msg.createdAt.seconds * 1000) : new Date(msg.createdAt);
+                    if (msg.timestamp) {
+                        const d = new Date(msg.timestamp.seconds * 1000);
                         timeDisplay = d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
                     }
 
                     const card = document.createElement('div');
-                    card.className = `glass p-5 rounded-2xl msg-card cursor-pointer border border-slate-800 ${isUnread ? 'msg-unread' : 'opacity-70'}`;
+                    // אם זו משימה, מקבלת עיצוב סגול מיוחד
+                    card.className = `glass p-5 rounded-2xl msg-card cursor-pointer border border-slate-800 ${isUnread ? (isQuest ? 'msg-quest' : 'msg-unread') : 'opacity-70'}`;
                     
                     card.innerHTML = `
                         <div class="flex gap-4 items-start">
                             <div class="text-2xl">${isUnread ? displayData.icon : '📂'}</div>
                             <div class="flex-1">
                                 <div class="flex justify-between mb-1">
-                                    <span class="text-[10px] font-black text-blue-400 uppercase">${msg.type || 'SYSTEM'}</span>
+                                    <span class="text-[10px] font-black ${isQuest ? 'text-purple-400' : 'text-blue-400'} uppercase">${msg.type || 'SYSTEM'}</span>
                                     <span class="text-[10px] text-slate-500 font-mono">${timeDisplay}</span>
                                 </div>
                                 <h3 class="text-sm font-black mb-1 ${isUnread ? 'text-white' : 'text-slate-300'}">${displayData.title}</h3>
@@ -157,13 +159,18 @@
             let body = originalContent || "התקבלה הודעה חדשה.";
             let icon = '✉️';
 
-            if (msg.type === 'LEVEL_UP') {
-                icon = '⬆️';
+            // זיהוי סוגי הודעות מיוחדים
+            if (msg.type === 'level_up' || msg.type === 'LEVEL_UP') {
+                icon = '🚀';
                 title = title === "עדכון מערכת" ? 'עלית רמה!' : title;
             } 
-            else if (msg.type === 'QUEST') {
-                icon = '₿';
-                title = title === "עדכון מערכת" ? 'תוצאות מסע' : title;
+            else if (msg.type === 'quest_start') {
+                icon = '📜';
+                title = title === "עדכון מערכת" ? 'משימה חדשה' : title;
+            }
+            else if (msg.type === 'QUEST' || msg.type === 'quest_complete') {
+                icon = '✅';
+                title = title === "עדכון מערכת" ? 'משימה הושלמה' : title;
             }
             else if (msg.type === 'REWARD' || body.includes('זוזים')) {
                 icon = '💰';
@@ -174,10 +181,10 @@
         }
 
         async function markAsRead(msgId, element) {
-            if (!element.classList.contains('msg-unread')) return;
+            if (!element.classList.contains('msg-unread') && !element.classList.contains('msg-quest')) return;
             try {
                 await updateDoc(doc(db, "notifications", msgId), { isRead: true });
-                element.classList.remove('msg-unread');
+                element.classList.remove('msg-unread', 'msg-quest');
                 element.classList.add('opacity-70');
                 element.querySelector('.text-2xl').innerText = '📂';
             } catch (err) {
