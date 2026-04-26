@@ -2,9 +2,12 @@ name: Global Energy Recovery
 
 on:
   schedule:
-    # רץ כל 5 דקות
-    - cron: '*/5 * * * *'
-  workflow_dispatch: # מאפשר הרצה ידנית לבדיקה
+    # נסה לשנות את זה ל-10 דקות (לפעמים 5 זה תדיר מדי ו-GitHub מעכב את זה יותר)
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+  push:
+    branches:
+      - main # ירוץ פעם אחת בכל פעם שאתה מעלה קוד
 
 jobs:
   update-db:
@@ -24,5 +27,4 @@ jobs:
       - name: Run Energy Update Script
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        # כאן שיניתי את הנתיב לקובץ שנמצא בתיקייה הראשית
         run: node update-energy.js
