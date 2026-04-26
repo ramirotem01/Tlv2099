@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>נתיבי איילון | שאיבת אנרגיה</title>
+    <title>נתיבי איילון | טעינת סינפסות</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;800&display=swap" rel="stylesheet">
     <style>
@@ -13,6 +13,7 @@
         }
         #game-container {
             position: relative; width: 100vw; height: 100vh;
+            /* שימוש בתמונת הרקע הנקייה של איילון */
             background: url('https://res.cloudinary.com/dxygefiai/image/upload/v1777200152/Gemini_Generated_Image_zg6xdizg6xdizg6x_xahmo1.png') no-repeat center center;
             background-size: cover;
         }
@@ -27,41 +28,45 @@
             backdrop-filter: blur(8px);
             border: 1px solid rgba(59, 130, 246, 0.3);
             padding: 10px 20px; border-radius: 15px;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
         }
-        .energy-bar-bg { width: 150px; height: 10px; background: rgba(0,0,0,0.5); border-radius: 5px; overflow: hidden; margin-top: 5px; }
-        #energy-fill { width: 0%; height: 100%; background: #22c55e; transition: width 0.3s; box-shadow: 0 0 10px #22c55e; }
+        .energy-bar-bg { width: 150px; height: 8px; background: rgba(0,0,0,0.5); border-radius: 4px; overflow: hidden; margin-top: 5px; border: 1px solid rgba(255,255,255,0.05); }
+        #energy-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #22c55e, #4ade80); transition: width 0.3s; box-shadow: 0 0 10px #22c55e; }
         
         #start-screen {
-            position: absolute; inset: 0; background: rgba(0,0,0,0.85);
+            position: absolute; inset: 0; background: rgba(2, 6, 23, 0.9);
             display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100;
+            backdrop-filter: blur(4px);
         }
+        .neon-text { text-shadow: 0 0 15px rgba(59, 130, 246, 0.7); }
         .btn-start {
-            background: #3b82f6; color: white; padding: 15px 40px; border-radius: 50px;
+            background: rgba(59, 130, 246, 0.1); color: white; padding: 15px 40px; border-radius: 50px;
             font-weight: 800; text-transform: uppercase; letter-spacing: 2px;
-            cursor: pointer; border: none; box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
-            transition: transform 0.2s;
+            cursor: pointer; border: 2px solid #3b82f6; box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+            transition: all 0.2s ease-in-out;
         }
-        .btn-start:hover { transform: scale(1.05); }
+        .btn-start:hover { background: #3b82f6; box-shadow: 0 0 30px #3b82f6; transform: scale(1.05); }
     </style>
 </head>
 <body>
 
     <div id="game-container">
         <div id="start-screen">
-            <h1 class="text-4xl font-black text-white italic mb-4 text-center">מירוץ נתיבי איילון</h1>
-            <p class="text-slate-400 mb-6 text-center px-6 italic">התחמק מהמחסומים האדומים ואסוף קפסולות כחולות.<br>כל קפסולה = +2% HP</p>
-            <button id="start-btn" class="btn-start">התחל בנסיעה</button>
+            <h1 class="text-5xl font-black text-white italic mb-4 text-center neon-text tracking-tighter">TLV<span class="text-blue-400">2099</span></h1>
+            <p class="text-2xl font-bold text-white mb-6 text-center neon-text">נתיבי איילון: סינכרון אנרגיה</p>
+            <p class="text-slate-400 mb-8 text-center px-10 max-w-lg leading-relaxed">סוכן, המערכות שלך בשפל. רכב על ה<span class="text-blue-400 font-bold">סייבר-בייק</span> בנתיבים המוצפים. אסוף <span class="text-cyan-400 font-bold">קריסטלי דאטה</span> כדי להיטען (+2% HP), והתחמק מ<span class="text-red-500 font-bold">שדות השיבוש</span> האדומים.</p>
+            <button id="start-btn" class="btn-start uppercase text-xs">אשר התחברות לסימולציה</button>
         </div>
 
         <div class="ui-overlay">
             <div class="glass-panel">
-                <div class="text-[10px] text-blue-400 font-bold uppercase tracking-widest">מצב סוללה</div>
-                <div class="text-2xl font-black italic text-white"><span id="energy-val">0</span>%</div>
+                <div class="text-[9px] text-blue-400 font-bold uppercase tracking-widest italic">סטטוס ביו-סוללה</div>
+                <div class="text-3xl font-black italic text-white neon-text"><span id="energy-val">0</span>%</div>
                 <div class="energy-bar-bg"><div id="energy-fill"></div></div>
             </div>
             <div class="glass-panel text-right">
-                <div class="text-[10px] text-slate-400 font-bold uppercase">מרחק</div>
-                <div id="distance-val" class="text-2xl font-black italic text-white">0m</div>
+                <div class="text-[9px] text-slate-400 font-bold uppercase tracking-widest italic">מרחק סינכרון</div>
+                <div id="distance-val" class="text-3xl font-black italic text-white neon-text">0<span class="text-xs">m</span></div>
             </div>
         </div>
         <canvas id="gameCanvas"></canvas>
@@ -79,15 +84,10 @@
         let distance = 0;
         let userDocRef = null;
         let items = [];
-        let speed = 7;
+        let speed = 8; // מהירות התחלתית מהירה יותר
         const lanes = [];
 
-        const player = {
-            lane: 1,
-            targetX: 0,
-            currentX: 0,
-            y: 0
-        };
+        const player = { lane: 1, targetX: 0, currentX: 0, y: 0, width: 30, height: 60 };
 
         onAuthStateChanged(auth, async (user) => {
             if (user) {
@@ -103,18 +103,18 @@
         function initCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            lanes[0] = canvas.width * 0.2;
+            // הגדרת נתיבים מותאמת יותר לרקע
+            lanes[0] = canvas.width * 0.22;
             lanes[1] = canvas.width * 0.5;
-            lanes[2] = canvas.width * 0.8;
+            lanes[2] = canvas.width * 0.78;
             player.currentX = lanes[1];
             player.targetX = lanes[1];
-            player.y = canvas.height - 120;
+            player.y = canvas.height - 150;
         }
 
-        // במקום onclick ב-HTML, אנחנו משתמשים ב-EventListener כאן בתוך ה-Module
         document.getElementById('start-btn').addEventListener('click', () => {
             if (playerEnergy >= 100) {
-                alert("הסוללה שלך כבר מלאה!");
+                alert("המערכות שלך טעונות לחלוטין (100%). אין צורך בסינכרון.");
                 window.location.href = 'dashboard.html';
                 return;
             }
@@ -124,10 +124,11 @@
             animate();
         });
 
+        // שליטה (חצים + אצבע)
         window.addEventListener('keydown', (e) => {
             if (!gameActive) return;
-            if ((e.key === 'ArrowLeft' || e.key === 'a') && player.lane > 0) player.lane--;
-            if ((e.key === 'ArrowRight' || e.key === 'd') && player.lane < 2) player.lane++;
+            if ((e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'ש') && player.lane > 0) player.lane--;
+            if ((e.key === 'ArrowRight' || e.key === 'd' || e.key === 'ג') && player.lane < 2) player.lane++;
         });
 
         window.addEventListener('touchstart', (e) => {
@@ -138,12 +139,14 @@
         });
 
         function spawnItem() {
-            if (Math.random() < 0.04) {
-                const isObstacle = Math.random() < 0.4;
+            // העלאת קצב הופעת החפצים
+            if (Math.random() < 0.06) {
+                const isObstacle = Math.random() < 0.45; // יותר מכשולים
                 items.push({
                     lane: Math.floor(Math.random() * 3),
-                    y: -50,
-                    type: isObstacle ? 'obstacle' : 'energy'
+                    y: -100, // להתחיל גבוה יותר מחוץ למסך
+                    type: isObstacle ? 'obstacle' : 'energy',
+                    pulseTime: 0 // עבור אפקט הבהוב
                 });
             }
         }
@@ -151,7 +154,111 @@
         function updateUI() {
             document.getElementById('energy-val').innerText = Math.floor(playerEnergy);
             document.getElementById('energy-fill').style.width = playerEnergy + "%";
-            document.getElementById('distance-val').innerText = Math.floor(distance) + "m";
+            document.getElementById('distance-val').innerHTML = `${Math.floor(distance)}<span class="text-xs">m</span>`;
+        }
+
+        // --- פונקציות ציור מתקדמות (שיפור גרפי) ---
+
+        // 1. ציור האופנוע הסייברנטי (Player)
+        function drawPlayer(x, y) {
+            ctx.save();
+            ctx.translate(x, y);
+            
+            // אפקט זוהר (Glow) כחול
+            ctx.shadowBlur = 25;
+            ctx.shadowColor = "rgba(59, 130, 246, 0.9)";
+            
+            // גוף האופנוע (צורה אווירודינמית מוארכת)
+            ctx.fillStyle = "#1e293b"; // כחול-כהה בסיסי
+            ctx.beginPath();
+            ctx.moveTo(0, -30); // קדימה
+            ctx.lineTo(12, 10); // ימין אחורה
+            ctx.lineTo(0, 25);  // מרכז אחורה
+            ctx.lineTo(-12, 10); // שמאל אחורה
+            ctx.closePath();
+            ctx.fill();
+            
+            // פסי ניאון כחולים על הגוף
+            ctx.strokeStyle = "#60a5fa"; // כחול בהיר
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // פנס קדמי (לבן-כחול מבריק)
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "#fff";
+            ctx.fillStyle = "#fff";
+            ctx.beginPath();
+            ctx.arc(0, -25, 4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // "מנוע" אחורי מואר
+            ctx.fillStyle = "rgba(96, 165, 250, 0.5)";
+            ctx.fillRect(-6, 15, 12, 8);
+            
+            ctx.restore();
+        }
+
+        // 2. ציור קריסטל דאטה (Energy)
+        function drawEnergyCrystal(x, y) {
+            ctx.save();
+            ctx.translate(x, y);
+            
+            // זוהר טורקיז (Cyan)
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = "rgba(34, 211, 238, 0.8)";
+            
+            // צורת יהלום/קריסטל
+            ctx.fillStyle = "rgba(34, 211, 238, 0.4)"; // שקוף למחצה
+            ctx.beginPath();
+            ctx.moveTo(0, -15); // למעלה
+            ctx.lineTo(10, 0);   // ימין
+            ctx.lineTo(0, 15);   // למטה
+            ctx.lineTo(-10, 0);  // שמאל
+            ctx.closePath();
+            ctx.fill();
+            
+            // ליבה לבנה מבריקה (דחוסה)
+            ctx.shadowBlur = 5;
+            ctx.shadowColor = "#fff";
+            ctx.fillStyle = "#fff";
+            ctx.beginPath();
+            ctx.moveTo(0, -8);
+            ctx.lineTo(5, 0);
+            ctx.lineTo(0, 8);
+            ctx.lineTo(-5, 0);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.restore();
+        }
+
+        // 3. ציור שדה שיבוש (Obstacle)
+        function drawObstacle(x, y, pulseTime) {
+            ctx.save();
+            ctx.translate(x, y);
+            
+            // אפקט הבהוב אדום (מבוסס זמן)
+            const alpha = 0.5 + Math.sin(pulseTime * 10) * 0.2;
+            
+            // זוהר אדום
+            ctx.shadowBlur = 25;
+            ctx.shadowColor = `rgba(239, 68, 68, ${alpha + 0.2})`;
+            
+            // קורת אנרגיה אופקית מלבנית
+            const gradient = ctx.createLinearGradient(-30, 0, 30, 0);
+            gradient.addColorStop(0, "rgba(239, 68, 68, 0)"); // שקוף בצדדים
+            gradient.addColorStop(0.5, `rgba(239, 68, 68, ${alpha})`); // אדום מלא במרכז
+            gradient.addColorStop(1, "rgba(239, 68, 68, 0)");
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(-35, -5, 70, 10);
+            
+            // קו ליבה אדום בהיר
+            ctx.strokeStyle = `rgba(252, 165, 165, ${alpha + 0.3})`;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(-35, -5, 70, 10);
+            
+            ctx.restore();
         }
 
         async function endGame(reason) {
@@ -160,79 +267,76 @@
             
             if (userDocRef) {
                 try {
-                    await updateDoc(userDocRef, {
-                        energy: finalEnergy,
-                        lastHpUpdate: serverTimestamp()
-                    });
+                    await updateDoc(userDocRef, { energy: finalEnergy, lastHpUpdate: serverTimestamp() });
                 } catch (e) { console.error("Error updating energy:", e); }
             }
 
             if (reason === 'crash') {
-                alert("בום! התרסקת. האנרגיה שצברת נשמרה.");
+                alert("פקסלציה! פגעת בשדה שיבוש. האנרגיה שנסרקה נשמרה ב-DB.");
             } else {
-                alert("משימה הושלמה! הסוללה טעונה.");
+                alert("משימה הושלמה! הסינכרון הסתיים בהצלחה (100% טעינה).");
             }
             window.location.href = 'dashboard.html';
         }
 
-        function animate() {
+        function animate(timestamp) {
             if (!gameActive) return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            distance += 0.5;
-            speed += 0.002;
+            // עדכון נתונים
+            distance += speed * 0.05;
+            speed += 0.001; // האצה איטית יותר
 
+            // תנועת שחקן חלקה
             player.targetX = lanes[player.lane];
-            player.currentX += (player.targetX - player.currentX) * 0.2;
+            player.currentX += (player.targetX - player.currentX) * 0.18;
 
-            // ציור האופנוע (עיגול ניאון כחול)
-            ctx.shadowBlur = 20;
-            ctx.shadowColor = "#3b82f6";
-            ctx.fillStyle = "#fff";
-            ctx.beginPath();
-            ctx.arc(player.currentX, player.y, 12, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // גוף האופנוע
-            ctx.fillStyle = "#3b82f6";
-            ctx.fillRect(player.currentX - 4, player.y, 8, 30);
+            // ציור שחקן
+            drawPlayer(player.currentX, player.y);
 
+            // יצירת חפצים
             spawnItem();
             
+            // עדכון וציור חפצים (מלמעלה למטה כדי לטפל במחיקה בצורה בטוחה)
             for (let i = items.length - 1; i >= 0; i--) {
                 let item = items[i];
                 item.y += speed;
+                item.pulseTime += 0.016; // הוספת זמן לפולסציה (מניח 60FPS)
                 const x = lanes[item.lane];
 
                 if (item.type === 'energy') {
-                    ctx.shadowColor = "#22d3ee";
-                    ctx.fillStyle = "#22d3ee";
-                    ctx.beginPath();
-                    ctx.arc(x, item.y, 10, 0, Math.PI * 2);
-                    ctx.fill();
+                    drawEnergyCrystal(x, item.y);
                 } else {
-                    ctx.shadowColor = "#ef4444";
-                    ctx.fillStyle = "#ef4444";
-                    ctx.fillRect(x - 25, item.y, 50, 15);
+                    drawObstacle(x, item.y, item.pulseTime);
                 }
 
-                // בדיקת התנגשות
-                if (Math.abs(item.y - player.y) < 30 && item.lane === player.lane) {
+                // בדיקת התנגשות (Collision) - תיקון ה-Hitbox
+                // האופנוע צר וארוך, המכשול רחב ונמוך, הקריסטל קטן
+                const dx = Math.abs(x - player.currentX);
+                const dy = Math.abs(item.y - player.y);
+                
+                let collided = false;
+                if (item.type === 'energy') {
+                    // קריסטל: רדיוס קטן
+                    if (dx < 20 && dy < 25) collided = true;
+                } else {
+                    // מכשול: רוחב גדול
+                    if (dx < 40 && dy < 20) collided = true;
+                }
+
+                if (collided) {
                     if (item.type === 'energy') {
                         playerEnergy = Math.min(100, playerEnergy + 2);
                         items.splice(i, 1);
                         updateUI();
-                        if (playerEnergy >= 100) {
-                            endGame('full');
-                            return;
-                        }
+                        if (playerEnergy >= 100) { endGame('full'); return; }
                     } else {
-                        endGame('crash');
-                        return;
+                        endGame('crash'); return;
                     }
                 }
 
-                if (item.y > canvas.height) items.splice(i, 1);
+                // מחיקת חפצים שיצאו מהמסך
+                if (item.y > canvas.height + 50) items.splice(i, 1);
             }
 
             requestAnimationFrame(animate);
