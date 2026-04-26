@@ -13,7 +13,6 @@
         }
         #game-container {
             position: relative; width: 100vw; height: 100vh;
-            /* שימוש בתמונת הרקע הנקייה של איילון */
             background: url('https://res.cloudinary.com/dxygefiai/image/upload/v1777200152/Gemini_Generated_Image_zg6xdizg6xdizg6x_xahmo1.png') no-repeat center center;
             background-size: cover;
         }
@@ -84,10 +83,10 @@
         let distance = 0;
         let userDocRef = null;
         let items = [];
-        let speed = 8; // מהירות התחלתית מהירה יותר
+        let speed = 8;
         const lanes = [];
 
-        const player = { lane: 1, targetX: 0, currentX: 0, y: 0, width: 30, height: 60 };
+        const player = { lane: 1, targetX: 0, currentX: 0, y: 0, radius: 25 };
 
         onAuthStateChanged(auth, async (user) => {
             if (user) {
@@ -103,7 +102,6 @@
         function initCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            // הגדרת נתיבים מותאמת יותר לרקע
             lanes[0] = canvas.width * 0.22;
             lanes[1] = canvas.width * 0.5;
             lanes[2] = canvas.width * 0.78;
@@ -124,7 +122,6 @@
             animate();
         });
 
-        // שליטה (חצים + אצבע)
         window.addEventListener('keydown', (e) => {
             if (!gameActive) return;
             if ((e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'ש') && player.lane > 0) player.lane--;
@@ -139,14 +136,13 @@
         });
 
         function spawnItem() {
-            // העלאת קצב הופעת החפצים
-            if (Math.random() < 0.03) {
-                const isObstacle = Math.random() < 0.45; // יותר מכשולים
+            if (Math.random() < 0.035) {
+                const isObstacle = Math.random() < 0.45;
                 items.push({
                     lane: Math.floor(Math.random() * 3),
-                    y: -100, // להתחיל גבוה יותר מחוץ למסך
+                    y: -100,
                     type: isObstacle ? 'obstacle' : 'energy',
-                    pulseTime: 0 // עבור אפקט הבהוב
+                    pulseTime: 0
                 });
             }
         }
@@ -157,176 +153,115 @@
             document.getElementById('distance-val').innerHTML = `${Math.floor(distance)}<span class="text-xs">m</span>`;
         }
 
-        // --- פונקציות ציור מתקדמות (שיפור גרפי) ---
-
-        // 1. ציור האופנוע הסייברנטי (Player)
+        // --- פונקציית ציור השחקן (אופנוע עם עיגול זוהר אדום) ---
         function drawPlayer(x, y) {
             ctx.save();
             ctx.translate(x, y);
-            
-            // אפקט זוהר (Glow) כחול
-            ctx.shadowBlur = 25;
-            ctx.shadowColor = "rgba(59, 130, 246, 0.9)";
-            
-            // גוף האופנוע (צורה אווירודינמית מוארכת)
-            ctx.fillStyle = "#1e293b"; // כחול-כהה בסיסי
+
+            // 1. עיגול זוהר אדום (Red Neon Glow)
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = "#ef4444";
+            ctx.strokeStyle = "#f87171";
+            ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.moveTo(0, -30); // קדימה
-            ctx.lineTo(12, 10); // ימין אחורה
-            ctx.lineTo(0, 25);  // מרכז אחורה
-            ctx.lineTo(-12, 10); // שמאל אחורה
-            ctx.closePath();
-            ctx.fill();
-            
-            // פסי ניאון כחולים על הגוף
-            ctx.strokeStyle = "#60a5fa"; // כחול בהיר
-            ctx.lineWidth = 2;
+            ctx.arc(0, 0, player.radius + 5, 0, Math.PI * 2);
             ctx.stroke();
-            
-            // פנס קדמי (לבן-כחול מבריק)
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = "#fff";
-            ctx.fillStyle = "#fff";
-            ctx.beginPath();
-            ctx.arc(0, -25, 4, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // "מנוע" אחורי מואר
-            ctx.fillStyle = "rgba(96, 165, 250, 0.5)";
-            ctx.fillRect(-6, 15, 12, 8);
-            
+
+            // 2. ציור האייקון (Emoji)
+            ctx.shadowBlur = 0; // ביטול הצל לאייקון עצמו למראה נקי
+            ctx.font = "40px serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("🏍️", 0, 0);
+
             ctx.restore();
         }
 
-        // 2. ציור קריסטל דאטה (Energy)
         function drawEnergyCrystal(x, y) {
             ctx.save();
             ctx.translate(x, y);
-            
-            // זוהר טורקיז (Cyan)
             ctx.shadowBlur = 20;
             ctx.shadowColor = "rgba(34, 211, 238, 0.8)";
-            
-            // צורת יהלום/קריסטל
-            ctx.fillStyle = "rgba(34, 211, 238, 0.4)"; // שקוף למחצה
+            ctx.fillStyle = "rgba(34, 211, 238, 0.4)";
             ctx.beginPath();
-            ctx.moveTo(0, -15); // למעלה
-            ctx.lineTo(10, 0);   // ימין
-            ctx.lineTo(0, 15);   // למטה
-            ctx.lineTo(-10, 0);  // שמאל
-            ctx.closePath();
-            ctx.fill();
-            
-            // ליבה לבנה מבריקה (דחוסה)
-            ctx.shadowBlur = 5;
-            ctx.shadowColor = "#fff";
-            ctx.fillStyle = "#fff";
-            ctx.beginPath();
-            ctx.moveTo(0, -8);
-            ctx.lineTo(5, 0);
-            ctx.lineTo(0, 8);
-            ctx.lineTo(-5, 0);
-            ctx.closePath();
-            ctx.fill();
-            
+            ctx.moveTo(0, -15); ctx.lineTo(10, 0); ctx.lineTo(0, 15); ctx.lineTo(-10, 0);
+            ctx.closePath(); ctx.fill();
+            ctx.shadowBlur = 5; ctx.shadowColor = "#fff"; ctx.fillStyle = "#fff";
+            ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(5, 0); ctx.lineTo(0, 8); ctx.lineTo(-5, 0);
+            ctx.closePath(); ctx.fill();
             ctx.restore();
         }
 
-        // 3. ציור שדה שיבוש (Obstacle)
         function drawObstacle(x, y, pulseTime) {
             ctx.save();
             ctx.translate(x, y);
-            
-            // אפקט הבהוב אדום (מבוסס זמן)
             const alpha = 0.5 + Math.sin(pulseTime * 10) * 0.2;
-            
-            // זוהר אדום
             ctx.shadowBlur = 25;
             ctx.shadowColor = `rgba(239, 68, 68, ${alpha + 0.2})`;
-            
-            // קורת אנרגיה אופקית מלבנית
             const gradient = ctx.createLinearGradient(-30, 0, 30, 0);
-            gradient.addColorStop(0, "rgba(239, 68, 68, 0)"); // שקוף בצדדים
-            gradient.addColorStop(0.5, `rgba(239, 68, 68, ${alpha})`); // אדום מלא במרכז
+            gradient.addColorStop(0, "rgba(239, 68, 68, 0)");
+            gradient.addColorStop(0.5, `rgba(239, 68, 68, ${alpha})`);
             gradient.addColorStop(1, "rgba(239, 68, 68, 0)");
-            
             ctx.fillStyle = gradient;
             ctx.fillRect(-35, -5, 70, 10);
-            
-            // קו ליבה אדום בהיר
             ctx.strokeStyle = `rgba(252, 165, 165, ${alpha + 0.3})`;
             ctx.lineWidth = 2;
             ctx.strokeRect(-35, -5, 70, 10);
-            
             ctx.restore();
         }
 
         async function endGame(reason) {
             gameActive = false;
             const finalEnergy = Math.min(100, Math.floor(playerEnergy));
-            
             if (userDocRef) {
                 try {
                     await updateDoc(userDocRef, { energy: finalEnergy, lastHpUpdate: serverTimestamp() });
                 } catch (e) { console.error("Error updating energy:", e); }
             }
-
             if (reason === 'crash') {
-                alert("פקסלציה! פגעת בשדה שיבוש. האנרגיה שנסרקה נשמרה ב-DB.");
+                alert("פקסלציה! פגעת בשדה שיבוש.");
             } else {
-                alert("משימה הושלמה! הסינכרון הסתיים בהצלחה (100% טעינה).");
+                alert("משימה הושלמה! הסינכרון הסתיים בהצלחה.");
             }
             window.location.href = 'dashboard.html';
         }
 
-        function animate(timestamp) {
+        function animate() {
             if (!gameActive) return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // עדכון נתונים
             distance += speed * 0.05;
-            speed += 0.001; // האצה איטית יותר
+            speed += 0.001;
 
-            // תנועת שחקן חלקה
             player.targetX = lanes[player.lane];
             player.currentX += (player.targetX - player.currentX) * 0.18;
 
-            // ציור שחקן
             drawPlayer(player.currentX, player.y);
 
-            // יצירת חפצים
             spawnItem();
             
-            // עדכון וציור חפצים (מלמעלה למטה כדי לטפל במחיקה בצורה בטוחה)
             for (let i = items.length - 1; i >= 0; i--) {
                 let item = items[i];
                 item.y += speed;
-                item.pulseTime += 0.016; // הוספת זמן לפולסציה (מניח 60FPS)
+                item.pulseTime += 0.016;
                 const x = lanes[item.lane];
 
-                if (item.type === 'energy') {
-                    drawEnergyCrystal(x, item.y);
-                } else {
-                    drawObstacle(x, item.y, item.pulseTime);
-                }
+                if (item.type === 'energy') drawEnergyCrystal(x, item.y);
+                else drawObstacle(x, item.y, item.pulseTime);
 
-                // בדיקת התנגשות (Collision) - תיקון ה-Hitbox
-                // האופנוע צר וארוך, המכשול רחב ונמוך, הקריסטל קטן
                 const dx = Math.abs(x - player.currentX);
                 const dy = Math.abs(item.y - player.y);
                 
                 let collided = false;
                 if (item.type === 'energy') {
-                    // קריסטל: רדיוס קטן
-                    if (dx < 20 && dy < 25) collided = true;
+                    if (dx < 35 && dy < 35) collided = true;
                 } else {
-                    // מכשול: רוחב גדול
-                    if (dx < 40 && dy < 20) collided = true;
+                    if (dx < 45 && dy < 30) collided = true;
                 }
 
                 if (collided) {
                     if (item.type === 'energy') {
-                        playerEnergy = Math.min(100, playerEnergy + 1);
+                        playerEnergy = Math.min(100, playerEnergy + 2);
                         items.splice(i, 1);
                         updateUI();
                         if (playerEnergy >= 100) { endGame('full'); return; }
@@ -335,7 +270,6 @@
                     }
                 }
 
-                // מחיקת חפצים שיצאו מהמסך
                 if (item.y > canvas.height + 50) items.splice(i, 1);
             }
 
