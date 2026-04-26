@@ -2,26 +2,27 @@ name: Global Energy Recovery
 
 on:
   schedule:
+    # רץ כל 5 דקות
     - cron: '*/5 * * * *'
-  workflow_dispatch:
+  workflow_dispatch: # מאפשר הרצה ידנית לבדיקה
 
 jobs:
   update-db:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4 # גרסה מעודכנת
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4 # גרסה מעודכנת
+        uses: actions/setup-node@v4
         with:
-          node-version: '24' # Node.js הכי עדכני ל-2026
+          node-version: '24'
 
-      - name: Install Dependencies
+      - name: Install Firebase Admin
         run: npm install firebase-admin
 
       - name: Run Energy Update Script
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        # ודא שהקובץ אכן נמצא בתיקיית scripts בשורש הפרויקט
-        run: node scripts/update-energy.js
+        # כאן שיניתי את הנתיב לקובץ שנמצא בתיקייה הראשית
+        run: node update-energy.js
