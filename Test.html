@@ -2,73 +2,122 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>מייצר הודעות בדיקה | TLV2099</title>
+    <title>מבחן סייבר-בייק | TLV2099</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #020617; color: white; font-family: sans-serif; }
+        .bike-card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 20px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.3s;
+        }
+        .bike-card:hover { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); }
+        canvas { background: #010409; border-radius: 10px; margin-bottom: 15px; }
+    </style>
 </head>
-<body class="bg-slate-900 text-white flex flex-col items-center justify-center min-height-[100vh] p-10">
+<body class="p-10">
+    <h1 class="text-4xl font-black text-center mb-10 italic">בחירת סייבר-בייק <span class="text-blue-500">2099</span></h1>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+        
+        <div class="bike-card">
+            <canvas id="bike1" width="150" height="200"></canvas>
+            <h2 class="font-bold text-blue-400">1. הניאון (Tron)</h2>
+            <p class="text-xs text-slate-400 text-center mt-2">מינימליסטי, מבוסס קווי אור וזנב מהבהב.</p>
+        </div>
 
-    <div class="bg-slate-800 p-8 rounded-3xl border border-blue-500/30 shadow-2xl text-center max-w-md">
-        <h1 class="text-2xl font-bold mb-4 text-blue-400">יוצר Collection אוטומטי</h1>
-        <p class="text-slate-400 mb-6 text-sm">לחץ על הכפתור למטה כדי לייצר הודעת בדיקה ראשונה ב-Firestore. זה יפתח את האוסף notifications באופן אוטומטי.</p>
-        
-        <button id="testBtn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-full transition-all transform active:scale-95 shadow-lg">
-            ⚡ צור הודעת בדיקה
-        </button>
-        
-        <div id="status" class="mt-4 text-xs font-mono text-slate-500"></div>
+        <div class="bike-card">
+            <canvas id="bike2" width="150" height="200"></canvas>
+            <h2 class="font-bold text-yellow-400">2. הטנק (Heavy)</h2>
+            <p class="text-xs text-slate-400 text-center mt-2">מסיבי, משוריין, עם פנסי ערפל עוצמתיים.</p>
+        </div>
+
+        <div class="bike-card">
+            <canvas id="bike3" width="150" height="200"></canvas>
+            <h2 class="font-bold text-cyan-400">3. הרחפת (Sleek)</h2>
+            <p class="text-xs text-slate-400 text-center mt-2">אווירודינמי עם זוהר ציפה וקוקפיט שקוף.</p>
+        </div>
+
+        <div class="bike-card">
+            <canvas id="bike4" width="150" height="200"></canvas>
+            <h2 class="font-bold text-purple-400">4. העקרב (Scout)</h2>
+            <p class="text-xs text-slate-400 text-center mt-2">עיצוב מפוצל עם מנועים בולטים בצדדים.</p>
+        </div>
+
+        <div class="bike-card">
+            <canvas id="bike5" width="150" height="200"></canvas>
+            <h2 class="font-bold text-red-500">5. הלהבה (Interceptor)</h2>
+            <p class="text-xs text-slate-400 text-center mt-2">חד, תוקפני, עם פליטת אנרגיה אדומה.</p>
+        </div>
+
     </div>
 
-    <script type="module">
-        // ייבוא הקונפיגורציה שלך
-        import { auth, db } from './firebase-config.js';
-        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    <script>
+        const playerEnergy = 75; // לצורך התצוגה
 
-        const btn = document.getElementById('testBtn');
-        const status = document.getElementById('status');
-
-        btn.onclick = async () => {
-            const user = auth.currentUser;
+        function draw(id, drawFn) {
+            const canvas = document.getElementById(id);
+            const ctx = canvas.getContext('2d');
+            const x = canvas.width / 2;
+            const y = canvas.height / 2 + 20;
             
-            if (!user) {
-                alert("אתה חייב להיות מחובר למערכת! עובר לדף התחברות...");
-                window.location.href = 'index.html';
-                return;
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                // ציור "כביש" קטן מתחת
+                ctx.strokeStyle = "rgba(255,255,255,0.05)";
+                ctx.strokeRect(20, 0, canvas.width-40, canvas.height);
+                
+                drawFn(ctx, x, y);
+                requestAnimationFrame(animate);
             }
+            animate();
+        }
 
-            status.innerText = "שולח נתונים ל-Firestore...";
-            
-            try {
-                // יצירת המסמך הראשון באוסף notifications
-                await addDoc(collection(db, "notifications"), {
-                    targetUserId: user.uid,
-                    type: 'level_up',
-                    newLevel: 99,
-                    text: "המערכת הופעלה! זוהי הודעת בדיקה אוטומטית.",
-                    isRead: false,
-                    createdAt: serverTimestamp() // משתמש בפורמט התקין של פיירבייס
-                });
+        // --- פונקציות הציור ---
 
-                status.innerText = "ההודעה נוצרה בהצלחה!";
-                status.classList.add('text-green-400');
-                
-                alert("מזל טוב! האוסף notifications נוצר. עכשיו תוכל לראות את ההודעה בדף ההודעות.");
-                
-            } catch (e) {
-                console.error("שגיאה:", e);
-                status.innerText = "שגיאה: " + e.message;
-                status.classList.add('text-red-400');
+        const bikes = {
+            bike1: (ctx, x, y) => {
+                ctx.save(); ctx.translate(x, y);
+                ctx.shadowBlur = 15; ctx.shadowColor = "#3b82f6"; ctx.strokeStyle = "#60a5fa"; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(0, -30); ctx.lineTo(12, 10); ctx.lineTo(0, 25); ctx.lineTo(-12, 10); ctx.closePath(); ctx.stroke();
+                ctx.restore();
+            },
+            bike2: (ctx, x, y) => {
+                ctx.save(); ctx.translate(x, y);
+                ctx.fillStyle = "#1e293b"; ctx.fillRect(-15, -20, 30, 50);
+                ctx.shadowBlur = 15; ctx.shadowColor = "#fef08a"; ctx.fillStyle = "#fff";
+                ctx.beginPath(); ctx.arc(-8, -15, 4, 0, 7); ctx.arc(8, -15, 4, 0, 7); ctx.fill();
+                ctx.restore();
+            },
+            bike3: (ctx, x, y) => {
+                ctx.save(); ctx.translate(x, y);
+                ctx.shadowBlur = 20; ctx.shadowColor = "#22d3ee";
+                ctx.fillStyle = "#0f172a"; ctx.beginPath(); ctx.moveTo(0, -35); ctx.lineTo(15, 15); ctx.lineTo(-15, 15); ctx.closePath(); ctx.fill();
+                ctx.fillStyle = "#60a5fa"; ctx.beginPath(); ctx.ellipse(0, -5, 5, 12, 0, 0, 7); ctx.fill();
+                ctx.restore();
+            },
+            bike4: (ctx, x, y) => {
+                ctx.save(); ctx.translate(x, y);
+                ctx.shadowBlur = 10; ctx.shadowColor = "#a855f7"; ctx.fillStyle = "#2e1065";
+                ctx.fillRect(-5, -25, 10, 50);
+                ctx.fillRect(-18, 5, 8, 20); ctx.fillRect(10, 5, 8, 20); // מנועי צד
+                ctx.restore();
+            },
+            bike5: (ctx, x, y) => {
+                ctx.save(); ctx.translate(x, y);
+                ctx.shadowBlur = 20; ctx.shadowColor = "#ef4444"; ctx.fillStyle = "#450a0a";
+                ctx.beginPath(); ctx.moveTo(0, -40); ctx.lineTo(10, 0); ctx.lineTo(15, 30); ctx.lineTo(-15, 30); ctx.lineTo(-10, 0); ctx.closePath(); ctx.fill();
+                ctx.fillStyle = "#f87171"; ctx.fillRect(-2, 30, 4, 15); // פליטה
+                ctx.restore();
             }
         };
 
-        // בדיקה אם המשתמש מחובר
-        onAuthStateChanged(auth, (user) => {
-            if (!user) {
-                status.innerText = "ממתין להתחברות...";
-            } else {
-                status.innerText = "מחובר כ: " + user.email;
-            }
-        });
+        Object.keys(bikes).forEach(id => draw(id, bikes[id]));
     </script>
 </body>
 </html>
