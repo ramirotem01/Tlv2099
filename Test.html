@@ -2,13 +2,13 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>מבחן סייבר-בייק | TLV2099</title>
+    <title>מבחן סייבר-בייק (אייקונים) | TLV2099</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background: #020617; color: white; font-family: sans-serif; }
         .bike-card {
             background: rgba(15, 23, 42, 0.6);
-            border: 1px solid rgba(59, 130, 246, 0.3);
+            border: 1px solid rgba(239, 68, 68, 0.2); /* אדום חלש בבסיס */
             border-radius: 20px;
             padding: 20px;
             display: flex;
@@ -16,108 +16,106 @@
             align-items: center;
             transition: all 0.3s;
         }
-        .bike-card:hover { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); }
+        .bike-card:hover { border-color: #ef4444; box-shadow: 0 0 20px rgba(239, 68, 68, 0.3); }
         canvas { background: #010409; border-radius: 10px; margin-bottom: 15px; }
     </style>
 </head>
 <body class="p-10">
-    <h1 class="text-4xl font-black text-center mb-10 italic">בחירת סייבר-בייק <span class="text-blue-500">2099</span></h1>
+    <h1 class="text-4xl font-black text-center mb-4 italic">בחירת סייבר-בייק <span class="text-red-500">2099</span></h1>
+    <p class="text-center text-slate-400 mb-10">שימוש באייקונים עם הילה זוהרת (Red Neon Glow)</p>
     
     <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
         
         <div class="bike-card">
-            <canvas id="bike1" width="150" height="200"></canvas>
-            <h2 class="font-bold text-blue-400">1. הניאון (Tron)</h2>
-            <p class="text-xs text-slate-400 text-center mt-2">מינימליסטי, מבוסס קווי אור וזנב מהבהב.</p>
+            <canvas id="bike1" width="150" height="150"></canvas>
+            <h2 class="font-bold text-red-400">1. אופנוע מירוץ</h2>
+            <div class="text-4xl mt-2">🏍️</div>
+            <p class="text-xs text-slate-400 text-center mt-2">קלאסי, מהיר, מוכר.</p>
         </div>
 
         <div class="bike-card">
-            <canvas id="bike2" width="150" height="200"></canvas>
-            <h2 class="font-bold text-yellow-400">2. הטנק (Heavy)</h2>
-            <p class="text-xs text-slate-400 text-center mt-2">מסיבי, משוריין, עם פנסי ערפל עוצמתיים.</p>
+            <canvas id="bike2" width="150" height="150"></canvas>
+            <h2 class="font-bold text-red-400">2. רכב חלל (רחפת)</h2>
+            <div class="text-4xl mt-2">🛸</div>
+            <p class="text-xs text-slate-400 text-center mt-2">מראה עתידני, צף, שונה.</p>
         </div>
 
         <div class="bike-card">
-            <canvas id="bike3" width="150" height="200"></canvas>
-            <h2 class="font-bold text-cyan-400">3. הרחפת (Sleek)</h2>
-            <p class="text-xs text-slate-400 text-center mt-2">אווירודינמי עם זוהר ציפה וקוקפיט שקוף.</p>
+            <canvas id="bike3" width="150" height="150"></canvas>
+            <h2 class="font-bold text-red-400">3. מכונית מירוץ</h2>
+            <div class="text-4xl mt-2">🏎️</div>
+            <p class="text-xs text-slate-400 text-center mt-2">נמוכה, רחבה, אגרסיבית.</p>
         </div>
 
         <div class="bike-card">
-            <canvas id="bike4" width="150" height="200"></canvas>
-            <h2 class="font-bold text-purple-400">4. העקרב (Scout)</h2>
-            <p class="text-xs text-slate-400 text-center mt-2">עיצוב מפוצל עם מנועים בולטים בצדדים.</p>
+            <canvas id="bike4" width="150" height="150"></canvas>
+            <h2 class="font-bold text-red-400">4. רקטה (מצב טיסה)</h2>
+            <div class="text-4xl mt-2">🚀</div>
+            <p class="text-xs text-slate-400 text-center mt-2">מהירות מקסימלית, אנכית.</p>
         </div>
 
         <div class="bike-card">
-            <canvas id="bike5" width="150" height="200"></canvas>
-            <h2 class="font-bold text-red-500">5. הלהבה (Interceptor)</h2>
-            <p class="text-xs text-slate-400 text-center mt-2">חד, תוקפני, עם פליטת אנרגיה אדומה.</p>
+            <canvas id="bike5" width="150" height="150"></canvas>
+            <h2 class="font-bold text-red-400">5. סקייטבורד חשמלי</h2>
+            <div class="text-4xl mt-2">🛹</div>
+            <p class="text-xs text-slate-400 text-center mt-2">רכיבת רחוב עירונית (סייבר-פאנק).</p>
         </div>
 
     </div>
 
     <script>
-        const playerEnergy = 75; // לצורך התצוגה
-
-        function draw(id, drawFn) {
+        function draw(id, icon, size) {
             const canvas = document.getElementById(id);
             const ctx = canvas.getContext('2d');
             const x = canvas.width / 2;
-            const y = canvas.height / 2 + 20;
+            const y = canvas.height / 2;
             
             function animate() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                // ציור "כביש" קטן מתחת
-                ctx.strokeStyle = "rgba(255,255,255,0.05)";
-                ctx.strokeRect(20, 0, canvas.width-40, canvas.height);
                 
-                drawFn(ctx, x, y);
+                // --- ציור העיגול הזוהר האדום (Red Neon Glow) ---
+                ctx.save();
+                
+                // זוהר חיצוני (Glow)
+                ctx.shadowBlur = 30; // עוצמת הזוהר
+                ctx.shadowColor = "#ef4444"; // אדום ניאון
+                
+                // קו העיגול עצמו
+                ctx.strokeStyle = "#fca5a5"; // אדום בהיר מאוד במרכז הקו
+                ctx.lineWidth = 4;
+                
+                ctx.beginPath();
+                // ציור עיגול סביב המרכז
+                ctx.arc(x, y, (size / 2) + 10, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                ctx.restore();
+                
+                // --- ציור האייקון (Emoji) ---
+                ctx.save();
+                
+                // הגדרות טקסט עבור האייקון
+                ctx.font = `${size}px serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // ציור האייקון במרכז
+                ctx.fillText(icon, x, y + 5); // תיקון קטן לגובה
+                
+                ctx.restore();
+                
                 requestAnimationFrame(animate);
             }
             animate();
         }
 
-        // --- פונקציות הציור ---
-
-        const bikes = {
-            bike1: (ctx, x, y) => {
-                ctx.save(); ctx.translate(x, y);
-                ctx.shadowBlur = 15; ctx.shadowColor = "#3b82f6"; ctx.strokeStyle = "#60a5fa"; ctx.lineWidth = 2;
-                ctx.beginPath(); ctx.moveTo(0, -30); ctx.lineTo(12, 10); ctx.lineTo(0, 25); ctx.lineTo(-12, 10); ctx.closePath(); ctx.stroke();
-                ctx.restore();
-            },
-            bike2: (ctx, x, y) => {
-                ctx.save(); ctx.translate(x, y);
-                ctx.fillStyle = "#1e293b"; ctx.fillRect(-15, -20, 30, 50);
-                ctx.shadowBlur = 15; ctx.shadowColor = "#fef08a"; ctx.fillStyle = "#fff";
-                ctx.beginPath(); ctx.arc(-8, -15, 4, 0, 7); ctx.arc(8, -15, 4, 0, 7); ctx.fill();
-                ctx.restore();
-            },
-            bike3: (ctx, x, y) => {
-                ctx.save(); ctx.translate(x, y);
-                ctx.shadowBlur = 20; ctx.shadowColor = "#22d3ee";
-                ctx.fillStyle = "#0f172a"; ctx.beginPath(); ctx.moveTo(0, -35); ctx.lineTo(15, 15); ctx.lineTo(-15, 15); ctx.closePath(); ctx.fill();
-                ctx.fillStyle = "#60a5fa"; ctx.beginPath(); ctx.ellipse(0, -5, 5, 12, 0, 0, 7); ctx.fill();
-                ctx.restore();
-            },
-            bike4: (ctx, x, y) => {
-                ctx.save(); ctx.translate(x, y);
-                ctx.shadowBlur = 10; ctx.shadowColor = "#a855f7"; ctx.fillStyle = "#2e1065";
-                ctx.fillRect(-5, -25, 10, 50);
-                ctx.fillRect(-18, 5, 8, 20); ctx.fillRect(10, 5, 8, 20); // מנועי צד
-                ctx.restore();
-            },
-            bike5: (ctx, x, y) => {
-                ctx.save(); ctx.translate(x, y);
-                ctx.shadowBlur = 20; ctx.shadowColor = "#ef4444"; ctx.fillStyle = "#450a0a";
-                ctx.beginPath(); ctx.moveTo(0, -40); ctx.lineTo(10, 0); ctx.lineTo(15, 30); ctx.lineTo(-15, 30); ctx.lineTo(-10, 0); ctx.closePath(); ctx.fill();
-                ctx.fillStyle = "#f87171"; ctx.fillRect(-2, 30, 4, 15); // פליטה
-                ctx.restore();
-            }
-        };
-
-        Object.keys(bikes).forEach(id => draw(id, bikes[id]));
+        // --- הפעלת הציור עבור כל דוגמה ---
+        //draw(id, icon, size_in_px)
+        draw('bike1', '🏍️', 60);
+        draw('bike2', '🛸', 60);
+        draw('bike3', '🏎️', 60);
+        draw('bike4', '🚀', 60);
+        draw('bike5', '🛹', 60);
     </script>
 </body>
 </html>
