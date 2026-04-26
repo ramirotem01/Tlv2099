@@ -36,6 +36,7 @@
             position: absolute; inset: 0; background: rgba(2, 6, 23, 0.9);
             display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100;
             backdrop-filter: blur(4px);
+            border: 2px solid transparent;
         }
         .neon-text { text-shadow: 0 0 15px rgba(59, 130, 246, 0.7); }
         .btn-start {
@@ -52,8 +53,8 @@
     <div id="game-container">
         <div id="start-screen">
             <h1 class="text-5xl font-black text-white italic mb-4 text-center neon-text tracking-tighter">TLV<span class="text-blue-400">2099</span></h1>
-            <p class="text-2xl font-bold text-white mb-6 text-center neon-text">נתיבי איילון: סינכרון אנרגיה</p>
-            <p class="text-slate-400 mb-8 text-center px-10 max-w-lg leading-relaxed">סוכן, המערכות שלך בשפל. רכב על ה<span class="text-blue-400 font-bold">סייבר-בייק</span> בנתיבים המוצפים. אסוף <span class="text-cyan-400 font-bold">קריסטלי דאטה</span> כדי להיטען (+2% HP), והתחמק מ<span class="text-red-500 font-bold">שדות השיבוש</span> האדומים.</p>
+            <p id="game-subtitle" class="text-2xl font-bold text-white mb-6 text-center neon-text">נתיבי איילון: סינכרון אנרגיה</p>
+            <p id="game-desc" class="text-slate-400 mb-8 text-center px-10 max-w-lg leading-relaxed">סוכן, המערכות שלך בשפל. רכב על ה<span class="text-blue-400 font-bold">סייבר-בייק</span> בנתיבים המוצפים. אסוף <span class="text-cyan-400 font-bold">קריסטלי דאטה</span> כדי להיטען (+2% HP), והתחמק מ<span class="text-red-500 font-bold">שדות השיבוש</span> האדומים.</p>
             <button id="start-btn" class="btn-start uppercase text-xs">אשר התחברות לסימולציה</button>
         </div>
 
@@ -84,6 +85,7 @@
         let userDocRef = null;
         let items = [];
         let speed = 8;
+        let isArachnid = false;
         const lanes = [];
 
         const player = { lane: 1, targetX: 0, currentX: 0, y: 0, radius: 25 };
@@ -93,11 +95,29 @@
                 userDocRef = doc(db, "players", user.uid);
                 const snap = await getDoc(userDocRef);
                 if (snap.exists()) {
-                    playerEnergy = snap.data().energy || 0;
+                    const data = snap.data();
+                    playerEnergy = data.energy || 0;
+                    isArachnid = (data.level >= 5);
+                    
+                    if (isArachnid) applyArachnidTheme();
                     updateUI();
                 }
             } else { window.location.href = 'index.html'; }
         });
+
+        function applyArachnidTheme() {
+            document.getElementById('start-screen').style.borderColor = "#a855f7";
+            const title = document.querySelector('#start-screen h1');
+            title.innerHTML = 'TLV<span class="text-purple-500">2099</span>';
+            const subtitle = document.getElementById('game-subtitle');
+            subtitle.innerText = "🧬 מבצע: פרוטוקול ארכניד";
+            subtitle.style.color = "#c084fc";
+            subtitle.style.textShadow = "0 0 15px #a855f7";
+            
+            const fill = document.getElementById('energy-fill');
+            fill.style.background = "linear-gradient(90deg, #a855f7, #d8b4fe)";
+            fill.style.boxShadow = "0 0 10px #a855f7";
+        }
 
         function initCanvas() {
             canvas.width = window.innerWidth;
@@ -136,7 +156,8 @@
         });
 
         function spawnItem() {
-            if (Math.random() < 0.035) {
+            const spawnRate = isArachnid ? 0.045 : 0.035;
+            if (Math.random() < spawnRate) {
                 const isObstacle = Math.random() < 0.45;
                 items.push({
                     lane: Math.floor(Math.random() * 3),
@@ -153,26 +174,31 @@
             document.getElementById('distance-val').innerHTML = `${Math.floor(distance)}<span class="text-xs">m</span>`;
         }
 
-        // --- פונקציית ציור השחקן (אופנוע עם עיגול זוהר אדום) ---
         function drawPlayer(x, y) {
             ctx.save();
             ctx.translate(x, y);
 
-            // 1. עיגול זוהר אדום (Red Neon Glow)
+            const glowColor = isArachnid ? "#a855f7" : "#ef4444";
+            const strokeColor = isArachnid ? "#d8b4fe" : "#f87171";
+
             ctx.shadowBlur = 20;
-            ctx.shadowColor = "#ef4444";
-            ctx.strokeStyle = "#f87171";
+            ctx.shadowColor = glowColor;
+            ctx.strokeStyle = strokeColor;
             ctx.lineWidth = 3;
             ctx.beginPath();
             ctx.arc(0, 0, player.radius + 5, 0, Math.PI * 2);
             ctx.stroke();
 
-            // 2. ציור האייקון (Emoji)
-            ctx.shadowBlur = 0; // ביטול הצל לאייקון עצמו למראה נקי
+            ctx.shadowBlur = 0;
             ctx.font = "40px serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText("🏍️", 0, 0);
+            
+            if (isArachnid) {
+                ctx.font = "20px serif";
+                ctx.fillText("🧬", 18, -18);
+            }
 
             ctx.restore();
         }
@@ -180,9 +206,10 @@
         function drawEnergyCrystal(x, y) {
             ctx.save();
             ctx.translate(x, y);
+            const crystalColor = isArachnid ? "rgba(168, 85, 247, 0.8)" : "rgba(34, 211, 238, 0.8)";
             ctx.shadowBlur = 20;
-            ctx.shadowColor = "rgba(34, 211, 238, 0.8)";
-            ctx.fillStyle = "rgba(34, 211, 238, 0.4)";
+            ctx.shadowColor = crystalColor;
+            ctx.fillStyle = crystalColor.replace('0.8', '0.4');
             ctx.beginPath();
             ctx.moveTo(0, -15); ctx.lineTo(10, 0); ctx.lineTo(0, 15); ctx.lineTo(-10, 0);
             ctx.closePath(); ctx.fill();
@@ -219,9 +246,9 @@
                 } catch (e) { console.error("Error updating energy:", e); }
             }
             if (reason === 'crash') {
-                alert("פקסלציה! פגעת בשדה שיבוש.");
+                alert(isArachnid ? "קריסת סינפסות! המערכת הארכנידית נכשלה." : "פקסלציה! פגעת בשדה שיבוש.");
             } else {
-                alert("משימה הושלמה! הסינכרון הסתיים בהצלחה.");
+                alert(isArachnid ? "פרוטוקול ארכניד הושלם. האנרגיה בשיא." : "משימה הושלמה! הסינכרון הסתיים בהצלחה.");
             }
             window.location.href = 'dashboard.html';
         }
@@ -230,8 +257,9 @@
             if (!gameActive) return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            distance += speed * 0.05;
-            speed += 0.001;
+            const speedMult = isArachnid ? 1.35 : 1;
+            distance += speed * 0.05 * speedMult;
+            speed += 0.001 * speedMult;
 
             player.targetX = lanes[player.lane];
             player.currentX += (player.targetX - player.currentX) * 0.18;
@@ -242,7 +270,7 @@
             
             for (let i = items.length - 1; i >= 0; i--) {
                 let item = items[i];
-                item.y += speed;
+                item.y += speed * speedMult;
                 item.pulseTime += 0.016;
                 const x = lanes[item.lane];
 
