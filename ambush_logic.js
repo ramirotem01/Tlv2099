@@ -1,91 +1,99 @@
 const admin = require('firebase-admin');
 
-// התחברות ל-Firebase באמצעות Secret
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
+    console.error("❌ Missing FIREBASE_SERVICE_ACCOUNT secret!");
+    process.exit(1);
+}
 
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
+    credential: admin.credential.cert(serviceAccount)
 });
 
 const db = admin.firestore();
 
-async function runAmbush() {
+async function startAmbushProcess() {
     const now = admin.firestore.Timestamp.now();
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const batch = db.batch();
 
-    console.log("מתחיל סריקת שחקנים למארב...");
+    console.log("🔍 Scanning for eligible players for ambush...");
 
     try {
-        // 1. שליפת שחקנים עם 100% חיים שלא הותקפו ב-24 שעות האחרונות
-        const playersRef = db.collection('players');
-        const snapshot = await playersRef
+        // שליפת שחקנים עם 100% חיים שלא הותקפו יממה
+        const playersSnap = await db.collection('players')
             .where('energy', '==', 100)
             .where('lastAmbushDate', '<=', twentyFourHoursAgo)
             .get();
 
-        if (snapshot.empty) {
-            console.log("לא נמצאו שחקנים מתאימים למארב.");
+        if (playersSnap.empty) {
+            console.log("✅ No players eligible for ambush right now.");
             return;
         }
 
-        // 2. שליפת רשימת המפלצות מה-DB (כדי להתאים לרמה)
+        // שליפת מפלצות מה-DB
         const monstersSnap = await db.collection('monsters').get();
-        const allMonsters = monstersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const monsters = monstersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        for (const playerDoc of snapshot.docs) {
+        for (const playerDoc of playersSnap.docs) {
             const player = playerDoc.data();
             const playerId = playerDoc.id;
 
-            // סינון מפלצות לפי רמת השחקן (maxLevel)
-            const relevantMonsters = allMonsters.filter(m => m.maxLevel >= player.level);
+            // סינון מפלצות לפי רמת השחקן
+            const relevantMonsters = monsters.filter(m => m.maxLevel >= player.level);
             if (relevantMonsters.length === 0) continue;
 
-            const monster = relevantMonsters[Math.floor(Math.random() * relevantMonsters.length)];
+            const selectedMonster = relevantMonsters[Math.floor(Math.random() * relevantMonsters.length)];
 
-            // 3. לוגיקת קרב פשוטה (Combat Logic)
-            // נניח כוח מפלצת אקראי מבוסס רמה
-            const monsterPower = (Math.random() * 15) + (player.level * 5);
-            const playerPower = player.attack || 10;
+            // לוגיקת קרב משודרגת לפי האפיון שלך
+            const baseAttack = player.attack || 10;
+            const atkMod = (player.stats && player.stats.atkMod) ? player.stats.atkMod : 1;
+            const defMod = (player.stats && player.stats.defMod) ? player.stats.defMod : 1;
             
-            const winChance = (playerPower / (playerPower + monsterPower));
+            const effectivePlayerPower = baseAttack * atkMod;
+            const monsterPower = (Math.random() * 20) + (player.level * 6); // כוח מפלצת מבוסס רמה
+
+            // חישוב סיכוי ניצחון (מושפע מה-defMod של השחקן)
+            const winChance = (effectivePlayerPower / (effectivePlayerPower + (monsterPower / defMod)));
             const didWin = Math.random() < winChance;
 
             let damage = 0;
             let loot = 0;
-            let resultMessage = "";
 
             if (didWin) {
-                loot = Math.floor(Math.random() * 50) + 20; // זהב אקראי
-                resultMessage = `בזמן שלא היית, הותקפת על ידי ${monster.name}! נלחמת בגבורה, הבקעת אותה וזכית ב-${loot} מטבעות זהב.`;
+                loot = Math.floor(Math.random() * 30) + (player.level * 10);
             } else {
-                damage = Math.floor(Math.random() * 20) + 10; // נזק אקראי
-                resultMessage = `בזמן שלא היית, ${monster.name} הפתיעה אותך במארב! ספגת ${damage} נזק לפני שהצלחת להימלט.`;
+                damage = Math.floor((Math.random() * 15) + 15);
             }
 
-            // 4. עדכון ה-DB
-            await playersRef.doc(playerId).update({
-                energy: Math.max(0, player.energy - damage),
-                coins: player.coins + loot,
+            // עדכון השחקן
+            batch.update(playerDoc.ref, {
+                energy: Math.max(0, 100 - damage),
+                coins: (player.coins || 0) + loot,
                 lastAmbushDate: now,
                 lastHpUpdate: now
             });
 
-            // 5. יצירת הודעה לשחקן
-            await db.collection('notifications').add({
+            // יצירת הודעת "נתקפת"
+            const notificationRef = db.collection('notifications').doc();
+            batch.set(notificationRef, {
                 targetUserId: playerId,
                 title: "נתקפת! ⚔️",
-                message: resultMessage,
+                message: didWin 
+                    ? `בזמן שישנת, ${selectedMonster.name} ניסתה לתקוף אותך! הבסת אותה ולקחת ${loot} זהב.` 
+                    : `בזמן שישנת, הופתעת על ידי ${selectedMonster.name}! ספגת ${damage} נזק.`,
                 type: "AMBUSH",
                 isRead: false,
                 createdAt: now
             });
-
-            console.log(`מארב בוצע עבור השחקן: ${player.username}. תוצאה: ${didWin ? 'ניצחון' : 'הפסד'}`);
         }
 
+        await batch.commit();
+        console.log(`🚀 Ambush process completed for ${playersSnap.size} players.`);
+
     } catch (error) {
-        console.error("שגיאה בהרצת המארב:", error);
+        console.error("❌ Error during ambush execution:", error);
     }
 }
 
-runAmbush();
+startAmbushProcess();
