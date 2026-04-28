@@ -2,19 +2,19 @@ name: Offline Monster Ambush
 
 on:
   schedule:
-    - cron: '0 */8 * * *' # רץ כל 8 שעות
-  workflow_dispatch: # כפתור להרצה ידנית ב-GitHub Actions
+    - cron: '0 */8 * * *'
+  workflow_dispatch:
 
 jobs:
   ambush:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '24'
 
       - name: Install Firebase Admin
         run: npm install firebase-admin
