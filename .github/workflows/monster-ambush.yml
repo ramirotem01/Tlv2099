@@ -3,7 +3,7 @@ name: Offline Monster Ambush
 on:
   schedule:
     - cron: '0 */8 * * *' # רץ כל 8 שעות
-  workflow_dispatch: # הרצה ידנית לבדיקה
+  workflow_dispatch: # כפתור להרצה ידנית ב-GitHub Actions
 
 jobs:
   ambush:
@@ -16,11 +16,10 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install Dependencies
+      - name: Install Firebase Admin
         run: npm install firebase-admin
 
       - name: Run Ambush Script
         env:
-          # כאן יש להזין את ה-JSON של ה-Service Account ב-GitHub Secrets
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: node ambush_logic.js
