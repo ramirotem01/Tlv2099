@@ -34,9 +34,10 @@ body { background-image: linear-gradient(rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.8
 <script type="module">
 import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { doc, getDoc, updateDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-const WEAPONS = [
+// נשקים סטטיים (הישנים)
+let WEAPONS = [
 { id: 'pistol_nemesis', name: 'אקדח פעימה נמסיס', atk: 25, price: 10, minLvl: 1, desc: 'נשק בסיסי לציידים מתחילים. אמין ומהיר.', icon: '🔫' },
 { id: 'katana_thermal', name: 'להב קטאנה טרמי', atk: 45, price: 250, minLvl: 1, desc: 'להב חם המסוגל לחתוך שריון של מפלצות.', icon: '⚔️' },
 { id: 'fire_sword', name: 'חרב אש', atk: 90, price: 750, minLvl: 3, desc: 'חרב אש אימתנית הדורשת מיומנות לוחם.', icon: '🔥' }
@@ -46,17 +47,45 @@ let playerData = null;
 
 onAuthStateChanged(auth, async (user) => {
 if (user) {
-const docRef = doc(db, "players", user.uid);
-const docSnap = await getDoc(docRef);
-if (docSnap.exists()) {
-playerData = docSnap.data();
-document.getElementById('player-coins').innerText = (playerData.coins || 0).toLocaleString();
-renderArmory();
-}
+    // משיכת נתוני השחקן
+    const docRef = doc(db, "players", user.uid);
+    const docSnap = await getDoc(docRef);
+    
+    // משיכת נשקים חדשים מה-DB
+    await fetchNewWeapons();
+
+    if (docSnap.exists()) {
+        playerData = docSnap.data();
+        document.getElementById('player-coins').innerText = (playerData.coins || 0).toLocaleString();
+        renderArmory();
+    }
 } else {
-window.location.href = 'index.html';
+    window.location.href = 'index.html';
 }
 });
+
+// פונקציה למשיכת נשקים מה-DB ומיזוגם
+async function fetchNewWeapons() {
+    try {
+        const querySnapshot = await getDocs(collection(db, "weapons"));
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            // המרה של המבנה מה-DB למבנה של החנות
+            WEAPONS.push({
+                id: doc.id,
+                name: data.name,
+                atk: data.damage,
+                price: data.price,
+                minLvl: data.minLevel,
+                desc: `בונוס מהירות: ${data.speed || 0} | הגנה: ${data.defense || 0}`,
+                icon: '🛡️', // אייקון ברירת מחדל לנשקי DB, ניתן להוסיף שדה אימוג'י ב-DB אם תרצה
+                customImg: data.img // שומרים את התמונה מה-DB
+            });
+        });
+    } catch (e) {
+        console.error("Error fetching weapons:", e);
+    }
+}
 
 function renderArmory() {
 const grid = document.getElementById('armory-grid');
@@ -66,11 +95,14 @@ const userLvl = playerData.level || 1;
 grid.innerHTML = WEAPONS.map(w => {
 const isOwned = equipped === w.id;
 const isLocked = userLvl < w.minLvl;
+// אם יש תמונה מה-DB נשתמש בה, אחרת באימוג'י
+const visualElement = w.customImg ? `<img src="${w.customImg}" class="w-16 h-16 rounded-lg object-cover shadow-lg border border-slate-700">` : `<span class="text-5xl drop-shadow-lg">${w.icon}</span>`;
+
 return `
 <div class="glass p-8 rounded-[2.5rem] item-card flex flex-col gap-5 border border-slate-800 ${isLocked ? 'locked' : ''}">
 <div class="flex justify-between items-center">
 <div class="price-tag">${w.price} 💰</div>
-<span class="text-5xl drop-shadow-lg">${w.icon}</span>
+${visualElement}
 </div>
 <div>
 <h3 class="text-2xl font-black mb-1.5 text-white">${w.name}</h3>
@@ -98,7 +130,6 @@ window.buyWeapon = async (id, name, price, minLvl) => {
 if (playerData.level < minLvl) return alert("הרמה שלך נמוכה מדי!");
 if (playerData.coins < price) return alert("אין לך מספיק זהב!");
 
-// חסימת רכישה אם כבר יש נשק מצויד
 if (playerData.equippedWeapon && playerData.equippedWeapon !== '') {
 alert("אינך יכול להחזיק יותר מנשק אחד! עליך למכור את הנשק הנוכחי שלך לפני רכישת חדש.");
 return;
@@ -107,7 +138,9 @@ return;
 if (confirm("לרכוש את " + name + " ב-" + price + " זהב?")) {
 try {
 const playerRef = doc(db, "players", auth.currentUser.uid);
-const weaponAtk = WEAPONS.find(w => w.id === id).atk;
+const weapon = WEAPONS.find(w => w.id === id);
+const weaponAtk = weapon.atk;
+
 await updateDoc(playerRef, {
 coins: playerData.coins - price,
 equippedWeapon: id,
