@@ -81,7 +81,7 @@
     <script type="module">
         import { auth, db } from './firebase-config.js';
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { doc, getDoc, updateDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { doc, getDoc, updateDoc, increment, addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const itemDatabase = {
             'basic_attack': { name: 'מכה בסיסית', baseAtk: 15, icon: '👊' },
@@ -98,7 +98,7 @@
             'speed_large': { name: 'זריזות גדולה', buffEva: 0.35, icon: '⚡', type: 'potion' }
         };
 
-        let player = { hp: 100, maxHp: 100, inventory: [], potions: [], equippedWeapon: null, isMyTurn: true, stats: { atkMod: 1, defMod: 1, evaMod: 0.1 } };
+        let player = { hp: 100, maxHp: 100, inventory: [], potions: [], equippedWeapon: null, isMyTurn: true, stats: { atkMod: 1, defMod: 1, evaMod: 0.1 }, activeQuest: null };
         let enemy = { id: null, name: "", hp: 0, maxHp: 0, atk: 0, level: 1, reward: 0, isPvP: false };
 
         onAuthStateChanged(auth, async (user) => {
@@ -132,6 +132,7 @@
                 player.inventory = data.inventory || [];
                 player.potions = data.potions || [];
                 player.equippedWeapon = data.equippedWeapon || null;
+                player.activeQuest = data.activeQuest || null;
                 
                 renderActions();
                 updateUI();
@@ -242,22 +243,44 @@
         }
 
         async function processVictory() {
-            addLog(`🏆 ניצחון! +${enemy.reward} זוזים`, 'text-yellow-400 font-black italic');
+            let finalReward = enemy.reward;
+            let questBonusMsg = "";
+
+            // בדיקת משימות: סוג 1 (חיסול מפלצות) או סוג 4 (צייד שחקנים)
+            if (player.activeQuest && player.activeQuest.status === 'open') {
+                const isMonsterKill = (player.activeQuest.type === 1 && !enemy.isPvP);
+                const isHunterKill = (player.activeQuest.type === 4 && enemy.isPvP);
+
+                if (isMonsterKill || isHunterKill) {
+                    let newProgress = (player.activeQuest.current || 0) + 1;
+                    if (newProgress >= player.activeQuest.target) {
+                        finalReward *= 5; // פרס פי 5 על השלמת המשימה
+                        questBonusMsg = " והשלמת את המשימה! בונוס פי 5 הופעל!";
+                        await updateDoc(doc(db, "players", auth.currentUser.uid), {
+                            "activeQuest.status": "completed",
+                            "activeQuest.current": newProgress
+                        });
+                    } else {
+                        await updateDoc(doc(db, "players", auth.currentUser.uid), {
+                            "activeQuest.current": newProgress
+                        });
+                    }
+                }
+            }
+
+            addLog(`🏆 ניצחון! +${finalReward} זוזים${questBonusMsg}`, 'text-yellow-400 font-black italic');
             
-            // עדכון המנצח
             await updateDoc(doc(db, "players", auth.currentUser.uid), {
-                coins: increment(enemy.reward),
+                coins: increment(finalReward),
                 xp: increment(enemy.level * 2),
-                energy: Math.floor(player.hp),
+                energy: Math.floor((player.hp / player.maxHp) * 100),
                 lastHpUpdate: serverTimestamp()
             });
 
-            // עדכון היריב ב-PvP
             if (enemy.isPvP && enemy.id) {
                 const enemyRef = doc(db, "players", enemy.id);
-                const enemyEnergyPercent = Math.max(0, Math.floor((enemy.hp / enemy.maxHp) * 100));
                 await updateDoc(enemyRef, {
-                    energy: enemyEnergyPercent,
+                    energy: 0,
                     lastAmbushDate: serverTimestamp()
                 });
             }
@@ -267,14 +290,11 @@
 
         async function processDefeat() {
             addLog(`💀 תבוסה...`, 'text-red-600 font-black');
-            
-            // עדכון המובס
             await updateDoc(doc(db, "players", auth.currentUser.uid), { 
                 energy: 0, 
                 lastHpUpdate: serverTimestamp() 
             });
             
-            // עדכון היריב ב-PvP (גם אם ניצח, הוא ספג נזק וצריך לצאת מהזירה)
             if (enemy.isPvP && enemy.id) {
                 const enemyRef = doc(db, "players", enemy.id);
                 const enemyEnergyPercent = Math.max(0, Math.floor((enemy.hp / enemy.maxHp) * 100));
