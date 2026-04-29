@@ -39,6 +39,9 @@
             <div class="glass rounded-[3rem] p-10 text-center neon-border flex-1 flex flex-col justify-center items-center">
                 <div class="text-8xl mb-4 drop-shadow-[0_0_25px_rgba(234,179,8,0.6)]">₿</div>
                 <h2 class="text-3xl font-black mb-2 italic uppercase tracking-tighter">הסריקה מוכנה</h2>
+                <div id="quest-info" class="hidden mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-yellow-500 text-sm font-bold">
+                    משימה פעילה: <span id="quest-status-text"></span>
+                </div>
                 <p class="text-slate-400 text-sm mb-8 leading-relaxed max-w-xs mx-auto font-medium">
                     צא אל השממה הדיגיטלית. אתה עשוי למצוא עושר רב, אך היזהר - המפלצות אורבות בכל פינה.
                 </p>
@@ -60,6 +63,7 @@
                     <div>
                         <h4 id="loot-title" class="text-2xl font-black text-white italic uppercase"></h4>
                         <p id="loot-desc" class="text-lg text-yellow-500 font-bold italic"></p>
+                        <p id="quest-bonus-text" class="text-green-400 text-sm font-black hidden mt-1">🏆 בונוס משימה הושלם: X5!</p>
                     </div>
                 </div>
             </div>
@@ -83,9 +87,21 @@
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
                 player = docSnap.data();
+                updateQuestUI();
                 checkCooldown();
             }
         });
+
+        function updateQuestUI() {
+            const questDiv = document.getElementById('quest-info');
+            const statusText = document.getElementById('quest-status-text');
+            if (player.activeQuest && player.activeQuest.type === 1 && player.activeQuest.status === 'open') {
+                questDiv.classList.remove('hidden');
+                statusText.innerText = `${player.activeQuest.current} / ${player.activeQuest.target} מסעות`;
+            } else {
+                questDiv.classList.add('hidden');
+            }
+        }
 
         function checkCooldown() {
             if (!player) return;
@@ -109,11 +125,8 @@
         }
 
         function startTimer(seconds) {
-            // נעילה קשיחה של הכפתור
             btn.disabled = true;
             let remaining = seconds;
-            
-            // ניקוי אינטרוול קודם אם קיים
             if (cooldownInterval) clearInterval(cooldownInterval);
             
             const updateTimerUI = () => {
@@ -130,16 +143,13 @@
                 btn.innerText = "ממתין לסריקה...";
                 remaining--;
             };
-            
             updateTimerUI();
             cooldownInterval = setInterval(updateTimerUI, 1000);
         }
 
         btn.onclick = async () => {
-            // 1. הגנה מיידית
             if (!player || btn.disabled) return;
             
-            // 2. נעילה פיזית של הכפתור לפני כל פעולת רשת
             btn.disabled = true;
             btn.innerText = "מעבד נתונים...";
 
@@ -147,17 +157,39 @@
             let result = {};
             const story = adventureStories[Math.floor(Math.random() * adventureStories.length)];
             const playerRef = doc(db, "players", auth.currentUser.uid);
+            const localNow = new Date();
+            
+            document.getElementById('quest-bonus-text').classList.add('hidden');
 
             try {
-                // חותמת זמן מקומית לעדכון ה-UI
-                const localNow = new Date();
+                let updates = { lastQuestTime: serverTimestamp() };
+                let questCompleted = false;
+                let finalGoldReward = 0;
 
-                // 3. ביצוע עדכוני ה-DB
+                // חישוב תוצאה רגילה
                 if (rand <= 95) {
                     const bonus = Math.floor(Math.random() * (player.level || 1));
-                    const gold = ((player.level || 1) + bonus) * (Math.floor(Math.random() * 3) + 1);
-                    await updateDoc(playerRef, { coins: increment(gold), lastQuestTime: serverTimestamp() });
-                    result = { title: 'זהב טהור', icon: '💰', desc: `מצאת ${gold} זוזים.` };
+                    let gold = ((player.level || 1) + bonus) * (Math.floor(Math.random() * 3) + 1);
+                    finalGoldReward = gold;
+
+                    // בדיקת משימה פעילה מסוג 1 (ביטקויין)
+                    if (player.activeQuest && player.activeQuest.type === 1 && player.activeQuest.status === 'open') {
+                        let newProgress = (player.activeQuest.current || 0) + 1;
+                        
+                        if (newProgress >= player.activeQuest.target) {
+                            // משימה הושלמה!
+                            questCompleted = true;
+                            finalGoldReward = gold * 5; // פי 5 פרס
+                            updates['activeQuest.status'] = 'completed';
+                            updates['activeQuest.current'] = newProgress;
+                            document.getElementById('quest-bonus-text').classList.remove('hidden');
+                        } else {
+                            updates['activeQuest.current'] = newProgress;
+                        }
+                    }
+
+                    updates.coins = increment(finalGoldReward);
+                    result = { title: questCompleted ? 'שלל משימה אגדי' : 'זהב טהור', icon: '💰', desc: `מצאת ${finalGoldReward} זוזים.` };
                 } 
                 else if (rand <= 97) {
                     localStorage.setItem('currentBattle', JSON.stringify({ name: "שומר נתונים", level: player.level, reward: player.level * 10 }));
@@ -166,41 +198,43 @@
                 }
                 else if (rand <= 99) {
                     const p = ['health_small', 'health_large', 'atk_small'][Math.floor(Math.random() * 3)];
-                    await updateDoc(playerRef, { potions: arrayUnion(p), lastQuestTime: serverTimestamp() });
+                    updates.potions = arrayUnion(p);
                     result = { title: 'שיקוי נדיר', icon: '🧪', desc: `מצאת ${p}.` };
                 }
                 else {
                     const w = 'katana_thermal';
-                    await updateDoc(playerRef, { inventory: arrayUnion(w), lastQuestTime: serverTimestamp() });
+                    updates.inventory = arrayUnion(w);
                     result = { title: 'נשק אגדי', icon: '⚔️', desc: `מצאת ${w}.` };
                 }
 
-                // 4. עדכון המצב המקומי
-                player.lastQuestTime = localNow;
+                await updateDoc(playerRef, updates);
 
-                // 5. הצגת התוצאות
+                // עדכון ה-UI
+                player.lastQuestTime = localNow;
+                if (updates['activeQuest.current']) player.activeQuest.current = updates['activeQuest.current'];
+                if (updates['activeQuest.status']) player.activeQuest.status = updates['activeQuest.status'];
+                updateQuestUI();
+
                 document.getElementById('result-area').classList.remove('hidden');
                 document.getElementById('story-text').innerText = story.text;
                 document.getElementById('loot-title').innerText = result.title;
                 document.getElementById('loot-desc').innerText = result.desc;
                 document.getElementById('loot-icon').innerText = result.icon;
 
-                // 6. שליחת הודעה
+                // שליחת הודעה
                 await addDoc(collection(db, "notifications"), {
                     targetUserId: auth.currentUser.uid,
-                    title: result.title,
-                    message: `מסע ביטקויין: ${story.text} | תוצאה: ${result.desc}`,
-                    type: 'QUEST',
+                    title: questCompleted ? "משימה הושלמה! 🎉" : result.title,
+                    message: questCompleted ? `כל הכבוד! השלמת את משימת הביטקויין וקיבלת פרס מוגדל של ${finalGoldReward} זוזים!` : `מסע ביטקויין: ${story.text} | תוצאה: ${result.desc}`,
+                    type: questCompleted ? 'QUEST_COMPLETED' : 'QUEST',
                     isRead: false,
                     createdAt: serverTimestamp()
                 });
 
-                // 7. הפעלה מפורשת של הטיימר ל-300 שניות
                 startTimer(300);
 
             } catch (e) {
                 console.error("Error in quest:", e);
-                // במקרה של שגיאה קריטית, נשחרר את הכפתור או נבדוק שוב קולדאון
                 checkCooldown();
             }
         };
