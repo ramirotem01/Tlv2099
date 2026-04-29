@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ניהול כלי נשק | TLV2099 Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;800&display=swap" rel="stylesheet">
+    <style>
+        body { background: #020617; color: white; font-family: 'Assistant', sans-serif; }
+        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
+        input { background: #0f172a !important; border: 1px solid #1e293b !important; color: white !important; }
+        .stat-badge { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+    </style>
+</head>
+<body class="p-8">
+
+    <div class="max-w-5xl mx-auto">
+        <h1 class="text-3xl font-black mb-8 text-blue-500 italic uppercase tracking-tighter">Weaponry Arsenal Management</h1>
+
+        <!-- טופס הוספה/עריכה -->
+        <div class="glass p-6 rounded-[2rem] mb-10 border-t-4 border-blue-600">
+            <h2 id="form-title" class="text-xl font-bold mb-4">הוספת כלי נשק חדש</h2>
+            <input type="hidden" id="w-id">
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <input type="text" id="w-name" placeholder="שם הנשק (למשל: חרב פלזמה)" class="p-3 rounded-xl col-span-1 md:col-span-2">
+                <input type="text" id="w-img" placeholder="קישור לתמונה (URL)" class="p-3 rounded-xl">
+                
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-bold text-blue-400 mr-2">רמת רכישה מינימלית:</label>
+                    <input type="number" id="w-minLevel" value="1" min="1" class="p-3 rounded-xl">
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-bold text-yellow-400 mr-2">מחיר בקרדיטים:</label>
+                    <input type="number" id="w-price" value="100" min="0" class="p-3 rounded-xl">
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-bold text-red-400 mr-2">נזק ליריב (XP-):</label>
+                    <input type="number" id="w-damage" value="10" min="1" class="p-3 rounded-xl">
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-bold text-green-400 mr-2">בונוס זריזות (Speed):</label>
+                    <input type="number" id="w-speed" value="0" min="0" class="p-3 rounded-xl">
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-bold text-purple-400 mr-2">כושר ספיגה (Defense):</label>
+                    <input type="number" id="w-defense" value="0" min="0" class="p-3 rounded-xl">
+                </div>
+            </div>
+
+            <div class="flex gap-2 mt-6">
+                <button id="save-btn" class="flex-1 bg-blue-600 hover:bg-blue-500 p-4 rounded-xl font-black uppercase transition-all shadow-lg shadow-blue-900/20">שמור למסד הנתונים</button>
+                <button id="cancel-edit" class="hidden bg-slate-700 hover:bg-slate-600 p-4 rounded-xl font-black uppercase transition-all">ביטול</button>
+            </div>
+        </div>
+
+        <!-- רשימת כלי נשק -->
+        <div class="glass p-6 rounded-[2rem]">
+            <h2 class="text-xl font-bold mb-4 italic">Available Arsenal</h2>
+            <div id="weapon-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- ירונדר כאן -->
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { db } from './firebase-config.js';
+        import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const weaponList = document.getElementById('weapon-list');
+        const saveBtn = document.getElementById('save-btn');
+        const cancelEditBtn = document.getElementById('cancel-edit');
+        let editMode = false;
+
+        // הוספה או עדכון נשק
+        saveBtn.onclick = async () => {
+            const weaponData = {
+                name: document.getElementById('w-name').value,
+                img: document.getElementById('w-img').value,
+                minLevel: parseInt(document.getElementById('w-minLevel').value),
+                price: parseInt(document.getElementById('w-price').value),
+                damage: parseInt(document.getElementById('w-damage').value),
+                speed: parseInt(document.getElementById('w-speed').value),
+                defense: parseInt(document.getElementById('w-defense').value),
+                updatedAt: new Date()
+            };
+
+            if(!weaponData.name || !weaponData.img) return alert("נא למלא שם ותמונה");
+
+            try {
+                if (editMode) {
+                    const id = document.getElementById('w-id').value;
+                    await updateDoc(doc(db, "weapons", id), weaponData);
+                    alert("הנשק עודכן!");
+                    resetForm();
+                } else {
+                    await addDoc(collection(db, "weapons"), { ...weaponData, createdAt: new Date() });
+                    alert("הנשק נוסף בהצלחה!");
+                    resetForm();
+                }
+            } catch (e) { console.error(e); }
+        };
+
+        // האזנה לרשימה
+        const q = query(collection(db, "weapons"), orderBy("minLevel", "asc"));
+        onSnapshot(q, (snapshot) => {
+            weaponList.innerHTML = '';
+            snapshot.forEach((docSnap) => {
+                const w = docSnap.data();
+                const id = docSnap.id;
+                const div = document.createElement('div');
+                div.className = "bg-slate-900/50 p-4 rounded-2xl border border-slate-800 hover:border-blue-500/50 transition-all";
+                div.innerHTML = `
+                    <div class="flex gap-4">
+                        <img src="${w.img}" class="w-20 h-20 rounded-xl object-cover border border-slate-700">
+                        <div class="flex-1">
+                            <div class="flex justify-between items-start">
+                                <h3 class="font-bold text-blue-400 text-lg">${w.name}</h3>
+                                <div class="flex gap-2">
+                                    <button onclick="editWeapon('${id}', ${JSON.stringify(w).replace(/"/g, '&quot;')})" class="text-blue-500 text-xs hover:underline">ערוך</button>
+                                    <button onclick="deleteWeapon('${id}')" class="text-red-500 text-xs hover:underline">מחק</button>
+                                </div>
+                            </div>
+                            <div class="text-[11px] text-slate-400 mb-2">דרישת רמה: ${w.minLevel} | מחיר: 💰${w.price}</div>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="stat-badge bg-red-900/30 text-red-400 border border-red-900/50">⚔️ ${w.damage} ATK</span>
+                                <span class="stat-badge bg-green-900/30 text-green-400 border border-green-900/50">⚡ ${w.speed} SPD</span>
+                                <span class="stat-badge bg-purple-900/30 text-purple-400 border border-purple-900/50">🛡️ ${w.defense} DEF</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                weaponList.appendChild(div);
+            });
+        });
+
+        // פונקציית עריכה
+        window.editWeapon = (id, data) => {
+            editMode = true;
+            document.getElementById('form-title').innerText = "עריכת נשק: " + data.name;
+            document.getElementById('w-id').value = id;
+            document.getElementById('w-name').value = data.name;
+            document.getElementById('w-img').value = data.img;
+            document.getElementById('w-minLevel').value = data.minLevel;
+            document.getElementById('w-price').value = data.price;
+            document.getElementById('w-damage').value = data.damage;
+            document.getElementById('w-speed').value = data.speed;
+            document.getElementById('w-defense').value = data.defense;
+            
+            saveBtn.innerText = "עדכן נשק";
+            saveBtn.classList.replace('bg-blue-600', 'bg-green-600');
+            cancelEditBtn.classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        window.deleteWeapon = async (id) => {
+            if(confirm("למחוק את כלי הנשק?")) {
+                await deleteDoc(doc(db, "weapons", id));
+            }
+        };
+
+        function resetForm() {
+            editMode = false;
+            document.getElementById('form-title').innerText = "הוספת כלי נשק חדש";
+            document.getElementById('w-id').value = '';
+            document.getElementById('w-name').value = '';
+            document.getElementById('w-img').value = '';
+            document.getElementById('w-minLevel').value = '1';
+            document.getElementById('w-price').value = '100';
+            document.getElementById('w-damage').value = '10';
+            document.getElementById('w-speed').value = '0';
+            document.getElementById('w-defense').value = '0';
+            
+            saveBtn.innerText = "שמור למסד הנתונים";
+            saveBtn.classList.replace('bg-green-600', 'bg-blue-600');
+            cancelEditBtn.classList.add('hidden');
+        }
+
+        cancelEditBtn.onclick = resetForm;
+
+    </script>
+</body>
+</html>
