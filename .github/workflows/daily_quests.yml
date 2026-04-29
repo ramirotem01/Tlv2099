@@ -1,0 +1,22 @@
+name: Daily Player Quests
+
+on:
+  schedule:
+    - cron: '0 */12 * * *' # רץ כל 12 שעות
+  workflow_dispatch: # הרצה ידנית לבדיקה
+
+jobs:
+  assign-quests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install Firebase Admin
+        run: npm install firebase-admin
+      - name: Run Quest Script
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node quest_logic.js
