@@ -46,7 +46,9 @@ async function assignQuests() {
                     questTitle = `נצח ${targetValue} קרבות ציידים`;
                     break;
                 case 3: // ק"מ באיילון
-                    targetValue = 500 * playerLevel;
+                    // הגרלת מספר רנדומלי בין 2 ל-4 (כולל)
+                    const multiplier = Math.floor(Math.random() * 2) + 2; 
+                    targetValue = 500 * playerLevel * multiplier;
                     questTitle = `צבור ${targetValue.toLocaleString()} ק"מ במרוץ איילון`;
                     break;
                 case 4: // חיסול מפלצות
