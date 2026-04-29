@@ -30,7 +30,9 @@ async function assignQuests() {
             }
 
             // הגרלת סוג משימה (1-4)
-            const questType = Math.floor(Math.random() * 4) + 1;
+            const allowedQuests = [1, 3, 4];
+            const questType = allowedQuests[Math.floor(Math.random() * allowedQuests.length)];
+
             let targetValue = 0;
             let questTitle = "";
 
