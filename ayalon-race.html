@@ -253,7 +253,7 @@
                     // משימה הושלמה!
                     updates['activeQuest.status'] = 'completed';
                     updates['activeQuest.current'] = newTotalProgress;
-                    const rewardCoins = (earnedDistance / 10) * 5; // פי 5 מהפרס הרגיל
+                    const rewardCoins = (earnedDistance / 10) * 2; // פי 2 מהפרס הרגיל
                     updates.coins = increment(rewardCoins);
                     questBonusMsg = `והשלמת את המשימה! זכית בבונוס מוגדל של ${Math.floor(rewardCoins)} זוזים.`;
                 } else {
