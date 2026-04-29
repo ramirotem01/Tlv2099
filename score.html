@@ -9,7 +9,7 @@
     <style>
         body { 
             background-image: linear-gradient(rgba(2, 6, 23, 0.85), rgba(2, 6, 23, 0.85)), 
-                             url('https://res.cloudinary.com/dxygefiai/image/upload/v1776868529/TLV2099_c7nqzc.png');
+                               url('https://res.cloudinary.com/dxygefiai/image/upload/v1776868529/TLV2099_c7nqzc.png');
             background-size: cover; background-position: center; background-attachment: fixed;
             color: white; font-family: 'Assistant', sans-serif; min-height: 100vh;
         }
@@ -73,7 +73,6 @@
             const loading = document.getElementById('loading-state');
             
             try {
-                // שלב 1: סינון קשוח - רק 100% אנרגיה
                 const q = query(
                     collection(db, "players"), 
                     where("energy", "==", 100)
@@ -83,21 +82,18 @@
                 allPlayers = [];
                 
                 const now = new Date().getTime();
-                const protectionWindow = 24 * 60 * 60 * 1000; // 24 שעות במילישניות
+                const protectionWindow = 24 * 60 * 60 * 1000; 
 
                 querySnapshot.forEach((docSnap) => {
                     const data = docSnap.data();
                     const id = docSnap.id;
                     
-                    // שלב 2: סינונים לוגיים
                     const isNotMe = id !== auth.currentUser.uid;
                     const levelDiff = Math.abs((data.level || 0) - (myData.level || 0));
                     const isPersonalCooldown = data.lastFoughtBy === auth.currentUser.uid;
 
-                    // שלב 3: בדיקת הגנת 24 שעות (lastAmbushDate)
                     let isUnderGlobalProtection = false;
                     if (data.lastAmbushDate) {
-                        // תומך ב-Firebase Timestamp או ב-Date רגיל
                         const lastAmbushTime = data.lastAmbushDate.seconds ? 
                                              data.lastAmbushDate.seconds * 1000 : 
                                              new Date(data.lastAmbushDate).getTime();
@@ -107,13 +103,11 @@
                         }
                     }
 
-                    // תנאי כניסה לרשימה
                     if (isNotMe && levelDiff <= 5 && !isPersonalCooldown && !isUnderGlobalProtection) {
                         allPlayers.push({ id, ...data });
                     }
                 });
 
-                // מיון לפי XP
                 allPlayers.sort((a, b) => (b.xp || 0) - (a.xp || 0));
 
                 renderPlayers(allPlayers);
@@ -163,7 +157,6 @@
             });
         }
 
-        // חיפוש
         document.getElementById('search-input').addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase();
             const filtered = allPlayers.filter(p => (p.username || "").toLowerCase().includes(val));
@@ -175,8 +168,13 @@
             const potentialLoot = Math.floor(coins * 0.10) + crowdBonus;
 
             localStorage.setItem('currentBattle', JSON.stringify({
-                name: name, img: img, level: level, reward: potentialLoot,
-                isPvP: true, opponentId: id, originalCoins: coins
+                name: name, 
+                img: img, 
+                level: level, 
+                reward: potentialLoot,
+                isPvP: true, // הוספת השדה לזיהוי צייד מול מפלצת
+                opponentId: id, 
+                originalCoins: coins
             }));
 
             window.location.href = 'combat.html';
