@@ -45,6 +45,11 @@
             transition: all 0.2s ease-in-out;
         }
         .btn-start:hover { background: #3b82f6; box-shadow: 0 0 30px #3b82f6; transform: scale(1.05); }
+        
+        #quest-progress-panel {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            width: 250px; text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -53,6 +58,7 @@
         <div id="start-screen">
             <h1 class="text-5xl font-black text-white italic mb-4 text-center neon-text tracking-tighter">TLV<span class="text-blue-400">2099</span></h1>
             <p class="text-2xl font-bold text-white mb-6 text-center neon-text">נתיבי איילון: סינכרון אנרגיה</p>
+            <p id="quest-brief" class="text-yellow-400 font-bold mb-4 hidden">🎯 משימה פעילה: צבור מרחק לבונוס ענק!</p>
             <p class="text-slate-400 mb-8 text-center px-10 max-w-lg leading-relaxed">סוכן, המערכות שלך בשפל. רכב על ה<span class="text-blue-400 font-bold">סייבר-בייק</span> בנתיבים המוצפים. אסוף <span class="text-cyan-400 font-bold">קריסטלי דאטה</span> כדי להיטען (+2% HP), והתחמק מ<span class="text-red-500 font-bold">שדות השיבוש</span> האדומים.</p>
             <button id="start-btn" class="btn-start uppercase text-xs">אשר התחברות לסימולציה</button>
         </div>
@@ -63,6 +69,12 @@
                 <div class="text-3xl font-black italic text-white neon-text"><span id="energy-val">0</span>%</div>
                 <div class="energy-bar-bg"><div id="energy-fill"></div></div>
             </div>
+            
+            <div id="quest-progress-panel" class="glass-panel hidden">
+                <div class="text-[9px] text-yellow-500 font-bold uppercase tracking-widest italic">התקדמות משימה</div>
+                <div id="quest-meters" class="text-xl font-black text-white italic">0 / 0</div>
+            </div>
+
             <div class="glass-panel text-right">
                 <div class="text-[9px] text-slate-400 font-bold uppercase tracking-widest italic">מרחק סינכרון</div>
                 <div id="distance-val" class="text-3xl font-black italic text-white neon-text">0<span class="text-xs">m</span></div>
@@ -74,7 +86,7 @@
     <script type="module">
         import { auth, db } from './firebase-config.js';
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { doc, getDoc, updateDoc, increment, addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -85,6 +97,7 @@
         let items = [];
         let speed = 8;
         const lanes = [];
+        let playerData = null;
 
         const player = { lane: 1, targetX: 0, currentX: 0, y: 0, radius: 25 };
 
@@ -93,11 +106,21 @@
                 userDocRef = doc(db, "players", user.uid);
                 const snap = await getDoc(userDocRef);
                 if (snap.exists()) {
-                    playerEnergy = snap.data().energy || 0;
+                    playerData = snap.data();
+                    playerEnergy = playerData.energy || 0;
                     updateUI();
+                    checkActiveQuest();
                 }
             } else { window.location.href = 'index.html'; }
         });
+
+        function checkActiveQuest() {
+            if (playerData.activeQuest && playerData.activeQuest.type === 3 && playerData.activeQuest.status === 'open') {
+                document.getElementById('quest-brief').classList.remove('hidden');
+                document.getElementById('quest-progress-panel').classList.remove('hidden');
+                document.getElementById('quest-meters').innerText = `${Math.floor(playerData.activeQuest.current)} / ${playerData.activeQuest.target}m`;
+            }
+        }
 
         function initCanvas() {
             canvas.width = window.innerWidth;
@@ -151,14 +174,17 @@
             document.getElementById('energy-val').innerText = Math.floor(playerEnergy);
             document.getElementById('energy-fill').style.width = playerEnergy + "%";
             document.getElementById('distance-val').innerHTML = `${Math.floor(distance)}<span class="text-xs">m</span>`;
+            
+            // עדכון UI של משימה תוך כדי תנועה
+            if (playerData && playerData.activeQuest && playerData.activeQuest.type === 3 && playerData.activeQuest.status === 'open') {
+                const totalProgress = (playerData.activeQuest.current || 0) + distance;
+                document.getElementById('quest-meters').innerText = `${Math.floor(totalProgress)} / ${playerData.activeQuest.target}m`;
+            }
         }
 
-        // --- פונקציית ציור השחקן (אופנוע עם עיגול זוהר אדום) ---
         function drawPlayer(x, y) {
             ctx.save();
             ctx.translate(x, y);
-
-            // 1. עיגול זוהר אדום (Red Neon Glow)
             ctx.shadowBlur = 20;
             ctx.shadowColor = "#ef4444";
             ctx.strokeStyle = "#f87171";
@@ -166,14 +192,11 @@
             ctx.beginPath();
             ctx.arc(0, 0, player.radius + 5, 0, Math.PI * 2);
             ctx.stroke();
-
-            // 2. ציור האייקון (Emoji)
-            ctx.shadowBlur = 0; // ביטול הצל לאייקון עצמו למראה נקי
+            ctx.shadowBlur = 0;
             ctx.font = "40px serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText("🏍️", 0, 0);
-
             ctx.restore();
         }
 
@@ -213,15 +236,55 @@
         async function endGame(reason) {
             gameActive = false;
             const finalEnergy = Math.min(100, Math.floor(playerEnergy));
+            const earnedDistance = Math.floor(distance);
+            
+            let updates = { 
+                energy: finalEnergy, 
+                lastHpUpdate: serverTimestamp() 
+            };
+
+            let questBonusMsg = "";
+
+            // לוגיקה של משימה 3 (איילון)
+            if (playerData.activeQuest && playerData.activeQuest.type === 3 && playerData.activeQuest.status === 'open') {
+                let newTotalProgress = (playerData.activeQuest.current || 0) + earnedDistance;
+                
+                if (newTotalProgress >= playerData.activeQuest.target) {
+                    // משימה הושלמה!
+                    updates['activeQuest.status'] = 'completed';
+                    updates['activeQuest.current'] = newTotalProgress;
+                    const rewardCoins = (earnedDistance / 10) * 5; // פי 5 מהפרס הרגיל
+                    updates.coins = increment(rewardCoins);
+                    questBonusMsg = `והשלמת את המשימה! זכית בבונוס מוגדל של ${Math.floor(rewardCoins)} זוזים.`;
+                } else {
+                    updates['activeQuest.current'] = newTotalProgress;
+                    updates.coins = increment(earnedDistance / 10);
+                }
+            } else {
+                updates.coins = increment(earnedDistance / 10);
+            }
+
             if (userDocRef) {
                 try {
-                    await updateDoc(userDocRef, { energy: finalEnergy, lastHpUpdate: serverTimestamp() });
-                } catch (e) { console.error("Error updating energy:", e); }
+                    await updateDoc(userDocRef, updates);
+                    
+                    // שליחת הודעת סיכום
+                    await addDoc(collection(db, "notifications"), {
+                        targetUserId: auth.currentUser.uid,
+                        title: "סיכום סינכרון איילון",
+                        message: `עברת ${earnedDistance} מטרים. ${questBonusMsg}`,
+                        type: 'GAME_RESULT',
+                        isRead: false,
+                        createdAt: serverTimestamp()
+                    });
+
+                } catch (e) { console.error("Error updating game data:", e); }
             }
+
             if (reason === 'crash') {
-                alert("פקסלציה! פגעת בשדה שיבוש.");
+                alert(`פקסלציה! פגעת בשדה שיבוש. עברת ${earnedDistance} מטרים.`);
             } else {
-                alert("משימה הושלמה! הסינכרון הסתיים בהצלחה.");
+                alert(`המשימה הסתיימה! הסינכרון הושלם בהצלחה. ${questBonusMsg}`);
             }
             window.location.href = 'dashboard.html';
         }
@@ -273,6 +336,7 @@
                 if (item.y > canvas.height + 50) items.splice(i, 1);
             }
 
+            updateUI();
             requestAnimationFrame(animate);
         }
 
