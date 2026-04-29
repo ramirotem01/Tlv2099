@@ -286,8 +286,8 @@
                 if (isMonsterKill || isHunterKill) {
                     let newProgress = (player.activeQuest.current || 0) + 1;
                     if (newProgress >= player.activeQuest.target) {
-                        finalReward *= 5;
-                        questBonusMsg = " והשלמת את המשימה! בונוס פי 5 הופעל!";
+                        finalReward *= 2;
+                        questBonusMsg = " והשלמת את המשימה! בונוס פי 2 הופעל!";
                         await updateDoc(doc(db, "players", auth.currentUser.uid), {
                             "activeQuest.status": "completed",
                             "activeQuest.current": newProgress
