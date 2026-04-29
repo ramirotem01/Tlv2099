@@ -29,7 +29,7 @@ async function assignQuests() {
                 continue;
             }
 
-            // הגרלת סוג משימה (1-4)
+            //  כשתרצה גם קרב ציידים תזחזיר את 2 גם להגרלה הגרלת סוג משימה (1-4)
             const allowedQuests = [1, 3, 4];
             const questType = allowedQuests[Math.floor(Math.random() * allowedQuests.length)];
 
