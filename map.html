@@ -94,7 +94,7 @@
                 if (snap.exists()) {
                     activeMissions = snap.data().activeMissions || [];
                     if (activeMissions.length < 3) {
-                        generateNewMissions(snap.data().level || 1);
+                        await generateNewMissions(snap.data().level || 1);
                         await updateDoc(playerRef, { activeMissions: activeMissions });
                     }
                     renderNodes();
@@ -102,15 +102,35 @@
             } else { window.location.href = 'index.html'; }
         });
 
-        function generateNewMissions(playerLevel) {
+        async function generateNewMissions(playerLevel) {
+            // שליפת כל המפלצות הרגילות פעם אחת לצורך ההגרלה
+            const q = query(collection(db, "monsters"), where("isBoss", "==", false));
+            const snap = await getDocs(q);
+            const allMonsters = [];
+            snap.forEach(d => allMonsters.push(d.data()));
+
             while (activeMissions.length < 3) {
                 const diff = playerLevel + (Math.floor(Math.random() * 3));
+                
+                // סינון מפלצות מתאימות לרמה
+                const suitableMonsters = allMonsters.filter(m => 
+                    diff >= (m.minLevel || 0) && diff <= (m.maxLevel || 99)
+                );
+
+                // בחירת מפלצת (או ברירת מחדל אם אין התאמה)
+                const selectedMonster = suitableMonsters.length > 0 
+                    ? suitableMonsters[Math.floor(Math.random() * suitableMonsters.length)]
+                    : (allMonsters.length > 0 ? allMonsters[Math.floor(Math.random() * allMonsters.length)] : { name: "בוט אבטחה", img: "https://via.placeholder.com/150" });
+
                 activeMissions.push({
                     location: LOCATIONS[Math.floor(Math.random() * LOCATIONS.length)],
                     difficulty: Math.max(1, diff),
                     reward: 50 + (diff * 20),
                     top: (Math.floor(Math.random() * 60) + 20) + "%",
-                    left: (Math.floor(Math.random() * 70) + 15) + "%"
+                    left: (Math.floor(Math.random() * 70) + 15) + "%",
+                    // קיבוע המפלצת בתוך המשימה
+                    monsterName: selectedMonster.name,
+                    monsterImg: selectedMonster.img
                 });
             }
         }
@@ -128,61 +148,32 @@
             });
         }
 
-       window.openMission = async function(index) {
-    selectedMissionIndex = index;
-    const m = activeMissions[index];
-    const modal = document.getElementById('mission-modal');
-    modal.classList.remove('hidden');
+        window.openMission = function(index) {
+            selectedMissionIndex = index;
+            const m = activeMissions[index];
+            const modal = document.getElementById('mission-modal');
+            modal.classList.remove('hidden');
 
-    document.getElementById('m-target').innerText = "סורק...";
-    document.getElementById('m-image-container').innerHTML = '<span class="text-blue-500 animate-spin">🌀</span>';
+            // עדכון ה-UI מהנתונים הקבועים במשימה
+            document.getElementById('m-location').innerText = m.location;
+            document.getElementById('m-target').innerText = m.monsterName;
+            document.getElementById('m-reward').innerText = m.reward + " זוזים";
+            document.getElementById('m-difficulty').innerText = "LVL " + m.difficulty;
+            document.getElementById('m-image-container').innerHTML = `<img src="${m.monsterImg}" class="w-full h-full object-cover">`;
 
-    try {
-        // שלב א': הבאת כל המפלצות הרגילות (לא בוסים)
-        const q = query(collection(db, "monsters"), where("isBoss", "==", false));
-        const snap = await getDocs(q);
-        const monsters = [];
-        
-        snap.forEach(d => {
-            const data = d.data();
-            // שלב ב': סינון לפי רמה בתוך הקוד (כך שגם אם אין התאמה מדויקת, תהיה הגרלה)
-            // נבדוק שהמפלצת מתאימה לטווח הרמות שלה
-            if (m.difficulty >= (data.minLevel || 0) && m.difficulty <= (data.maxLevel || 99)) {
-                monsters.push(data);
-            }
-        });
-
-        // שלב ג': הגרלה - אם לא נמצאה התאמה לרמה, ניקח מפלצת רנדומלית מכל הרשימה
-        if (monsters.length > 0) {
-            currentMonsterData = monsters[Math.floor(Math.random() * monsters.length)];
-        } else {
-            // אם אין מפלצות בטווח הרמה, ניקח מפלצת כלשהי מה-DB כדי לא להיתקע עם בוט אבטחה
-            const allMonsters = [];
-            snap.forEach(d => allMonsters.push(d.data()));
-            currentMonsterData = allMonsters.length > 0 ? 
-                allMonsters[Math.floor(Math.random() * allMonsters.length)] : 
-                { name: "בוט אבטחה", img: "https://via.placeholder.com/150?text=Security+Bot" };
+            // הכנת נתוני המפלצת לקרב
+            currentMonsterData = {
+                name: m.monsterName,
+                img: m.monsterImg
+            };
         }
 
-        // עדכון UI
-        document.getElementById('m-location').innerText = m.location;
-        document.getElementById('m-target').innerText = currentMonsterData.name;
-        document.getElementById('m-reward').innerText = m.reward + " זוזים";
-        document.getElementById('m-difficulty').innerText = "LVL " + m.difficulty;
-        document.getElementById('m-image-container').innerHTML = `<img src="${currentMonsterData.img}" class="w-full h-full object-cover">`;
-
-    } catch (e) {
-        console.error("Error fetching monster:", e);
-        document.getElementById('m-target').innerText = "שגיאת תקשורת";
-    }
-}
         window.closeMission = () => document.getElementById('mission-modal').classList.add('hidden');
 
         window.startHunt = async function() {
             if (selectedMissionIndex === null || !currentMonsterData) return;
             const mission = activeMissions[selectedMissionIndex];
 
-            // שמירה ל-LocalStorage עבור דף הקרב
             localStorage.setItem('currentBattle', JSON.stringify({
                 name: currentMonsterData.name,
                 img: currentMonsterData.img,
@@ -191,7 +182,6 @@
                 location: mission.location
             }));
 
-            // הסרת המשימה מה-DB
             activeMissions.splice(selectedMissionIndex, 1);
             await updateDoc(doc(db, "players", currentUser.uid), { activeMissions: activeMissions });
             window.location.href = 'combat.html';
