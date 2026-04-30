@@ -116,7 +116,7 @@
         import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, getDocs, limit, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        const itemStats = {
+        let itemStats = {
             'pistol_nemesis': { name: 'אקדח "נמסיס"', atk: 25, icon: '🔫' },
             'katana_thermal': { name: 'קטאנה טרמית', atk: 45, icon: '⚔️' },
             'fire_sword': { name: 'חרב אש', atk: 90, icon: '🔥' },
@@ -142,6 +142,8 @@
 
                 if (docSnap.exists()) {
                     let data = docSnap.data();
+                    // משיכת נתוני נשקים מה-DB
+                    await fetchWeaponsData();
                     await checkForOfflineAmbush(user.uid, data);
                     checkUnreadMessages(user.uid);
                     const leveledUpData = await checkLevelUp(docRef, data);
@@ -151,6 +153,23 @@
                 window.location.href = 'index.html';
             }
         });
+
+        async function fetchWeaponsData() {
+            try {
+                const querySnapshot = await getDocs(collection(db, "weapons"));
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    itemStats[doc.id] = {
+                        name: data.name,
+                        atk: data.damage,
+                        icon: '🛡️',
+                        img: data.img
+                    };
+                });
+            } catch (e) {
+                console.error("Error fetching weapons:", e);
+            }
+        }
 
         async function checkForOfflineAmbush(userId, userData) {
             const now = Date.now();
@@ -225,13 +244,12 @@
 
         function updateDashboardUI(data, currentEnergy) {
             if (data.level >= 5) {
-    // שינוי צבע הצומת של איילון לסגול/אדום כדי לסמן "משימה מיוחדת"
-    const raceNode = document.querySelector('a[href="ayalon-race.html"]');
-    if (raceNode) {
-        raceNode.style.boxShadow = "0 0 30px #a855f7"; // זוהר סגול מסתורי
-        raceNode.setAttribute('data-label', "מבצע: פרוטוקול ארכניד");
-                  }
-                                }
+                const raceNode = document.querySelector('a[href="ayalon-race.html"]');
+                if (raceNode) {
+                    raceNode.style.boxShadow = "0 0 30px #a855f7";
+                    raceNode.setAttribute('data-label', "מבצע: פרוטוקול ארכניד");
+                }
+            }
             document.getElementById('player-username').innerText = data.username || "UNKNOWN";
             document.getElementById('stat-level').innerText = data.level || 1;
             document.getElementById('stat-coins').innerText = (data.coins || 0).toLocaleString();
@@ -252,8 +270,13 @@
                 totalAtk += weapon.atk;
                 const itemDiv = document.createElement('div');
                 itemDiv.className = "bg-blue-900/20 p-4 rounded-2xl border border-blue-500/30 flex flex-col items-center min-w-[100px]";
+                
+                const visualMedia = weapon.img 
+                    ? `<img src="${weapon.img}" class="w-10 h-10 rounded-lg object-cover mb-2 border border-blue-500/30">` 
+                    : `<span class="text-3xl mb-2">${weapon.icon}</span>`;
+
                 itemDiv.innerHTML = `
-                    <span class="text-3xl mb-2">${weapon.icon}</span>
+                    ${visualMedia}
                     <span class="text-[9px] font-bold text-blue-400 uppercase">${weapon.name}</span>
                 `;
                 inventoryContainer.appendChild(itemDiv);
@@ -265,8 +288,13 @@
                     totalAtk += itemStats[itemId].atk;
                     const itemDiv = document.createElement('div');
                     itemDiv.className = "bg-slate-900/40 p-4 rounded-2xl border border-slate-800 flex flex-col items-center min-w-[100px]";
+                    
+                    const visualMedia = itemStats[itemId].img 
+                        ? `<img src="${itemStats[itemId].img}" class="w-10 h-10 rounded-lg object-cover mb-2 border border-slate-800">` 
+                        : `<span class="text-3xl mb-2">${itemStats[itemId].icon}</span>`;
+
                     itemDiv.innerHTML = `
-                        <span class="text-3xl mb-2">${itemStats[itemId].icon}</span>
+                        ${visualMedia}
                         <span class="text-[9px] font-bold text-slate-400 uppercase">${itemStats[itemId].name}</span>
                     `;
                     inventoryContainer.appendChild(itemDiv);
