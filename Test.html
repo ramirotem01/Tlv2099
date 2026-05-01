@@ -3,293 +3,360 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>חמ"ל מבצעי | TLV2099</title>
+    <title>זירת לחימה | TLV2099</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;800&display=swap" rel="stylesheet">
     <style>
         body { 
-            background-image: linear-gradient(rgba(2, 6, 23, 0.7), rgba(2, 6, 23, 0.7)), 
-                               url('https://res.cloudinary.com/dxygefiai/image/upload/v1776869126/TLVDESH_lkyxtd.png');
-            background-size: cover; background-position: center; background-attachment: fixed;
-            background-repeat: no-repeat; color: white; font-family: 'Assistant', sans-serif; overflow-x: hidden;
+            background: radial-gradient(circle, #0f172a 0%, #020617 100%);
+            color: white; font-family: 'Assistant', sans-serif; overflow: hidden; height: 100vh;
         }
-        .glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
-        .neon-text { text-shadow: 0 0 15px rgba(255, 255, 255, 0.3); }
-        .neon-border { border: 1px solid rgba(59, 130, 246, 0.3); box-shadow: 0 0 15px rgba(59, 130, 246, 0.1); }
+        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
+        .hp-bar { transition: width 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .shake { animation: shake 0.4s both; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+        }
+        .enemy-glow { filter: drop-shadow(0 0 30px rgba(239, 68, 68, 0.4)); }
+        .potion-btn { border-color: rgba(34, 211, 238, 0.3) !important; color: #22d3ee !important; }
+        .weapon-btn { border-color: rgba(59, 130, 246, 0.5) !important; background: rgba(59, 130, 246, 0.2) !important; box-shadow: 0 0 15px rgba(59, 130, 246, 0.3); }
         
-        /* Node Styling */
-        .nav-node { position: absolute; width: 40px; height: 40px; background: rgba(59, 130, 246, 0.6); border: 2px solid white; border-radius: 50%; cursor: pointer; box-shadow: 0 0 20px rgba(59, 130, 246, 0.8); animation: pulse 2s infinite; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; z-index: 20; text-decoration: none; }
-        .nav-node:hover { transform: scale(1.2); background: #3b82f6; box-shadow: 0 0 40px #3b82f6; }
-        
-        /* Gold Node for Bitcoin */
-        .node-gold { background: rgba(234, 179, 8, 0.6); box-shadow: 0 0 20px rgba(234, 179, 8, 0.8); border-color: #fef08a; animation: pulse-gold 2s infinite; }
-        .node-gold:hover { background: #eab308; box-shadow: 0 0 40px #eab308; }
-
-        .nav-node.has-unread { background: rgba(220, 38, 38, 0.8); box-shadow: 0 0 20px rgba(220, 38, 38, 0.8); animation: pulse-red 1s infinite; border-color: #fca5a5; }
-        .nav-node::after { content: attr(data-label); position: absolute; bottom: -35px; white-space: nowrap; background: black; padding: 4px 12px; border-radius: 8px; font-size: 11px; font-weight: 800; opacity: 0; pointer-events: none; transition: opacity 0.3s; border: 1px solid #3b82f6; }
-        .nav-node:hover::after { opacity: 1; }
-
-        @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); } 50% { transform: scale(1.1); box-shadow: 0 0 25px rgba(59, 130, 246, 0.8); } 100% { transform: scale(1); box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); } }
-        @keyframes pulse-gold { 0% { transform: scale(1); box-shadow: 0 0 10px rgba(234, 179, 8, 0.5); } 50% { transform: scale(1.1); box-shadow: 0 0 25px rgba(234, 179, 8, 0.8); } 100% { transform: scale(1); box-shadow: 0 0 10px rgba(234, 179, 8, 0.5); } }
-        @keyframes pulse-red { 0% { transform: scale(1); box-shadow: 0 0 10px rgba(220, 38, 38, 0.5); } 50% { transform: scale(1.15); box-shadow: 0 0 30px rgba(220, 38, 38, 0.9); } 100% { transform: scale(1); box-shadow: 0 0 10px rgba(220, 38, 38, 0.5); } }
-        
-        .xp-bar-container { height: 6px; width: 100%; background: rgba(0,0,0,0.4); border-radius: 10px; margin-top: 8px; border: 1px solid rgba(255,255,255,0.05); }
-        .xp-bar-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); border-radius: 10px; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .action-btn {
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            word-wrap: break-word;
+            word-break: break-word;
+            line-height: 1.1;
+            padding: 8px 4px;
+        }
+        .item-img { width: 32px; height: 32px; object-fit: contain; margin-bottom: 4px; }
     </style>
 </head>
-<body class="min-h-screen relative p-6 md:p-10 text-right">
+<body class="flex flex-col items-center justify-between p-4 md:p-8">
 
-    <a href="map.html" class="nav-node" style="top: 40%; left: 20%;" data-label="מפה טקטית (לחימה)">🗺️</a>
-    <a href="shop.html" class="nav-node" style="top: 65%; left: 50%;" data-label="המעבדה">🧪</a>
-    <a href="inventory.html" class="nav-node" style="top: 30%; left: 80%;" data-label="נשקייה וציוד">⚔️</a>
-    <a href="score.html" class="nav-node" style="top: 15%; left: 45%;" data-label="קרב ציידים (PvP)">🏆</a>
-    <a href="Winner.html" class="nav-node" style="top: 15%; left: 25%; background: rgba(16, 185, 129, 0.6);" data-label="היכל התהילה">🎖️</a>
-    <a href="message.html" id="msg-node" class="nav-node" style="top: 50%; left: 85%;" data-label="תיבת הודעות">📩</a>
-    <a href="ayalon-race.html" class="nav-node" style="top: 75%; left: 15%;" data-label="מרוץ סייבר (איילון)">🏍️</a>
-    <a href="bitcoin.html" class="nav-node node-gold" style="top: 45%; left: 35%;" data-label="מסע אל הביטקויין">₿</a>
-
-    <header class="flex justify-between items-center mb-10 pb-6 border-b border-slate-800 relative z-10">
-        <div class="flex items-center gap-4">
-            <h1 class="text-4xl font-black text-white italic tracking-tighter neon-text">TLV2099</h1>
-            <span class="text-slate-500 font-bold">| חמ"ל מבצעי</span>
+    <div id="enemy-area" class="w-full max-w-lg text-center mt-4">
+        <div class="mb-2">
+            <h2 id="enemy-name" class="text-3xl font-black italic text-red-500 tracking-widest uppercase">סורק...</h2>
+            <div id="enemy-level" class="text-slate-500 text-[10px] font-black tracking-[0.3em]">LEVEL --</div>
         </div>
         
-        <div class="flex items-center gap-4 glass p-2.5 px-5 rounded-full neon-border shadow-lg">
-            <span id="player-username" class="font-bold text-blue-400 font-mono tracking-tighter italic uppercase">טוען...</span>
-            <span class="text-slate-600">|</span>
-            <button id="logout-btn" class="text-xs text-slate-500 hover:text-white transition-colors font-bold uppercase">התנתק</button>
+        <div class="relative w-36 h-36 md:w-48 md:h-48 mx-auto mb-4 bg-slate-900/40 rounded-full flex items-center justify-center border border-red-900/20 shadow-2xl overflow-hidden">
+            <span id="enemy-icon" class="text-7xl md:text-8xl enemy-glow">👾</span>
         </div>
-    </header>
 
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8 max-w-7xl mx-auto relative z-10">
-        <div class="glass p-6 rounded-3xl flex flex-col items-center text-center shadow-lg border border-slate-800">
-            <div class="text-[10px] uppercase text-slate-500 mb-2 font-bold tracking-widest italic">רמת סוכן</div>
-            <div id="stat-level" class="text-5xl font-extrabold text-blue-500 tracking-tighter">-</div>
-            <div class="xp-bar-container">
-                <div id="xp-bar-fill" class="xp-bar-fill" style="width: 0%"></div>
+        <div class="w-full max-w-md mx-auto">
+            <div class="w-full bg-slate-950 h-3 rounded-full border border-slate-800 p-0.5 overflow-hidden">
+                <div id="enemy-hp-bar" class="hp-bar bg-red-600 h-full rounded-full" style="width: 100%"></div>
             </div>
-            <div id="xp-text" class="text-[8px] text-slate-500 mt-1 font-bold font-mono">XP: 0 / 0</div>
-        </div>
-
-        <div class="glass p-6 rounded-3xl flex flex-col items-center text-center shadow-lg border border-slate-800">
-            <div class="text-[10px] uppercase text-slate-500 mb-2 font-bold tracking-widest italic">כוח (ATK)</div>
-            <div id="stat-power" class="text-5xl font-extrabold text-red-500 tracking-tighter">0</div>
-        </div>
-
-        <div class="glass p-6 rounded-3xl flex flex-col items-center text-center shadow-lg border border-slate-800">
-            <div class="text-[10px] uppercase text-slate-500 mb-2 font-bold tracking-widest italic">זוזים</div>
-            <div id="stat-coins" class="text-5xl font-extrabold text-white tracking-tighter">-</div>
-        </div>
-
-        <div class="glass p-6 rounded-3xl flex flex-col items-center text-center shadow-lg border border-slate-800">
-            <div class="text-[10px] uppercase text-slate-500 mb-2 font-bold tracking-widest italic">אנרגיה (HP)</div>
-            <div id="stat-energy-text" class="text-5xl font-extrabold text-green-400 tracking-tighter">-%</div>
-            <div id="recovery-indicator" class="text-[8px] text-green-500/50 font-bold animate-pulse mt-1 font-mono uppercase"></div>
+            <div id="enemy-hp-text" class="text-[10px] mt-1.5 font-bold text-slate-500 uppercase tracking-tighter">--/-- HP</div>
         </div>
     </div>
 
-    <div class="max-w-7xl mx-auto mb-10 relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="glass p-6 rounded-[2.5rem] border border-slate-800 relative overflow-hidden">
-            <div class="flex items-center justify-between mb-6 px-2">
-                <h3 class="font-black text-xs uppercase tracking-[0.3em] text-slate-500 italic">ציוד לחימה נוכחי</h3>
-                <div class="h-px flex-1 bg-slate-800 mx-6 opacity-30"></div>
+    <div id="battle-log" class="glass w-full max-w-xl p-5 rounded-[2rem] h-32 overflow-y-auto text-xs border border-slate-800 my-2 font-mono">
+        <p class="text-blue-500 font-bold">► מערכת קרב מאותחלת...</p>
+    </div>
+
+    <div class="w-full max-w-xl bg-slate-900/50 p-6 rounded-[2.5rem] border border-slate-800">
+        <div class="flex justify-between items-end mb-4">
+            <div class="flex flex-col gap-1">
+                <span id="player-class-name" class="text-[10px] font-black text-blue-500 uppercase tracking-widest italic">לוחם פעיל</span>
+                <div class="w-40 bg-slate-950 h-2.5 rounded-full border border-slate-800 p-0.5">
+                    <div id="player-hp-bar" class="hp-bar bg-green-500 h-full rounded-full" style="width: 100%"></div>
+                </div>
             </div>
-            <div id="inventory-list" class="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-                <div class="text-slate-600 text-xs italic">סורק ציוד...</div>
+            <div class="text-right">
+                <span id="player-hp-text" class="text-3xl font-black italic">--</span>
+                <span id="player-max-hp-display" class="text-slate-600 text-xs font-bold uppercase italic">/-- %</span>
             </div>
         </div>
 
-        <div class="glass p-6 rounded-[2.5rem] border border-slate-800 relative overflow-hidden">
-            <div class="flex items-center justify-between mb-6 px-2">
-                <h3 class="font-black text-xs uppercase tracking-[0.3em] text-blue-500 italic">תרמיל שיקויים</h3>
-                <div class="h-px flex-1 bg-blue-900/30 mx-6 opacity-30"></div>
-            </div>
-            <div id="potions-list" class="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-                <div class="text-slate-600 text-xs italic">בודק תרמיל...</div>
-            </div>
-        </div>
+        <div id="action-buttons" class="grid grid-cols-3 gap-2 overflow-y-auto max-h-48 p-1"></div>
     </div>
 
     <script type="module">
         import { auth, db } from './firebase-config.js';
-        import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, getDocs, limit, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { doc, getDoc, getDocs, updateDoc, increment, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        const itemStats = {
-            'pistol_nemesis': { name: 'אקדח "נמסיס"', atk: 25, icon: '🔫' },
-            'katana_thermal': { name: 'קטאנה טרמית', atk: 45, icon: '⚔️' },
-            'fire_sword': { name: 'חרב אש', atk: 90, icon: '🔥' },
-            'nano_boost': { name: 'ננו-בוסט', atk: 0, icon: '💊' },
-            'nano_bed': { name: 'מיטת ריפוי', atk: 0, icon: '🛌' }
+        let itemDatabase = {
+            'basic_attack': { name: 'מכה בסיסית', baseAtk: 15, icon: '👊' },
+            'pistol_nemesis': { name: 'אקדח נמסיס', baseAtk: 30, icon: '🔫' },
+            'katana_thermal': { name: 'קטאנה טרמית', baseAtk: 45, icon: '⚔️' },
+            'fire_sword': { name: 'חרב גיהנום', baseAtk: 90, icon: '🔥' },
+            'health_small': { name: 'שיקוי חיים קטן', heal: 25, icon: '🧪', type: 'potion' },
+            'health_large': { name: 'שיקוי חיים גדול', heal: 50, icon: '🧪', type: 'potion' },
+            'atk_small': { name: 'שיקוי כוח קטן', buffAtk: 1.15, icon: '🍷', type: 'potion' },
+            'atk_large': { name: 'שיקוי כוח גדול', buffAtk: 1.35, icon: '🍷', type: 'potion' },
+            'def_small': { name: 'שיקוי מגן קטן', buffDef: 0.85, icon: '🍶', type: 'potion' },
+            'def_large': { name: 'שיקוי מגן גדול', buffDef: 0.70, icon: '🍶', type: 'potion' },
+            'speed_small': { name: 'זריזות קטנה', buffEva: 0.15, icon: '⚡', type: 'potion' },
+            'speed_large': { name: 'זריזות גדולה', buffEva: 0.35, icon: '⚡', type: 'potion' }
         };
 
-        const potionStats = {
-            'health_large': { name: 'חיים גדול', icon: '🧪', color: 'text-green-400' },
-            'health_small': { name: 'חיים קטן', icon: '🧪', color: 'text-green-500' },
-            'atk_small': { name: 'כוח קטן', icon: '🍷', color: 'text-red-400' },
-            'atk_large': { name: 'כוח גדול', icon: '🍷', color: 'text-red-600' },
-            'def_small': { name: 'ספיגה קטן', icon: '🍶', color: 'text-blue-400' },
-            'def_large': { name: 'ספיגה גדול', icon: '🍶', color: 'text-blue-600' },
-            'speed_small': { name: 'זריזות קטן', icon: '⚡', color: 'text-yellow-400' },
-            'speed_large': { name: 'זריזות גדול', icon: '⚡', color: 'text-yellow-600' }
-        };
+        let player = { hp: 100, maxHp: 100, inventory: [], potions: [], equippedWeapon: null, isMyTurn: true, stats: { atkMod: 1, defMod: 1, evaMod: 0.1 }, activeQuest: null };
+        let enemy = { id: null, name: "", hp: 0, maxHp: 0, atk: 0, level: 1, reward: 0, isPvP: false };
 
         onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                const docRef = doc(db, "players", user.uid);
-                const docSnap = await getDoc(docRef);
+            if (!user) { window.location.href = 'index.html'; return; }
+            
+            await fetchDbWeapons();
 
-                if (docSnap.exists()) {
-                    let data = docSnap.data();
-                    await checkForOfflineAmbush(user.uid, data);
-                    checkUnreadMessages(user.uid);
-                    const leveledUpData = await checkLevelUp(docRef, data);
-                    processEnergyRecovery(docRef, leveledUpData || data);
+            const battleData = JSON.parse(localStorage.getItem('currentBattle'));
+            if (!battleData) { window.location.href = 'dashboard.html'; return; }
+
+            // נוסחאות קושי מעודכנות - צמיחה מואצת
+            const scaledHp = Math.floor(50 + Math.pow(battleData.level, 1.5) * 20);
+            const scaledAtk = Math.floor(15 + (battleData.level * 8) + Math.pow(battleData.level, 1.2));
+
+            enemy = {
+                id: battleData.opponentId || null,
+                name: battleData.name,
+                level: battleData.level,
+                reward: battleData.reward,
+                maxHp: scaledHp,
+                hp: scaledHp,
+                atk: scaledAtk,
+                isPvP: battleData.isPvP || false
+            };
+            
+            document.getElementById('enemy-name').innerText = enemy.name;
+            document.getElementById('enemy-level').innerText = `LEVEL ${enemy.level}`;
+
+            if (battleData.img) {
+                document.getElementById('enemy-icon').parentElement.innerHTML = `<img src="${battleData.img}" class="w-full h-full object-cover rounded-full border-4 border-red-900/30 enemy-glow">`;
+            }
+
+            const docSnap = await getDoc(doc(db, "players", user.uid));
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                player.maxHp = 100 + ((data.level || 1) * 15);
+                player.hp = (data.energy !== undefined) ? (data.energy / 100 * player.maxHp) : player.maxHp;
+                player.inventory = data.inventory || [];
+                player.potions = data.potions || [];
+                player.equippedWeapon = data.equippedWeapon || null;
+                player.activeQuest = data.activeQuest || null;
+                
+                renderActions();
+                updateUI();
+                addLog(`מטרה זוהתה: ${enemy.name}.`, 'text-red-500 font-bold');
+            }
+        });
+
+        async function fetchDbWeapons() {
+            try {
+                const querySnapshot = await getDocs(collection(db, "weapons"));
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    itemDatabase[doc.id] = {
+                        name: data.name,
+                        baseAtk: data.damage,
+                        speed: data.speed || 0,
+                        defense: data.defense || 0,
+                        img: data.img || null, 
+                        icon: '⚔️'
+                    };
+                });
+            } catch (e) { console.error("Error loading weapons:", e); }
+        }
+
+        window.handleAction = async function(itemId, isPotion = false, potionIndex = -1) {
+            if (!player.isMyTurn || player.hp <= 0) return;
+            const item = itemDatabase[itemId];
+            if (!item) return;
+
+            player.isMyTurn = false;
+
+            if (isPotion) {
+                if (item.heal) {
+                    const healAmount = Math.floor(player.maxHp * (item.heal / 100));
+                    player.hp = Math.min(player.maxHp, player.hp + healAmount);
+                    addLog(`שימוש ב${item.name}: +${healAmount} HP`, 'text-cyan-400');
                 }
+                if (item.buffAtk) { player.stats.atkMod *= item.buffAtk; addLog(`${item.name}: הנזק עלה!`, 'text-orange-400'); }
+                if (item.buffDef) { player.stats.defMod *= item.buffDef; addLog(`${item.name}: הגנה עלתה!`, 'text-blue-400'); }
+
+                player.potions.splice(potionIndex, 1);
+                await updateDoc(doc(db, "players", auth.currentUser.uid), { potions: player.potions });
+                renderActions();
             } else {
-                window.location.href = 'index.html';
+                const speedBonus = item.speed ? (1 + (item.speed * 0.05)) : 1; 
+                const res = calculateDamage(item.baseAtk * speedBonus, player.stats.atkMod, true);
+                
+                enemy.hp -= res.val;
+                addLog(`${item.name}: ${res.val} נזק`, 'text-white font-bold italic');
+                triggerShake('enemy-area');
             }
-        });
 
-        async function checkForOfflineAmbush(userId, userData) {
-            const now = Date.now();
-            const lastAmbush = userData.lastAmbushDate ? userData.lastAmbushDate.toMillis() : 0;
-            const cooldown = 4 * 60 * 60 * 1000;
-            if ((userData.energy || 0) >= 100 && (now - lastAmbush > cooldown)) {
-                if (Math.random() < 0.25) { await executeMonsterAmbush(userId, userData); }
-            }
+            updateUI();
+            if (enemy.hp <= 0) return processVictory();
+            setTimeout(enemyTurn, 800);
         }
 
-        async function executeMonsterAmbush(userId, userData) {
-            const power = userData.attack || 10;
-            const level = userData.level || 1;
-            const monsterPower = (Math.random() * 15) + (level * 4);
-            const winChance = (power / (power + monsterPower)) + 0.1;
-            const didWin = Math.random() < winChance;
-            let damage = !didWin ? Math.floor(Math.random() * 25) + 15 : 0;
-            const loot = didWin ? Math.floor(Math.random() * 40) + 10 : 0;
-
-            await updateDoc(doc(db, "players", userId), {
-                energy: Math.max(0, (userData.energy || 100) - damage),
-                coins: Math.max(0, (userData.coins || 0) + loot),
-                lastAmbushDate: serverTimestamp()
-            });
-        }
-
-        async function checkUnreadMessages(userId) {
-            const q = query(collection(db, "notifications"), where("targetUserId", "==", userId), where("isRead", "==", false), limit(1));
-            const querySnapshot = await getDocs(q);
-            const msgNode = document.getElementById('msg-node');
-            if (!querySnapshot.empty) msgNode.classList.add('has-unread');
-            else msgNode.classList.remove('has-unread');
-        }
-
-        async function checkLevelUp(docRef, data) {
-            const currentLevel = data.level || 1;
-            const currentXP = data.xp || 0;
-            const xpNeeded = currentLevel * 10;
-            if (currentXP >= xpNeeded) {
-                const newLevel = currentLevel + 1;
-                const updatedFields = { level: newLevel, xp: currentXP - xpNeeded, energy: 100 };
-                await updateDoc(docRef, updatedFields);
-                try {
-                    await addDoc(collection(db, "notifications"), {
-                        targetUserId: auth.currentUser.uid,
-                        title: "עלית רמה! 🚀",
-                        message: `כל הכבוד סוכן! הגעת לרמה ${newLevel}. האנרגיה שלך התמלאה מחדש ל-100%.`,
-                        type: "level_up",
-                        isRead: false,
-                        timestamp: serverTimestamp()
-                    });
-                    checkUnreadMessages(auth.currentUser.uid);
-                } catch (e) { console.error(e); }
-                return { ...data, ...updatedFields };
-            }
-            return null;
-        }
-
-        function processEnergyRecovery(docRef, data) {
-            const now = Date.now();
-            const lastUpdate = data.lastHpUpdate ? data.lastHpUpdate.toMillis() : now;
-            const hoursPassed = (now - lastUpdate) / (1000 * 60 * 60);
-            let recoveryRate = (data.inventory && data.inventory.includes('nano_bed')) ? 40 : 20;
-            const recovered = hoursPassed * recoveryRate;
-            let currentEnergy = Math.min(100, (data.energy || 0) + recovered);
-            updateDashboardUI(data, Math.floor(currentEnergy));
-            if (Math.floor(currentEnergy) > (data.energy || 0)) {
-                updateDoc(docRef, { energy: Math.floor(currentEnergy), lastHpUpdate: serverTimestamp() });
-            }
-            if (currentEnergy < 100) document.getElementById('recovery-indicator').innerText = `+${recoveryRate}%/HR REGEN`;
-        }
-
-        function updateDashboardUI(data, currentEnergy) {
-            if (data.level >= 5) {
-    // שינוי צבע הצומת של איילון לסגול/אדום כדי לסמן "משימה מיוחדת"
-    const raceNode = document.querySelector('a[href="ayalon-race.html"]');
-    if (raceNode) {
-        raceNode.style.boxShadow = "0 0 30px #a855f7"; // זוהר סגול מסתורי
-        raceNode.setAttribute('data-label', "מבצע: פרוטוקול ארכניד");
-                  }
-                                }
-            document.getElementById('player-username').innerText = data.username || "UNKNOWN";
-            document.getElementById('stat-level').innerText = data.level || 1;
-            document.getElementById('stat-coins').innerText = (data.coins || 0).toLocaleString();
-            document.getElementById('stat-energy-text').innerText = currentEnergy + "%";
+        function enemyTurn() {
+            if (enemy.hp <= 0) return;
+            const equippedWeapon = itemDatabase[player.equippedWeapon];
+            const weaponDef = equippedWeapon ? (equippedWeapon.defense || 0) : 0;
+            const res = calculateDamage(enemy.atk, player.stats.defMod, false);
             
-            const xpNeeded = (data.level || 1) * 10;
-            const xpPercent = Math.min(100, ((data.xp || 0) / xpNeeded) * 100);
-            document.getElementById('xp-bar-fill').style.width = xpPercent + "%";
-            document.getElementById('xp-text').innerText = `XP: ${data.xp || 0} / ${xpNeeded}`;
+            if (res.type !== 'MISS') {
+                const finalEnemyDmg = Math.max(1, res.val - weaponDef);
+                player.hp -= finalEnemyDmg;
+                addLog(`${enemy.name}: ${finalEnemyDmg} נזק`, 'text-red-400 font-bold');
+                triggerShake('player-hp-bar');
+            } else {
+                addLog(`התחמקת!`, 'text-blue-400');
+            }
+            updateUI();
+            if (player.hp <= 0) processDefeat();
+            else player.isMyTurn = true;
+        }
 
-            let totalAtk = data.baseAttack || 10; 
-            const inventoryContainer = document.getElementById('inventory-list');
-            inventoryContainer.innerHTML = '';
+        function calculateDamage(base, modifier, isPlayerAttacking) {
+            // הוספת מנגנון הגנה למפלצת
+            const variance = (Math.random() * 0.2) + 0.9;
+            let finalDmg = base * (modifier || 1) * variance;
             
-            const equippedId = data.equippedWeapon;
-            if (equippedId && itemStats[equippedId]) {
-                const weapon = itemStats[equippedId];
-                totalAtk += weapon.atk;
-                const itemDiv = document.createElement('div');
-                itemDiv.className = "bg-blue-900/20 p-4 rounded-2xl border border-blue-500/30 flex flex-col items-center min-w-[100px]";
-                itemDiv.innerHTML = `
-                    <span class="text-3xl mb-2">${weapon.icon}</span>
-                    <span class="text-[9px] font-bold text-blue-400 uppercase">${weapon.name}</span>
-                `;
-                inventoryContainer.appendChild(itemDiv);
+            if (isPlayerAttacking) {
+                const monsterDef = Math.floor(enemy.level * 1.5);
+                finalDmg = Math.max(5, finalDmg - monsterDef);
             }
 
-            const inventory = data.inventory || [];
-            inventory.forEach(itemId => {
-                if (itemStats[itemId] && itemId !== equippedId) {
-                    totalAtk += itemStats[itemId].atk;
-                    const itemDiv = document.createElement('div');
-                    itemDiv.className = "bg-slate-900/40 p-4 rounded-2xl border border-slate-800 flex flex-col items-center min-w-[100px]";
-                    itemDiv.innerHTML = `
-                        <span class="text-3xl mb-2">${itemStats[itemId].icon}</span>
-                        <span class="text-[9px] font-bold text-slate-400 uppercase">${itemStats[itemId].name}</span>
-                    `;
-                    inventoryContainer.appendChild(itemDiv);
+            if (!isPlayerAttacking && Math.random() < player.stats.evaMod) return { val: 0, type: 'MISS' };
+            return { val: Math.floor(finalDmg), type: 'HIT' };
+        }
+
+        function renderActions() {
+            const container = document.getElementById('action-buttons');
+            container.innerHTML = '';
+            
+            if (player.equippedWeapon && itemDatabase[player.equippedWeapon]) {
+                container.appendChild(createActionBtn(player.equippedWeapon, false, -1, true));
+            } else {
+                container.appendChild(createActionBtn('basic_attack', false));
+            }
+
+            player.inventory.forEach(itemId => {
+                if (itemDatabase[itemId] && itemId !== player.equippedWeapon) {
+                    container.appendChild(createActionBtn(itemId, false));
                 }
             });
 
-            document.getElementById('stat-power').innerText = totalAtk;
-
-            const potionsContainer = document.getElementById('potions-list');
-            potionsContainer.innerHTML = '';
-            (data.potions || []).forEach(pId => {
-                if (potionStats[pId]) {
-                    const pDiv = document.createElement('div');
-                    pDiv.className = "bg-blue-900/10 p-4 rounded-2xl border border-blue-900/20 flex flex-col items-center min-w-[100px]";
-                    pDiv.innerHTML = `<span class="text-3xl mb-2">${potionStats[pId].icon}</span><span class="text-[9px] font-bold ${potionStats[pId].color} uppercase">${potionStats[pId].name}</span>`;
-                    potionsContainer.appendChild(pDiv);
+            player.potions.forEach((itemId, index) => {
+                if (itemDatabase[itemId]) {
+                    container.appendChild(createActionBtn(itemId, true, index));
                 }
             });
         }
 
-        document.getElementById('logout-btn').addEventListener('click', () => {
-            signOut(auth).then(() => { window.location.href = 'index.html'; });
-        });
+        function createActionBtn(itemId, isPotion, index = -1, isEquipped = false) {
+            const item = itemDatabase[itemId];
+            const btn = document.createElement('button');
+            let extraClass = isPotion ? "potion-btn" : "border-slate-700";
+            if (isEquipped) extraClass = "weapon-btn";
+            
+            btn.className = `glass action-btn w-full rounded-xl font-bold text-[10px] hover:bg-slate-800 border transition-all active:scale-95 ${extraClass}`;
+            
+            let visualElement = `<span class="text-xl mb-1">${item.icon || '⚔️'}</span>`;
+            if (item.img) {
+                visualElement = `<img src="${item.img}" class="item-img" alt="${item.name}">`;
+            }
+
+            btn.innerHTML = `
+                ${visualElement}
+                <span class="w-full px-1">${item.name}</span>
+                ${isEquipped ? '<span class="text-[7px] text-blue-400 mt-1 font-black opacity-80">פעיל</span>' : ''}
+            `;
+            
+            btn.onclick = () => handleAction(itemId, isPotion, index);
+            return btn;
+        }
+
+        function updateUI() {
+            document.getElementById('enemy-hp-bar').style.width = Math.max(0, (enemy.hp / enemy.maxHp * 100)) + "%";
+            document.getElementById('enemy-hp-text').innerText = `${Math.max(0, Math.floor(enemy.hp))}/${enemy.maxHp} HP`;
+            document.getElementById('player-hp-bar').style.width = Math.max(0, (player.hp / player.maxHp * 100)) + "%";
+            document.getElementById('player-hp-text').innerText = Math.max(0, Math.floor(player.hp));
+            document.getElementById('player-max-hp-display').innerText = `/${player.maxHp} HP`;
+        }
+
+        async function processVictory() {
+            let finalReward = enemy.reward;
+            let questBonusMsg = "";
+
+            if (player.activeQuest && player.activeQuest.status === 'open') {
+                const isMonsterKill = (player.activeQuest.type === 4 && !enemy.isPvP);
+                const isHunterKill = (player.activeQuest.type === 2 && enemy.isPvP);
+
+                if (isMonsterKill || isHunterKill) {
+                    let newProgress = (player.activeQuest.current || 0) + 1;
+                    if (newProgress >= player.activeQuest.target) {
+                        finalReward *= 2;
+                        questBonusMsg = " והשלמת את המשימה! בונוס פי 2 הופעל!";
+                        await updateDoc(doc(db, "players", auth.currentUser.uid), {
+                            "activeQuest.status": "completed",
+                            "activeQuest.current": newProgress
+                        });
+                    } else {
+                        await updateDoc(doc(db, "players", auth.currentUser.uid), {
+                            "activeQuest.current": newProgress
+                        });
+                    }
+                }
+            }
+
+            addLog(`🏆 ניצחון! +${finalReward} זוזים${questBonusMsg}`, 'text-yellow-400 font-black italic');
+            
+            await updateDoc(doc(db, "players", auth.currentUser.uid), {
+                coins: increment(finalReward),
+                xp: increment(enemy.level * 2),
+                energy: Math.max(0, Math.floor((player.hp / player.maxHp) * 100)),
+                lastHpUpdate: serverTimestamp()
+            });
+
+            if (enemy.isPvP && enemy.id) {
+                await updateDoc(doc(db, "players", enemy.id), {
+                    energy: 0,
+                    lastAmbushDate: serverTimestamp()
+                });
+            }
+
+            setTimeout(() => { window.location.href = 'dashboard.html'; }, 2000);
+        }
+
+        async function processDefeat() {
+            addLog(`💀 תבוסה...`, 'text-red-600 font-black');
+            await updateDoc(doc(db, "players", auth.currentUser.uid), { 
+                energy: 0, 
+                lastHpUpdate: serverTimestamp() 
+            });
+            
+            if (enemy.isPvP && enemy.id) {
+                const enemyEnergyPercent = Math.max(0, Math.floor((enemy.hp / enemy.maxHp) * 100));
+                await updateDoc(doc(db, "players", enemy.id), {
+                    energy: enemyEnergyPercent,
+                    lastAmbushDate: serverTimestamp()
+                });
+            }
+
+            setTimeout(() => { window.location.href = 'dashboard.html'; }, 2000);
+        }
+
+        function addLog(msg, colorClass) {
+            const logBox = document.getElementById('battle-log');
+            logBox.innerHTML += `<p class="${colorClass}">► ${msg}</p>`;
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        function triggerShake(id) {
+            const el = document.getElementById(id);
+            if(el) { el.classList.add('shake'); setTimeout(() => el.classList.remove('shake'), 400); }
+        }
     </script>
 </body>
 </html>
