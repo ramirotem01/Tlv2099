@@ -110,18 +110,20 @@
             const battleData = JSON.parse(localStorage.getItem('currentBattle'));
             if (!battleData) { window.location.href = 'dashboard.html'; return; }
 
-            // נוסחאות קושי מעודכנות - צמיחה מואצת
-            const scaledHp = Math.floor(50 + Math.pow(battleData.level, 1.5) * 20);
-            const scaledAtk = Math.floor(15 + (battleData.level * 8) + Math.pow(battleData.level, 1.2));
+            // איזון רמת הקושי: ליניארי אבל חזק מהגרסה המקורית
+            // HP המקורי היה 50 + (level * 35). עכשיו 60 + (level * 45).
+            const balancedHp = 60 + (battleData.level * 45);
+            // ATK המקורי היה 15 + (level * 6). עכשיו 18 + (level * 9).
+            const balancedAtk = 18 + (battleData.level * 9);
 
             enemy = {
                 id: battleData.opponentId || null,
                 name: battleData.name,
                 level: battleData.level,
                 reward: battleData.reward,
-                maxHp: scaledHp,
-                hp: scaledHp,
-                atk: scaledAtk,
+                maxHp: balancedHp,
+                hp: balancedHp,
+                atk: balancedAtk,
                 isPvP: battleData.isPvP || false
             };
             
@@ -218,12 +220,12 @@
         }
 
         function calculateDamage(base, modifier, isPlayerAttacking) {
-            // הוספת מנגנון הגנה למפלצת
             const variance = (Math.random() * 0.2) + 0.9;
             let finalDmg = base * (modifier || 1) * variance;
             
+            // מנגנון הגנה מוחלש - 0.7 לכל רמה במקום 1.5
             if (isPlayerAttacking) {
-                const monsterDef = Math.floor(enemy.level * 1.5);
+                const monsterDef = Math.floor(enemy.level * 0.7);
                 finalDmg = Math.max(5, finalDmg - monsterDef);
             }
 
