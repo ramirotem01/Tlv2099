@@ -269,14 +269,15 @@
                     await updateDoc(userDocRef, updates);
                     
                     // שליחת הודעת סיכום
-                    await addDoc(collection(db, "notifications"), {
-                        targetUserId: auth.currentUser.uid,
-                        title: "סיכום סינכרון איילון",
-                        message: `עברת ${earnedDistance} מטרים. ${questBonusMsg}`,
-                        type: 'GAME_RESULT',
-                        isRead: false,
-                        createdAt: serverTimestamp()
+            /*        await addDoc(collection(db, "notifications"), {
+                       targetUserId: auth.currentUser.uid,
+                       title: "סיכום סינכרון איילון",
+                       message: `עברת ${earnedDistance} מטרים. ${questBonusMsg}`,
+                       type: 'GAME_RESULT',
+                       isRead: false,
+                       createdAt: serverTimestamp()
                     });
+            */
 
                 } catch (e) { console.error("Error updating game data:", e); }
             }
