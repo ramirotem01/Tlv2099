@@ -112,9 +112,9 @@
 
             // איזון רמת הקושי: ליניארי אבל חזק מהגרסה המקורית
             // HP המקורי היה 50 + (level * 35). עכשיו 60 + (level * 45).
-            const balancedHp = 60 + (battleData.level * 45);
+            const balancedHp = 60 + (battleData.level * 35);
             // ATK המקורי היה 15 + (level * 6). עכשיו 18 + (level * 9).
-            const balancedAtk = 18 + (battleData.level * 9);
+            const balancedAtk = 18 + (battleData.level * 7);
 
             enemy = {
                 id: battleData.opponentId || null,
@@ -225,7 +225,7 @@
             
             // מנגנון הגנה מוחלש - 0.7 לכל רמה במקום 1.5
             if (isPlayerAttacking) {
-                const monsterDef = Math.floor(enemy.level * 0.7);
+                const monsterDef = Math.floor(enemy.level * 0.5);
                 finalDmg = Math.max(5, finalDmg - monsterDef);
             }
 
