@@ -280,8 +280,8 @@
             let questBonusMsg = "";
 
             if (player.activeQuest && player.activeQuest.status === 'open') {
-                const isMonsterKill = (player.activeQuest.type === 1 && !enemy.isPvP);
-                const isHunterKill = (player.activeQuest.type === 4 && enemy.isPvP);
+                const isMonsterKill = (player.activeQuest.type === 4 && !enemy.isPvP);
+                const isHunterKill = (player.activeQuest.type === 2 && enemy.isPvP);
 
                 if (isMonsterKill || isHunterKill) {
                     let newProgress = (player.activeQuest.current || 0) + 1;
