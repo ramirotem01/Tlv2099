@@ -110,14 +110,20 @@
             const battleData = JSON.parse(localStorage.getItem('currentBattle'));
             if (!battleData) { window.location.href = 'dashboard.html'; return; }
 
+            // איזון רמת הקושי: ליניארי אבל חזק מהגרסה המקורית
+            // HP המקורי היה 50 + (level * 35). עכשיו 60 + (level * 45).
+            const balancedHp = 60 + (battleData.level * 35);
+            // ATK המקורי היה 15 + (level * 6). עכשיו 18 + (level * 9).
+            const balancedAtk = 18 + (battleData.level * 7);
+
             enemy = {
                 id: battleData.opponentId || null,
                 name: battleData.name,
                 level: battleData.level,
                 reward: battleData.reward,
-                maxHp: 50 + (battleData.level * 35),
-                hp: 50 + (battleData.level * 35),
-                atk: 15 + (battleData.level * 6),
+                maxHp: balancedHp,
+                hp: balancedHp,
+                atk: balancedAtk,
                 isPvP: battleData.isPvP || false
             };
             
@@ -154,7 +160,7 @@
                         baseAtk: data.damage,
                         speed: data.speed || 0,
                         defense: data.defense || 0,
-                        img: data.img || null, // משיכת התמונה מה-DB
+                        img: data.img || null, 
                         icon: '⚔️'
                     };
                 });
@@ -216,6 +222,13 @@
         function calculateDamage(base, modifier, isPlayerAttacking) {
             const variance = (Math.random() * 0.2) + 0.9;
             let finalDmg = base * (modifier || 1) * variance;
+            
+            // מנגנון הגנה מוחלש - 0.7 לכל רמה במקום 1.5
+            if (isPlayerAttacking) {
+                const monsterDef = Math.floor(enemy.level * 0.5);
+                finalDmg = Math.max(5, finalDmg - monsterDef);
+            }
+
             if (!isPlayerAttacking && Math.random() < player.stats.evaMod) return { val: 0, type: 'MISS' };
             return { val: Math.floor(finalDmg), type: 'HIT' };
         }
@@ -251,7 +264,6 @@
             
             btn.className = `glass action-btn w-full rounded-xl font-bold text-[10px] hover:bg-slate-800 border transition-all active:scale-95 ${extraClass}`;
             
-            // לוגיקה לתצוגת תמונה או אייקון
             let visualElement = `<span class="text-xl mb-1">${item.icon || '⚔️'}</span>`;
             if (item.img) {
                 visualElement = `<img src="${item.img}" class="item-img" alt="${item.name}">`;
