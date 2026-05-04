@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Breach | PCS365</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050505;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #00ff41;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            border: 2px solid #333;
+            background: url('https://res.cloudinary.com/dxygefiai/image/upload/v1777130914/%D7%91%D7%99%D7%98%D7%A7%D7%95%D7%95%D7%99%D7%9F_rm4xa9.png') no-repeat center center;
+            background-size: cover;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.9) inset;
+        }
+
+        #ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            pointer-events: none;
+            text-shadow: 2px 2px 4px #000;
+        }
+
+        .instructions {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: rgba(0, 255, 65, 0.6);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="ui-overlay">
+        <h2>משימת פריצה: הליבה</h2>
+        <p>סטטוס: <span id="status">פעיל</span></p>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+    <div class="instructions">השתמש בחיצים או ב-WASD כדי לנווט. הגע אל המטרה מבלי לגעת בקירות הלייזר.</div>
+</div>
+
+<!-- Firebase SDKs (ניתן להסיר אם כבר טעון בדף האב) -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.1.1/firebase-app.js";
+    import { getFirestore, doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/9.1.1/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.1.1/firebase-auth.js";
+
+    // קונפיגורציית Firebase (תוודא שהיא מוגדרת בפרויקט שלך)
+    const firebaseConfig = { /* הקונפיגורציה שלך כאן */ };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    let currentUser = null;
+    onAuthStateChanged(auth, (user) => {
+        if (user) currentUser = user;
+    });
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = 800;
+    canvas.height = 600;
+
+    let gameActive = true;
+
+    // הגדרות שחקן
+    const player = {
+        x: 50,
+        y: 50,
+        size: 15,
+        speed: 4,
+        color: '#00ff41'
+    };
+
+    // המטרה (הביטקוין)
+    const goal = {
+        x: 720,
+        y: 520,
+        size: 30
+    };
+
+    // מכשולים (לייזרים זזים)
+    const obstacles = [
+        { x: 200, y: 0, w: 10, h: 400, speedY: 3 },
+        { x: 400, y: 200, w: 10, h: 400, speedY: -3 },
+        { x: 600, y: 0, w: 10, h: 450, speedY: 4 },
+        { x: 0, y: 300, w: 500, h: 10, speedX: 2 }
+    ];
+
+    const keys = {};
+
+    window.addEventListener('keydown', e => keys[e.code] = true);
+    window.addEventListener('keyup', e => keys[e.code] = false);
+
+    async function handleWin() {
+        gameActive = false;
+        document.getElementById('status').innerText = "הושלם!";
+        
+        if (currentUser) {
+            try {
+                const docRef = doc(db, "players", currentUser.uid);
+                
+                await updateDoc(docRef, {
+                    currentQuestStatus: 'completed',
+                    coins: increment(50)
+                });
+
+                alert("המשימה הושלמה! חוזר למפקדה לעדכון דרגה...");
+                window.location.href = '../dashboard.html';
+            } catch (e) { 
+                console.error("Error updating win status:", e); 
+                // fallback למקרה של שגיאה ב-DB
+                setTimeout(() => window.location.href = '../dashboard.html', 2000);
+            }
+        } else {
+            alert("כל הכבוד! (מצב אורח - הנתונים לא נשמרו)");
+            location.reload();
+        }
+    }
+
+    function resetPlayer() {
+        player.x = 50;
+        player.y = 50;
+    }
+
+    function update() {
+        if (!gameActive) return;
+
+        // תנועת שחקן
+        if ((keys['ArrowUp'] || keys['KeyW']) && player.y > 0) player.y -= player.speed;
+        if ((keys['ArrowDown'] || keys['KeyS']) && player.y < canvas.height - player.size) player.y += player.speed;
+        if ((keys['ArrowLeft'] || keys['KeyA']) && player.x > 0) player.x -= player.speed;
+        if ((keys['ArrowRight'] || keys['KeyD']) && player.x < canvas.width - player.size) player.x += player.speed;
+
+        // עדכון מכשולים
+        obstacles.forEach(obs => {
+            if (obs.speedY) {
+                obs.y += obs.speedY;
+                if (obs.y + obs.h > canvas.height || obs.y < 0) obs.speedY *= -1;
+            }
+            if (obs.speedX) {
+                obs.x += obs.speedX;
+                if (obs.x + obs.w > canvas.width || obs.x < 0) obs.speedX *= -1;
+            }
+
+            // בדיקת התנגשות
+            if (player.x < obs.x + obs.w &&
+                player.x + player.size > obs.x &&
+                player.y < obs.y + obs.h &&
+                player.y + player.size > obs.y) {
+                resetPlayer(); // נפסל - חוזר להתחלה
+            }
+        });
+
+        // בדיקת הגעה למטרה
+        if (player.x < goal.x + goal.size &&
+            player.x + player.size > goal.x &&
+            player.y < goal.y + goal.size &&
+            player.y + player.size > goal.y) {
+            handleWin();
+        }
+    }
+
+    function draw() {
+        // ניקוי חלקי ליצירת אפקט "שובל" אפל
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // ציור המטרה (אפקט זוהר)
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#f2a900';
+        ctx.fillStyle = '#f2a900';
+        ctx.beginPath();
+        ctx.arc(goal.x + 15, goal.y + 15, 15, 0, Math.PI * 2);
+        ctx.fill();
+
+        // ציור מכשולים
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#ff003c';
+        ctx.fillStyle = '#ff003c';
+        obstacles.forEach(obs => {
+            ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+        });
+
+        // ציור שחקן
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#00ff41';
+        ctx.fillStyle = player.color;
+        ctx.fillRect(player.x, player.y, player.size, player.size);
+        
+        ctx.shadowBlur = 0; // איפוס צל לפריימים הבאים
+    }
+
+    function gameLoop() {
+        update();
+        draw();
+        requestAnimationFrame(gameLoop);
+    }
+
+    gameLoop();
+
+</script>
+</body>
+</html>
