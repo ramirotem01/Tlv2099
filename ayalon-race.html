@@ -234,61 +234,56 @@
         }
 
         async function endGame(reason) {
-            gameActive = false;
-            const finalEnergy = Math.min(100, Math.floor(playerEnergy));
-            const earnedDistance = Math.floor(distance);
+    gameActive = false;
+    const finalEnergy = Math.min(100, Math.floor(playerEnergy));
+    const earnedDistance = Math.floor(distance);
+    
+    // עדכונים בסיסיים שקורים תמיד (אנרגיה וזמן עדכון)
+    let updates = { 
+        energy: finalEnergy, 
+        lastHpUpdate: serverTimestamp() 
+    };
+
+    let questBonusMsg = "";
+
+    // בדיקה אם יש משימה פעילה מסוג 3 (נתיבי איילון)
+    if (playerData.activeQuest && playerData.activeQuest.type === 3 && playerData.activeQuest.status === 'open') {
+        let newTotalProgress = (playerData.activeQuest.current || 0) + earnedDistance;
+        
+        // תנאי סף: רק אם המרחק הכולל הגיע ליעד
+        if (newTotalProgress >= playerData.activeQuest.target) {
+            // הצלחה! מעדכנים סטטוס ל"הושלם" ומחלקים מטבעות
+            updates['activeQuest.status'] = 'completed';
+            updates['activeQuest.current'] = newTotalProgress;
             
-            let updates = { 
-                energy: finalEnergy, 
-                lastHpUpdate: serverTimestamp() 
-            };
-
-            let questBonusMsg = "";
-
-            // לוגיקה של משימה 3 (איילון)
-            if (playerData.activeQuest && playerData.activeQuest.type === 3 && playerData.activeQuest.status === 'open') {
-                let newTotalProgress = (playerData.activeQuest.current || 0) + earnedDistance;
-                
-                if (newTotalProgress >= playerData.activeQuest.target) {
-                    // משימה הושלמה!
-                    updates['activeQuest.status'] = 'completed';
-                    updates['activeQuest.current'] = newTotalProgress;
-                    const rewardCoins = (earnedDistance / 10) * 2; // פי 2 מהפרס הרגיל
-                    updates.coins = increment(rewardCoins);
-                    questBonusMsg = `והשלמת את המשימה! זכית בבונוס מוגדל של ${Math.floor(rewardCoins)} זוזים.`;
-                } else {
-                    updates['activeQuest.current'] = newTotalProgress;
-                    updates.coins = increment(earnedDistance / 10);
-                }
-            } else {
-                updates.coins = increment(earnedDistance / 10);
-            }
-
-            if (userDocRef) {
-                try {
-                    await updateDoc(userDocRef, updates);
-                    
-                    // שליחת הודעת סיכום
-            /*        await addDoc(collection(db, "notifications"), {
-                       targetUserId: auth.currentUser.uid,
-                       title: "סיכום סינכרון איילון",
-                       message: `עברת ${earnedDistance} מטרים. ${questBonusMsg}`,
-                       type: 'GAME_RESULT',
-                       isRead: false,
-                       createdAt: serverTimestamp()
-                    });
-            */
-
-                } catch (e) { console.error("Error updating game data:", e); }
-            }
-
-            if (reason === 'crash') {
-                alert(`פקסלציה! פגעת בשדה שיבוש. עברת ${earnedDistance} מטרים.`);
-            } else {
-                alert(`המשימה הסתיימה! הסינכרון הושלם בהצלחה. ${questBonusMsg}`);
-            }
-            window.location.href = 'dashboard.html';
+            // חישוב התגמול (בונוס על ההצלחה)
+            const rewardCoins = Math.floor((earnedDistance / 10) * 2); 
+            updates.coins = increment(rewardCoins);
+            
+            questBonusMsg = `והשלמת את המשימה! זכית ב-${rewardCoins} זוזים.`;
+        } else {
+            // המשימה לא הושלמה - מעדכנים רק את ההתקדמות במטרים, בלי מטבעות
+            updates['activeQuest.current'] = newTotalProgress;
+            questBonusMsg = `המשימה בתהליך: צברת עוד ${earnedDistance} מטרים ליעד.`;
         }
+    }
+
+    // עדכון ה-Database
+    if (userDocRef) {
+        try {
+            await updateDoc(userDocRef, updates);
+        } catch (e) { console.error("Error updating game data:", e); }
+    }
+
+    // הצגת הודעה למשתמש
+    if (reason === 'crash') {
+        alert(`פקסלציה! פגעת בשדה שיבוש. ${questBonusMsg}`);
+    } else {
+        alert(`הסינכרון הסתיים. ${questBonusMsg}`);
+    }
+    
+    window.location.href = 'dashboard.html';
+}
 
         function animate() {
             if (!gameActive) return;
