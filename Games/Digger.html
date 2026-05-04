@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@800&display=swap" rel="stylesheet">
     <style>
         body { background: #020617; color: white; font-family: 'Assistant', sans-serif; overflow: hidden; }
-        canvas { background: #0f172a; border: 4px solid #1e293b; box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); }
+        canvas { background: #0f172a; border: 4px solid #1e293b; box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); touch-action: none; }
         .neon-text { text-shadow: 0 0 10px #3b82f6; }
     </style>
 </head>
@@ -16,23 +16,21 @@
 
     <div class="mb-4 text-center">
         <h1 class="text-3xl font-black italic tracking-tighter neon-text text-blue-500 uppercase">Data Digger 2099</h1>
-        <p class="text-slate-400 text-sm">אסוף 50 שבבי נתונים כדי לפרוץ את המחסום הבא</p>
         <div id="score-display" class="text-2xl font-bold mt-2">שבבים: <span id="chips">0</span> / 50</div>
     </div>
 
     <canvas id="gameCanvas" width="600" height="400"></canvas>
 
     <div class="mt-6 grid grid-cols-3 gap-4 md:hidden">
-        <button onmousedown="move('up')" class="bg-slate-800 p-4 rounded-xl">UP</button>
-        <div></div>
-        <button onmousedown="move('down')" class="bg-slate-800 p-4 rounded-xl">DOWN</button>
+        <div></div><button onmousedown="move('up')" class="bg-slate-800 p-4 rounded-xl">UP</button><div></div>
         <button onmousedown="move('left')" class="bg-slate-800 p-4 rounded-xl">LEFT</button>
-        <div></div>
+        <button onmousedown="move('down')" class="bg-slate-800 p-4 rounded-xl">DOWN</button>
         <button onmousedown="move('right')" class="bg-slate-800 p-4 rounded-xl">RIGHT</button>
     </div>
 
     <script type="module">
-        import { auth, db } from './firebase-config.js';
+        // וודא שהנתיב כאן נכון - אם הקובץ בתיקיית Games, השתמש ב ../
+        import { auth, db } from '../firebase-config.js'; 
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { doc, getDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
@@ -49,36 +47,31 @@
         let gameActive = true;
         let currentUser = null;
 
-        // אתחול המפה
         function initGrid() {
             for (let r = 0; r < ROWS; r++) {
                 grid[r] = [];
                 for (let c = 0; c < COLS; c++) {
-                    // 0 = אוויר, 1 = אדמה/קיר, 2 = יהלום
                     if (r === 0 && c === 0) grid[r][c] = 0; 
-                    else grid[r][c] = Math.random() < 0.15 ? 2 : 1;
+                    else grid[r][c] = Math.random() < 0.2 ? 2 : 1; // העליתי קצת את הסיכוי ליהלומים
                 }
             }
         }
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
             for (let r = 0; r < ROWS; r++) {
                 for (let c = 0; c < COLS; c++) {
                     if (grid[r][c] === 1) {
-                        ctx.fillStyle = '#1e293b'; // אדמה
+                        ctx.fillStyle = '#1e293b';
                         ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE - 1, TILE_SIZE - 1);
                     } else if (grid[r][c] === 2) {
-                        ctx.fillStyle = '#3b82f6'; // יהלום/שבב
+                        ctx.fillStyle = '#3b82f6';
                         ctx.beginPath();
                         ctx.arc(c * TILE_SIZE + TILE_SIZE/2, r * TILE_SIZE + TILE_SIZE/2, 8, 0, Math.PI * 2);
                         ctx.fill();
                     }
                 }
             }
-
-            // ציור השחקן
             ctx.fillStyle = '#f87171';
             ctx.shadowBlur = 10;
             ctx.shadowColor = '#ef4444';
@@ -88,22 +81,20 @@
 
         async function handleWin() {
             gameActive = false;
-            alert("משימה הושלמה! שבבי הנתונים חולצו.");
-            
             if (currentUser) {
-                const docRef = doc(db, "players", currentUser.uid);
-                const docSnap = await getDoc(docRef);
-                const currentLevel = docSnap.data().level || 1;
-
-                // עדכון ה-DB לסיום המשימה ועליית שלב
-                await updateDoc(docRef, {
-                    currentQuestStatus: 'completed', // משחרר את המחסום בדשבורד
-                    level: increment(1),             // מעלה רמה
-                    xp: 0,                           // מאפס XP לרמה הבאה
-                    coins: increment(500)            // בונוס כסף
-                });
-
-                window.location.href = '../dashboard.html'; // חזרה לדשבורד
+                try {
+                    const docRef = doc(db, "players", currentUser.uid);
+                    await updateDoc(docRef, {
+                        currentQuestStatus: 'completed',
+                        level: increment(1),
+                        xp: 0,
+                        coins: increment(500)
+                    });
+                    alert("המשימה הושלמה! חוזר לחמ\"ל...");
+                    window.location.href = '../dashboard.html';
+                } catch (e) {
+                    console.error("Error updating DB:", e);
+                }
             }
         }
 
@@ -122,14 +113,16 @@
                     player.chips++;
                     chipsDisplay.innerText = player.chips;
                 }
-                grid[newY][newX] = 0; // חופר את האדמה
+                grid[newY][newX] = 0;
                 player.x = newX;
                 player.y = newY;
-                
-                if (player.chips >= 50) handleWin();
                 draw();
+                if (player.chips >= 50) handleWin();
             }
         }
+
+        // חשיפת הפונקציה לחלון הגלובלי כדי שהכפתורים יעבדו
+        window.move = move;
 
         window.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowUp') move('up');
