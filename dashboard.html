@@ -21,17 +21,18 @@
         .nav-node { position: absolute; width: 40px; height: 40px; background: rgba(59, 130, 246, 0.6); border: 2px solid white; border-radius: 50%; cursor: pointer; box-shadow: 0 0 20px rgba(59, 130, 246, 0.8); animation: pulse 2s infinite; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; z-index: 20; text-decoration: none; }
         .nav-node:hover { transform: scale(1.2); background: #3b82f6; box-shadow: 0 0 40px #3b82f6; }
         
-        /* Quest Node (The New Part) */
-        .quest-node { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80px; height: 80px; background: rgba(220, 38, 38, 0.9); border: 4px solid white; border-radius: 50%; cursor: pointer; box-shadow: 0 0 30px #ef4444; animation: pulse-red 1s infinite; z-index: 50; display: flex; align-items: center; justify-content: center; font-size: 30px; text-decoration: none; }
+        /* Quest Node - Same as nav-node but with special position and color */
+        .quest-node { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(220, 38, 38, 0.8); border-color: #fca5a5; box-shadow: 0 0 20px rgba(220, 38, 38, 0.8); animation: pulse-red 1s infinite; z-index: 50; }
 
         .node-gold { background: rgba(234, 179, 8, 0.6); box-shadow: 0 0 20px rgba(234, 179, 8, 0.8); border-color: #fef08a; animation: pulse-gold 2s infinite; }
         .nav-node.has-unread { background: rgba(220, 38, 38, 0.8); box-shadow: 0 0 20px rgba(220, 38, 38, 0.8); animation: pulse-red 1s infinite; border-color: #fca5a5; }
+        
         .nav-node::after { content: attr(data-label); position: absolute; bottom: -35px; white-space: nowrap; background: black; padding: 4px 12px; border-radius: 8px; font-size: 11px; font-weight: 800; opacity: 0; pointer-events: none; transition: opacity 0.3s; border: 1px solid #3b82f6; }
         .nav-node:hover::after { opacity: 1; }
 
         @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); } 50% { transform: scale(1.1); box-shadow: 0 0 25px rgba(59, 130, 246, 0.8); } 100% { transform: scale(1); box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); } }
         @keyframes pulse-gold { 0% { transform: scale(1); box-shadow: 0 0 10px rgba(234, 179, 8, 0.5); } 50% { transform: scale(1.1); box-shadow: 0 0 25px rgba(234, 179, 8, 0.8); } 100% { transform: scale(1); box-shadow: 0 0 10px rgba(234, 179, 8, 0.5); } }
-        @keyframes pulse-red { 0% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.1); box-shadow: 0 0 50px #ef4444; } 100% { transform: translate(-50%, -50%) scale(1); } }
+        @keyframes pulse-red { 0% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.1); box-shadow: 0 0 30px #ef4444; } 100% { transform: translate(-50%, -50%) scale(1); } }
         
         .xp-bar-container { height: 6px; width: 100%; background: rgba(0,0,0,0.4); border-radius: 10px; margin-top: 8px; border: 1px solid rgba(255,255,255,0.05); }
         .xp-bar-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); border-radius: 10px; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -151,10 +152,7 @@
                     await fetchWeaponsData();
                     await checkForOfflineAmbush(user.uid, data);
                     checkUnreadMessages(user.uid);
-                    
-                    // המנגנון החדש של עליית שלב מבוססת משימה
                     await checkQuestProgress(docRef, data);
-                    
                     processEnergyRecovery(docRef, data);
                 }
             } else {
@@ -210,24 +208,20 @@
             else msgNode.classList.remove('has-unread');
         }
 
-        // --- מנגנון המשימות החדש ---
         async function checkQuestProgress(docRef, data) {
             const currentLevel = data.level || 1;
             const currentXP = data.xp || 0;
             const xpNeeded = currentLevel * 10;
 
-            // אם הגענו ל-XP הדרוש ואין משימה פעילה, נגריל אחת
             if (currentXP >= xpNeeded && data.currentQuestStatus !== 'pending') {
-                const questGames = ['Digger.html']; // אפשר להוסיף כאן עוד בעתיד
+                const questGames = ['Digger.html'];
                 const selectedGame = questGames[Math.floor(Math.random() * questGames.length)];
-                
                 await updateDoc(docRef, {
                     currentQuestStatus: 'pending',
                     activeQuestGame: selectedGame
                 });
                 renderQuestNode(selectedGame);
             } 
-            // אם כבר יש משימה שממתינה
             else if (data.currentQuestStatus === 'pending') {
                 renderQuestNode(data.activeQuestGame || 'Digger.html');
             }
@@ -236,7 +230,7 @@
         function renderQuestNode(gameUrl) {
             const anchor = document.getElementById('quest-anchor');
             anchor.innerHTML = `
-                <a href="${gameUrl}" class="quest-node" title="משימת קידום דרגה!">
+                <a href="${gameUrl}" class="nav-node quest-node" data-label="משימה לקידום שלב!">
                     <span>🎯</span>
                 </a>
             `;
@@ -269,7 +263,6 @@
             document.getElementById('xp-bar-fill').style.width = xpPercent + "%";
             document.getElementById('xp-text').innerText = `XP: ${data.xp || 0} / ${xpNeeded}`;
 
-            // לוגיקת ATK מצטבר (מהקוד הישן)
             let totalAtk = data.baseAttack || 10; 
             const inventoryContainer = document.getElementById('inventory-list');
             inventoryContainer.innerHTML = '';
