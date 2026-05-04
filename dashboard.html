@@ -21,33 +21,26 @@
         .nav-node { position: absolute; width: 40px; height: 40px; background: rgba(59, 130, 246, 0.6); border: 2px solid white; border-radius: 50%; cursor: pointer; box-shadow: 0 0 20px rgba(59, 130, 246, 0.8); animation: pulse 2s infinite; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; z-index: 20; text-decoration: none; }
         .nav-node:hover { transform: scale(1.2); background: #3b82f6; box-shadow: 0 0 40px #3b82f6; }
         
-        /* Quest Node (The Red Blinking Circle) */
-        .node-quest { background: rgba(220, 38, 38, 0.8); box-shadow: 0 0 20px rgba(220, 38, 38, 0.8); border-color: #fca5a5; animation: pulse-red 1s infinite; z-index: 50; }
-        .node-quest:hover { background: #ef4444; box-shadow: 0 0 40px #ef4444; }
+        /* Quest Node (The New Part) */
+        .quest-node { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80px; height: 80px; background: rgba(220, 38, 38, 0.9); border: 4px solid white; border-radius: 50%; cursor: pointer; box-shadow: 0 0 30px #ef4444; animation: pulse-red 1s infinite; z-index: 50; display: flex; align-items: center; justify-content: center; font-size: 30px; text-decoration: none; }
 
-        /* Gold Node for Bitcoin */
         .node-gold { background: rgba(234, 179, 8, 0.6); box-shadow: 0 0 20px rgba(234, 179, 8, 0.8); border-color: #fef08a; animation: pulse-gold 2s infinite; }
-        .node-gold:hover { background: #eab308; box-shadow: 0 0 40px #eab308; }
-
         .nav-node.has-unread { background: rgba(220, 38, 38, 0.8); box-shadow: 0 0 20px rgba(220, 38, 38, 0.8); animation: pulse-red 1s infinite; border-color: #fca5a5; }
         .nav-node::after { content: attr(data-label); position: absolute; bottom: -35px; white-space: nowrap; background: black; padding: 4px 12px; border-radius: 8px; font-size: 11px; font-weight: 800; opacity: 0; pointer-events: none; transition: opacity 0.3s; border: 1px solid #3b82f6; }
         .nav-node:hover::after { opacity: 1; }
 
         @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); } 50% { transform: scale(1.1); box-shadow: 0 0 25px rgba(59, 130, 246, 0.8); } 100% { transform: scale(1); box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); } }
         @keyframes pulse-gold { 0% { transform: scale(1); box-shadow: 0 0 10px rgba(234, 179, 8, 0.5); } 50% { transform: scale(1.1); box-shadow: 0 0 25px rgba(234, 179, 8, 0.8); } 100% { transform: scale(1); box-shadow: 0 0 10px rgba(234, 179, 8, 0.5); } }
-        @keyframes pulse-red { 0% { transform: scale(1); box-shadow: 0 0 10px rgba(220, 38, 38, 0.5); } 50% { transform: scale(1.15); box-shadow: 0 0 30px rgba(220, 38, 38, 0.9); } 100% { transform: scale(1); box-shadow: 0 0 10px rgba(220, 38, 38, 0.5); } }
+        @keyframes pulse-red { 0% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.1); box-shadow: 0 0 50px #ef4444; } 100% { transform: translate(-50%, -50%) scale(1); } }
         
         .xp-bar-container { height: 6px; width: 100%; background: rgba(0,0,0,0.4); border-radius: 10px; margin-top: 8px; border: 1px solid rgba(255,255,255,0.05); }
         .xp-bar-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); border-radius: 10px; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .hidden { display: none !important; }
     </style>
 </head>
 <body class="min-h-screen relative p-6 md:p-10 text-right">
 
-    <!-- צומת משימת עליית שלב - מוסתר כברירת מחדל -->
-    <a id="quest-node" href="#" class="nav-node node-quest hidden" style="top: 50%; left: 50%;" data-label="משימת קידום בדרגה!">⚔️</a>
-
+    <!-- Navigation Nodes -->
     <a href="map.html" class="nav-node" style="top: 40%; left: 20%;" data-label="מפה טקטית (לחימה)">🗺️</a>
     <a href="shop.html" class="nav-node" style="top: 65%; left: 50%;" data-label="המעבדה">🧪</a>
     <a href="inventory.html" class="nav-node" style="top: 30%; left: 80%;" data-label="נשקייה וציוד">⚔️</a>
@@ -56,6 +49,9 @@
     <a href="message.html" id="msg-node" class="nav-node" style="top: 50%; left: 85%;" data-label="תיבת הודעות">📩</a>
     <a href="ayalon-race.html" class="nav-node" style="top: 75%; left: 15%;" data-label="מרוץ סייבר (איילון)">🏍️</a>
     <a href="bitcoin.html" class="nav-node node-gold" style="top: 45%; left: 35%;" data-label="מסע אל הביטקויין">₿</a>
+
+    <!-- Quest Anchor (Dynamically filled) -->
+    <div id="quest-anchor"></div>
 
     <header class="flex justify-between items-center mb-10 pb-6 border-b border-slate-800 relative z-10">
         <div class="flex items-center gap-4">
@@ -71,6 +67,7 @@
     </header>
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8 max-w-7xl mx-auto relative z-10">
+        <!-- Stats Cards -->
         <div class="glass p-6 rounded-3xl flex flex-col items-center text-center shadow-lg border border-slate-800">
             <div class="text-[10px] uppercase text-slate-500 mb-2 font-bold tracking-widest italic">רמת סוכן</div>
             <div id="stat-level" class="text-5xl font-extrabold text-blue-500 tracking-tighter">-</div>
@@ -97,6 +94,7 @@
         </div>
     </div>
 
+    <!-- Inventory Section -->
     <div class="max-w-7xl mx-auto mb-10 relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="glass p-6 rounded-[2.5rem] border border-slate-800 relative overflow-hidden">
             <div class="flex items-center justify-between mb-6 px-2">
@@ -123,9 +121,6 @@
         import { auth, db } from './firebase-config.js';
         import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, getDocs, limit, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        // רשימת משחקים להגרלה
-        const gamesLibrary = ['Digger.html'];
 
         let itemStats = {
             'pistol_nemesis': { name: 'אקדח "נמסיס"', atk: 25, icon: '🔫' },
@@ -157,9 +152,10 @@
                     await checkForOfflineAmbush(user.uid, data);
                     checkUnreadMessages(user.uid);
                     
-                    // בדיקת סטטוס משימה ועליית שלב
-                    const leveledUpData = await checkLevelUp(docRef, data);
-                    processEnergyRecovery(docRef, leveledUpData || data);
+                    // המנגנון החדש של עליית שלב מבוססת משימה
+                    await checkQuestProgress(docRef, data);
+                    
+                    processEnergyRecovery(docRef, data);
                 }
             } else {
                 window.location.href = 'index.html';
@@ -178,9 +174,7 @@
                         img: data.img
                     };
                 });
-            } catch (e) {
-                console.error("Error fetching weapons:", e);
-            }
+            } catch (e) { console.error("Error fetching weapons:", e); }
         }
 
         async function checkForOfflineAmbush(userId, userData) {
@@ -216,39 +210,36 @@
             else msgNode.classList.remove('has-unread');
         }
 
-        async function checkLevelUp(docRef, data) {
+        // --- מנגנון המשימות החדש ---
+        async function checkQuestProgress(docRef, data) {
             const currentLevel = data.level || 1;
             const currentXP = data.xp || 0;
             const xpNeeded = currentLevel * 10;
-            const questNode = document.getElementById('quest-node');
 
-            // 1. האם יש משימה קיימת שטרם הושלמה?
-            if (data.currentQuestStatus === 'pending') {
-                questNode.classList.remove('hidden');
-                questNode.href = `Games/${data.assignedGame}`;
-                return null;
-            }
-
-            // 2. האם השחקן הגיע ל-XP של עליית רמה?
-            if (currentXP >= xpNeeded) {
-                // במקום לעלות רמה ישר, נגריל משחק משימה
-                const randomGame = gamesLibrary[Math.floor(Math.random() * gamesLibrary.length)];
+            // אם הגענו ל-XP הדרוש ואין משימה פעילה, נגריל אחת
+            if (currentXP >= xpNeeded && data.currentQuestStatus !== 'pending') {
+                const questGames = ['Digger.html']; // אפשר להוסיף כאן עוד בעתיד
+                const selectedGame = questGames[Math.floor(Math.random() * questGames.length)];
                 
                 await updateDoc(docRef, {
                     currentQuestStatus: 'pending',
-                    assignedGame: randomGame
+                    activeQuestGame: selectedGame
                 });
-
-                // הצגת העיגול המהבהב
-                questNode.classList.remove('hidden');
-                questNode.href = `Games/${randomGame}`;
-                
-                alert("מערכת: זיהיתי התקדמות משמעותית! עליך להשלים משימת שטח כדי לעלות בדרגה.");
-                return null;
+                renderQuestNode(selectedGame);
+            } 
+            // אם כבר יש משימה שממתינה
+            else if (data.currentQuestStatus === 'pending') {
+                renderQuestNode(data.activeQuestGame || 'Digger.html');
             }
-            
-            questNode.classList.add('hidden');
-            return null;
+        }
+
+        function renderQuestNode(gameUrl) {
+            const anchor = document.getElementById('quest-anchor');
+            anchor.innerHTML = `
+                <a href="${gameUrl}" class="quest-node" title="משימת קידום דרגה!">
+                    <span>🎯</span>
+                </a>
+            `;
         }
 
         function processEnergyRecovery(docRef, data) {
@@ -258,7 +249,9 @@
             let recoveryRate = (data.inventory && data.inventory.includes('nano_bed')) ? 40 : 20;
             const recovered = hoursPassed * recoveryRate;
             let currentEnergy = Math.min(100, (data.energy || 0) + recovered);
+            
             updateDashboardUI(data, Math.floor(currentEnergy));
+            
             if (Math.floor(currentEnergy) > (data.energy || 0)) {
                 updateDoc(docRef, { energy: Math.floor(currentEnergy), lastHpUpdate: serverTimestamp() });
             }
@@ -276,6 +269,7 @@
             document.getElementById('xp-bar-fill').style.width = xpPercent + "%";
             document.getElementById('xp-text').innerText = `XP: ${data.xp || 0} / ${xpNeeded}`;
 
+            // לוגיקת ATK מצטבר (מהקוד הישן)
             let totalAtk = data.baseAttack || 10; 
             const inventoryContainer = document.getElementById('inventory-list');
             inventoryContainer.innerHTML = '';
@@ -286,15 +280,8 @@
                 totalAtk += weapon.atk;
                 const itemDiv = document.createElement('div');
                 itemDiv.className = "bg-blue-900/20 p-4 rounded-2xl border border-blue-500/30 flex flex-col items-center min-w-[100px]";
-                
-                const visualMedia = weapon.img 
-                    ? `<img src="${weapon.img}" class="w-10 h-10 rounded-lg object-cover mb-2 border border-blue-500/30">` 
-                    : `<span class="text-3xl mb-2">${weapon.icon}</span>`;
-
-                itemDiv.innerHTML = `
-                    ${visualMedia}
-                    <span class="text-[9px] font-bold text-blue-400 uppercase">${weapon.name}</span>
-                `;
+                const visualMedia = weapon.img ? `<img src="${weapon.img}" class="w-10 h-10 rounded-lg object-cover mb-2 border border-blue-500/30">` : `<span class="text-3xl mb-2">${weapon.icon}</span>`;
+                itemDiv.innerHTML = `${visualMedia}<span class="text-[9px] font-bold text-blue-400 uppercase">${weapon.name}</span>`;
                 inventoryContainer.appendChild(itemDiv);
             }
 
@@ -304,15 +291,8 @@
                     totalAtk += itemStats[itemId].atk;
                     const itemDiv = document.createElement('div');
                     itemDiv.className = "bg-slate-900/40 p-4 rounded-2xl border border-slate-800 flex flex-col items-center min-w-[100px]";
-                    
-                    const visualMedia = itemStats[itemId].img 
-                        ? `<img src="${itemStats[itemId].img}" class="w-10 h-10 rounded-lg object-cover mb-2 border border-slate-800">` 
-                        : `<span class="text-3xl mb-2">${itemStats[itemId].icon}</span>`;
-
-                    itemDiv.innerHTML = `
-                        ${visualMedia}
-                        <span class="text-[9px] font-bold text-slate-400 uppercase">${itemStats[itemId].name}</span>
-                    `;
+                    const visualMedia = itemStats[itemId].img ? `<img src="${itemStats[itemId].img}" class="w-10 h-10 rounded-lg object-cover mb-2 border border-slate-800">` : `<span class="text-3xl mb-2">${itemStats[itemId].icon}</span>`;
+                    itemDiv.innerHTML = `${visualMedia}<span class="text-[9px] font-bold text-slate-400 uppercase">${itemStats[itemId].name}</span>`;
                     inventoryContainer.appendChild(itemDiv);
                 }
             });
