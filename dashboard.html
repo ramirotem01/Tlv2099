@@ -114,209 +114,238 @@
     </div>
 
     <script type="module">
-        import { auth, db } from './firebase-config.js';
-        import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, getDocs, limit, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { auth, db } from './firebase-config.js';
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, getDocs, limit, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        let itemStats = {
-            'pistol_nemesis': { name: 'אקדח "נמסיס"', atk: 25, icon: '🔫' },
-            'katana_thermal': { name: 'קטאנה טרמית', atk: 45, icon: '⚔️' },
-            'fire_sword': { name: 'חרב אש', atk: 90, icon: '🔥' },
-            'nano_boost': { name: 'ננו-בוסט', atk: 0, icon: '💊' },
-            'nano_bed': { name: 'מיטת ריפוי', atk: 0, icon: '🛌' }
-        };
+    let itemStats = {
+        'pistol_nemesis': { name: 'אקדח "נמסיס"', atk: 25, icon: '🔫' },
+        'katana_thermal': { name: 'קטאנה טרמית', atk: 45, icon: '⚔️' },
+        'fire_sword': { name: 'חרב אש', atk: 90, icon: '🔥' },
+        'nano_boost': { name: 'ננו-בוסט', atk: 0, icon: '💊' },
+        'nano_bed': { name: 'מיטת ריפוי', atk: 0, icon: '🛌' }
+    };
 
-        const potionStats = {
-            'health_large': { name: 'חיים גדול', icon: '🧪', color: 'text-green-400' },
-            'health_small': { name: 'חיים קטן', icon: '🧪', color: 'text-green-500' },
-            'atk_small': { name: 'כוח קטן', icon: '🍷', color: 'text-red-400' },
-            'atk_large': { name: 'כוח גדול', icon: '🍷', color: 'text-red-600' },
-            'def_small': { name: 'ספיגה קטן', icon: '🍶', color: 'text-blue-400' },
-            'def_large': { name: 'ספיגה גדול', icon: '🍶', color: 'text-blue-600' },
-            'speed_small': { name: 'זריזות קטן', icon: '⚡', color: 'text-yellow-400' },
-            'speed_large': { name: 'זריזות גדול', icon: '⚡', color: 'text-yellow-600' }
-        };
+    const potionStats = {
+        'health_large': { name: 'חיים גדול', icon: '🧪', color: 'text-green-400' },
+        'health_small': { name: 'חיים קטן', icon: '🧪', color: 'text-green-500' },
+        'atk_small': { name: 'כוח קטן', icon: '🍷', color: 'text-red-400' },
+        'atk_large': { name: 'כוח גדול', icon: '🍷', color: 'text-red-600' },
+        'def_small': { name: 'ספיגה קטן', icon: '🍶', color: 'text-blue-400' },
+        'def_large': { name: 'ספיגה גדול', icon: '🍶', color: 'text-blue-600' },
+        'speed_small': { name: 'זריזות קטן', icon: '⚡', color: 'text-yellow-400' },
+        'speed_large': { name: 'זריזות גדול', icon: '⚡', color: 'text-yellow-600' }
+    };
 
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                const docRef = doc(db, "players", user.uid);
-                const docSnap = await getDoc(docRef);
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            const docRef = doc(db, "players", user.uid);
+            const docSnap = await getDoc(docRef);
 
-                if (docSnap.exists()) {
-                    let data = docSnap.data();
-                    await fetchWeaponsData();
-                    await checkForOfflineAmbush(user.uid, data);
-                    checkUnreadMessages(user.uid);
-                    await checkQuestProgress(docRef, data);
-                    processEnergyRecovery(docRef, data);
-                }
-            } else {
-                window.location.href = 'index.html';
+            if (docSnap.exists()) {
+                let data = docSnap.data();
+                await fetchWeaponsData();
+                await checkForOfflineAmbush(user.uid, data);
+                checkUnreadMessages(user.uid);
+                
+                // כאן אנחנו מפעילים את לוגיקת המשימות והודעת עליית הרמה
+                await checkQuestProgress(docRef, data);
+                
+                processEnergyRecovery(docRef, data);
             }
-        });
-
-        async function fetchWeaponsData() {
-            try {
-                const querySnapshot = await getDocs(collection(db, "weapons"));
-                querySnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    itemStats[doc.id] = {
-                        name: data.name,
-                        atk: data.damage,
-                        icon: '🛡️',
-                        img: data.img
-                    };
-                });
-            } catch (e) { console.error("Error fetching weapons:", e); }
+        } else {
+            window.location.href = 'index.html';
         }
+    });
 
-        async function checkForOfflineAmbush(userId, userData) {
-            const now = Date.now();
-            const lastAmbush = userData.lastAmbushDate ? userData.lastAmbushDate.toMillis() : 0;
-            const cooldown = 4 * 60 * 60 * 1000;
-            if ((userData.energy || 0) >= 100 && (now - lastAmbush > cooldown)) {
-                if (Math.random() < 0.25) { await executeMonsterAmbush(userId, userData); }
-            }
-        }
+    async function checkQuestProgress(docRef, data) {
+        const currentLevel = data.level || 1;
+        const currentXP = data.xp || 0;
+        const xpNeeded = currentLevel * 10;
 
-        async function executeMonsterAmbush(userId, userData) {
-            const power = userData.attack || 10;
-            const level = userData.level || 1;
-            const monsterPower = (Math.random() * 15) + (level * 4);
-            const winChance = (power / (power + monsterPower)) + 0.1;
-            const didWin = Math.random() < winChance;
-            let damage = !didWin ? Math.floor(Math.random() * 25) + 15 : 0;
-            const loot = didWin ? Math.floor(Math.random() * 40) + 10 : 0;
-
-            await updateDoc(doc(db, "players", userId), {
-                energy: Math.max(0, (userData.energy || 100) - damage),
-                coins: Math.max(0, (userData.coins || 0) + loot),
-                lastAmbushDate: serverTimestamp()
+        // 1. בדיקה אם השחקן חזר ממשימה שהושלמה
+        if (data.currentQuestStatus === 'completed') {
+            const newLevel = currentLevel + 1;
+            
+            // עדכון השחקן ב-DB
+            await updateDoc(docRef, {
+                level: newLevel,
+                xp: 0,
+                energy: 100, // מילוי חיים כבונוס עלייה
+                currentQuestStatus: 'none',
+                activeQuestGame: null
             });
-        }
 
-        async function checkUnreadMessages(userId) {
-            const q = query(collection(db, "notifications"), where("targetUserId", "==", userId), where("isRead", "==", false), limit(1));
-            const querySnapshot = await getDocs(q);
-            const msgNode = document.getElementById('msg-node');
-            if (!querySnapshot.empty) msgNode.classList.add('has-unread');
-            else msgNode.classList.remove('has-unread');
-        }
-
-        async function checkQuestProgress(docRef, data) {
-            const currentLevel = data.level || 1;
-            const currentXP = data.xp || 0;
-            const xpNeeded = currentLevel * 10;
-
-            // בדיקה אם המשימה הושלמה - אם כן, לעלות רמה
-            if (data.currentQuestStatus === 'completed') {
-                await updateDoc(docRef, {
-                    level: currentLevel + 1,
-                    xp: 0, // איפוס XP לרמה החדשה
-                    currentQuestStatus: 'none',
-                    activeQuestGame: null
+            // שליחת הודעה לתיבת ההודעות
+            try {
+                await addDoc(collection(db, "notifications"), {
+                    targetUserId: auth.currentUser.uid,
+                    title: "עלית רמה! 🚀",
+                    message: `כל הכבוד סוכן! השלמת את המשימה והגעת לרמה ${newLevel}. האנרגיה שלך התמלאה מחדש.`,
+                    type: "level_up",
+                    isRead: false,
+                    timestamp: serverTimestamp()
                 });
-                // ריענון הדף לעדכון הנתונים
-                location.reload();
-                return;
-            }
+                checkUnreadMessages(auth.currentUser.uid);
+            } catch (e) { console.error("Error sending notification:", e); }
 
-            // אם הגיע ל-XP הנדרש ואין משימה פעילה, הגרל משימה
-            if (currentXP >= xpNeeded && (!data.currentQuestStatus || data.currentQuestStatus === 'none')) {
-                const questGames = ['Games/Digger.html'];
-                const selectedGame = questGames[Math.floor(Math.random() * questGames.length)];
-                await updateDoc(docRef, {
-                    currentQuestStatus: 'pending',
-                    activeQuestGame: selectedGame
-                });
-                renderQuestNode(selectedGame);
-            } 
-            // אם יש משימה בהמתנה, הצג אותה
-            else if (data.currentQuestStatus === 'pending') {
-                renderQuestNode(data.activeQuestGame || 'Games/Digger.html');
-            }
+            location.reload(); // רענון כדי לעדכן UI
+            return;
         }
 
-        function renderQuestNode(gameUrl) {
-            const anchor = document.getElementById('quest-anchor');
-            anchor.innerHTML = `
-                <a href="${gameUrl}" class="nav-node quest-node" data-label="משימה לקידום שלב!">
-                    <span>🎯</span>
-                </a>
-            `;
+        // 2. בדיקה אם הגיע הזמן למשימה חדשה
+        if (currentXP >= xpNeeded && (!data.currentQuestStatus || data.currentQuestStatus === 'none')) {
+            const questGames = ['Games/Digger.html'];
+            const selectedGame = questGames[Math.floor(Math.random() * questGames.length)];
+            
+            await updateDoc(docRef, {
+                currentQuestStatus: 'pending',
+                activeQuestGame: selectedGame
+            });
+            renderQuestNode(selectedGame);
+        } 
+        
+        // 3. הצגת משימה קיימת שממתינה
+        else if (data.currentQuestStatus === 'pending') {
+            renderQuestNode(data.activeQuestGame || 'Games/Digger.html');
         }
+    }
 
-        function processEnergyRecovery(docRef, data) {
-            const now = Date.now();
-            const lastUpdate = data.lastHpUpdate ? data.lastHpUpdate.toMillis() : now;
-            const hoursPassed = (now - lastUpdate) / (1000 * 60 * 60);
-            let recoveryRate = (data.inventory && data.inventory.includes('nano_bed')) ? 40 : 20;
-            const recovered = hoursPassed * recoveryRate;
-            let currentEnergy = Math.min(100, (data.energy || 0) + recovered);
-            
-            updateDashboardUI(data, Math.floor(currentEnergy));
-            
-            if (Math.floor(currentEnergy) > (data.energy || 0)) {
-                updateDoc(docRef, { energy: Math.floor(currentEnergy), lastHpUpdate: serverTimestamp() });
+    function renderQuestNode(gameUrl) {
+        const questNode = document.createElement('a');
+        questNode.href = gameUrl;
+        questNode.className = "nav-node has-unread";
+        questNode.style.top = "25%";
+        questNode.style.left = "65%";
+        questNode.style.border = "3px solid #fbbf24";
+        questNode.setAttribute('data-label', "משימת קידום דרגה!");
+        questNode.innerHTML = "⚡";
+        document.body.appendChild(questNode);
+    }
+
+    async function fetchWeaponsData() {
+        try {
+            const querySnapshot = await getDocs(collection(db, "weapons"));
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                itemStats[doc.id] = {
+                    name: data.name,
+                    atk: data.damage,
+                    icon: '🛡️',
+                    img: data.img
+                };
+            });
+        } catch (e) { console.error("Error fetching weapons:", e); }
+    }
+
+    async function checkForOfflineAmbush(userId, userData) {
+        const now = Date.now();
+        const lastAmbush = userData.lastAmbushDate ? userData.lastAmbushDate.toMillis() : 0;
+        const cooldown = 4 * 60 * 60 * 1000;
+        if ((userData.energy || 0) >= 100 && (now - lastAmbush > cooldown)) {
+            if (Math.random() < 0.25) { await executeMonsterAmbush(userId, userData); }
+        }
+    }
+
+    async function executeMonsterAmbush(userId, userData) {
+        const power = userData.attack || 10;
+        const level = userData.level || 1;
+        const monsterPower = (Math.random() * 15) + (level * 4);
+        const winChance = (power / (power + monsterPower)) + 0.1;
+        const didWin = Math.random() < winChance;
+        let damage = !didWin ? Math.floor(Math.random() * 25) + 15 : 0;
+        const loot = didWin ? Math.floor(Math.random() * 40) + 10 : 0;
+
+        await updateDoc(doc(db, "players", userId), {
+            energy: Math.max(0, (userData.energy || 100) - damage),
+            coins: Math.max(0, (userData.coins || 0) + loot),
+            lastAmbushDate: serverTimestamp()
+        });
+    }
+
+    async function checkUnreadMessages(userId) {
+        const q = query(collection(db, "notifications"), where("targetUserId", "==", userId), where("isRead", "==", false), limit(1));
+        const querySnapshot = await getDocs(q);
+        const msgNode = document.getElementById('msg-node');
+        if (!querySnapshot.empty) msgNode.classList.add('has-unread');
+        else msgNode.classList.remove('has-unread');
+    }
+
+    function processEnergyRecovery(docRef, data) {
+        const now = Date.now();
+        const lastUpdate = data.lastHpUpdate ? data.lastHpUpdate.toMillis() : now;
+        const hoursPassed = (now - lastUpdate) / (1000 * 60 * 60);
+        let recoveryRate = (data.inventory && data.inventory.includes('nano_bed')) ? 40 : 20;
+        const recovered = hoursPassed * recoveryRate;
+        let currentEnergy = Math.min(100, (data.energy || 0) + recovered);
+        updateDashboardUI(data, Math.floor(currentEnergy));
+        if (Math.floor(currentEnergy) > (data.energy || 0)) {
+            updateDoc(docRef, { energy: Math.floor(currentEnergy), lastHpUpdate: serverTimestamp() });
+        }
+        if (currentEnergy < 100) document.getElementById('recovery-indicator').innerText = `+${recoveryRate}%/HR REGEN`;
+    }
+
+    function updateDashboardUI(data, currentEnergy) {
+        if (data.level >= 5) {
+            const raceNode = document.querySelector('a[href="ayalon-race.html"]');
+            if (raceNode) {
+                raceNode.style.boxShadow = "0 0 30px #a855f7";
+                raceNode.setAttribute('data-label', "מבצע: פרוטוקול ארכניד");
             }
-            if (currentEnergy < 100) document.getElementById('recovery-indicator').innerText = `+${recoveryRate}%/HR REGEN`;
+        }
+        document.getElementById('player-username').innerText = data.username || "UNKNOWN";
+        document.getElementById('stat-level').innerText = data.level || 1;
+        document.getElementById('stat-coins').innerText = (data.coins || 0).toLocaleString();
+        document.getElementById('stat-energy-text').innerText = currentEnergy + "%";
+        
+        const xpNeeded = (data.level || 1) * 10;
+        const xpPercent = Math.min(100, ((data.xp || 0) / xpNeeded) * 100);
+        document.getElementById('xp-bar-fill').style.width = xpPercent + "%";
+        document.getElementById('xp-text').innerText = `XP: ${data.xp || 0} / ${xpNeeded}`;
+
+        let totalAtk = data.baseAttack || 10; 
+        const inventoryContainer = document.getElementById('inventory-list');
+        inventoryContainer.innerHTML = '';
+        
+        const equippedId = data.equippedWeapon;
+        if (equippedId && itemStats[equippedId]) {
+            const weapon = itemStats[equippedId];
+            totalAtk += weapon.atk;
+            const itemDiv = document.createElement('div');
+            itemDiv.className = "bg-blue-900/20 p-4 rounded-2xl border border-blue-500/30 flex flex-col items-center min-w-[100px]";
+            const visualMedia = weapon.img ? `<img src="${weapon.img}" class="w-10 h-10 rounded-lg object-cover mb-2 border border-blue-500/30">` : `<span class="text-3xl mb-2">${weapon.icon}</span>`;
+            itemDiv.innerHTML = `${visualMedia}<span class="text-[9px] font-bold text-blue-400 uppercase">${weapon.name}</span>`;
+            inventoryContainer.appendChild(itemDiv);
         }
 
-        function updateDashboardUI(data, currentEnergy) {
-            document.getElementById('player-username').innerText = data.username || "UNKNOWN";
-            document.getElementById('stat-level').innerText = data.level || 1;
-            document.getElementById('stat-coins').innerText = (data.coins || 0).toLocaleString();
-            document.getElementById('stat-energy-text').innerText = currentEnergy + "%";
-            
-            const xpNeeded = (data.level || 1) * 10;
-            const xpPercent = Math.min(100, ((data.xp || 0) / xpNeeded) * 100);
-            document.getElementById('xp-bar-fill').style.width = xpPercent + "%";
-            document.getElementById('xp-text').innerText = `XP: ${data.xp || 0} / ${xpNeeded}`;
-
-            let totalAtk = data.baseAttack || 10; 
-            const inventoryContainer = document.getElementById('inventory-list');
-            inventoryContainer.innerHTML = '';
-            
-            const equippedId = data.equippedWeapon;
-            if (equippedId && itemStats[equippedId]) {
-                const weapon = itemStats[equippedId];
-                totalAtk += weapon.atk;
+        const inventory = data.inventory || [];
+        inventory.forEach(itemId => {
+            if (itemStats[itemId] && itemId !== equippedId) {
+                totalAtk += itemStats[itemId].atk;
                 const itemDiv = document.createElement('div');
-                itemDiv.className = "bg-blue-900/20 p-4 rounded-2xl border border-blue-500/30 flex flex-col items-center min-w-[100px]";
-                const visualMedia = weapon.img ? `<img src="${weapon.img}" class="w-10 h-10 rounded-lg object-cover mb-2 border border-blue-500/30">` : `<span class="text-3xl mb-2">${weapon.icon}</span>`;
-                itemDiv.innerHTML = `${visualMedia}<span class="text-[9px] font-bold text-blue-400 uppercase">${weapon.name}</span>`;
+                itemDiv.className = "bg-slate-900/40 p-4 rounded-2xl border border-slate-800 flex flex-col items-center min-w-[100px]";
+                const visualMedia = itemStats[itemId].img ? `<img src="${itemStats[itemId].img}" class="w-10 h-10 rounded-lg object-cover mb-2 border border-slate-800">` : `<span class="text-3xl mb-2">${itemStats[itemId].icon}</span>`;
+                itemDiv.innerHTML = `${visualMedia}<span class="text-[9px] font-bold text-slate-400 uppercase">${itemStats[itemId].name}</span>`;
                 inventoryContainer.appendChild(itemDiv);
             }
-
-            const inventory = data.inventory || [];
-            inventory.forEach(itemId => {
-                if (itemStats[itemId] && itemId !== equippedId) {
-                    totalAtk += itemStats[itemId].atk;
-                    const itemDiv = document.createElement('div');
-                    itemDiv.className = "bg-slate-900/40 p-4 rounded-2xl border border-slate-800 flex flex-col items-center min-w-[100px]";
-                    const visualMedia = itemStats[itemId].img ? `<img src="${itemStats[itemId].img}" class="w-10 h-10 rounded-lg object-cover mb-2 border border-slate-800">` : `<span class="text-3xl mb-2">${itemStats[itemId].icon}</span>`;
-                    itemDiv.innerHTML = `${visualMedia}<span class="text-[9px] font-bold text-slate-400 uppercase">${itemStats[itemId].name}</span>`;
-                    inventoryContainer.appendChild(itemDiv);
-                }
-            });
-
-            document.getElementById('stat-power').innerText = totalAtk;
-
-            const potionsContainer = document.getElementById('potions-list');
-            potionsContainer.innerHTML = '';
-            (data.potions || []).forEach(pId => {
-                if (potionStats[pId]) {
-                    const pDiv = document.createElement('div');
-                    pDiv.className = "bg-blue-900/10 p-4 rounded-2xl border border-blue-900/20 flex flex-col items-center min-w-[100px]";
-                    pDiv.innerHTML = `<span class="text-3xl mb-2">${potionStats[pId].icon}</span><span class="text-[9px] font-bold ${potionStats[pId].color} uppercase">${potionStats[pId].name}</span>`;
-                    potionsContainer.appendChild(pDiv);
-                }
-            });
-        }
-
-        document.getElementById('logout-btn').addEventListener('click', () => {
-            signOut(auth).then(() => { window.location.href = 'index.html'; });
         });
-    </script>
+
+        document.getElementById('stat-power').innerText = totalAtk;
+        const potionsContainer = document.getElementById('potions-list');
+        potionsContainer.innerHTML = '';
+        (data.potions || []).forEach(pId => {
+            if (potionStats[pId]) {
+                const pDiv = document.createElement('div');
+                pDiv.className = "bg-blue-900/10 p-4 rounded-2xl border border-blue-900/20 flex flex-col items-center min-w-[100px]";
+                pDiv.innerHTML = `<span class="text-3xl mb-2">${potionStats[pId].icon}</span><span class="text-[9px] font-bold ${potionStats[pId].color} uppercase">${potionStats[pId].name}</span>`;
+                potionsContainer.appendChild(pDiv);
+            }
+        });
+    }
+
+    document.getElementById('logout-btn').addEventListener('click', () => {
+        signOut(auth).then(() => { window.location.href = 'index.html'; });
+    });
+</script>
 </body>
 </html>
