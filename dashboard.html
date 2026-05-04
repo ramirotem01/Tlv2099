@@ -21,6 +21,10 @@
         .nav-node { position: absolute; width: 40px; height: 40px; background: rgba(59, 130, 246, 0.6); border: 2px solid white; border-radius: 50%; cursor: pointer; box-shadow: 0 0 20px rgba(59, 130, 246, 0.8); animation: pulse 2s infinite; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; z-index: 20; text-decoration: none; }
         .nav-node:hover { transform: scale(1.2); background: #3b82f6; box-shadow: 0 0 40px #3b82f6; }
         
+        /* Quest Node (The Red Blinking Circle) */
+        .node-quest { background: rgba(220, 38, 38, 0.8); box-shadow: 0 0 20px rgba(220, 38, 38, 0.8); border-color: #fca5a5; animation: pulse-red 1s infinite; z-index: 50; }
+        .node-quest:hover { background: #ef4444; box-shadow: 0 0 40px #ef4444; }
+
         /* Gold Node for Bitcoin */
         .node-gold { background: rgba(234, 179, 8, 0.6); box-shadow: 0 0 20px rgba(234, 179, 8, 0.8); border-color: #fef08a; animation: pulse-gold 2s infinite; }
         .node-gold:hover { background: #eab308; box-shadow: 0 0 40px #eab308; }
@@ -36,9 +40,13 @@
         .xp-bar-container { height: 6px; width: 100%; background: rgba(0,0,0,0.4); border-radius: 10px; margin-top: 8px; border: 1px solid rgba(255,255,255,0.05); }
         .xp-bar-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); border-radius: 10px; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body class="min-h-screen relative p-6 md:p-10 text-right">
+
+    <!-- צומת משימת עליית שלב - מוסתר כברירת מחדל -->
+    <a id="quest-node" href="#" class="nav-node node-quest hidden" style="top: 50%; left: 50%;" data-label="משימת קידום בדרגה!">⚔️</a>
 
     <a href="map.html" class="nav-node" style="top: 40%; left: 20%;" data-label="מפה טקטית (לחימה)">🗺️</a>
     <a href="shop.html" class="nav-node" style="top: 65%; left: 50%;" data-label="המעבדה">🧪</a>
@@ -116,6 +124,9 @@
         import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, getDocs, limit, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
+        // רשימת משחקים להגרלה
+        const gamesLibrary = ['Digger.html'];
+
         let itemStats = {
             'pistol_nemesis': { name: 'אקדח "נמסיס"', atk: 25, icon: '🔫' },
             'katana_thermal': { name: 'קטאנה טרמית', atk: 45, icon: '⚔️' },
@@ -142,10 +153,11 @@
 
                 if (docSnap.exists()) {
                     let data = docSnap.data();
-                    // משיכת נתוני נשקים מה-DB
                     await fetchWeaponsData();
                     await checkForOfflineAmbush(user.uid, data);
                     checkUnreadMessages(user.uid);
+                    
+                    // בדיקת סטטוס משימה ועליית שלב
                     const leveledUpData = await checkLevelUp(docRef, data);
                     processEnergyRecovery(docRef, leveledUpData || data);
                 }
@@ -208,23 +220,34 @@
             const currentLevel = data.level || 1;
             const currentXP = data.xp || 0;
             const xpNeeded = currentLevel * 10;
-            if (currentXP >= xpNeeded) {
-                const newLevel = currentLevel + 1;
-                const updatedFields = { level: newLevel, xp: currentXP - xpNeeded, energy: 100 };
-                await updateDoc(docRef, updatedFields);
-                try {
-                    await addDoc(collection(db, "notifications"), {
-                        targetUserId: auth.currentUser.uid,
-                        title: "עלית רמה! 🚀",
-                        message: `כל הכבוד סוכן! הגעת לרמה ${newLevel}. האנרגיה שלך התמלאה מחדש ל-100%.`,
-                        type: "level_up",
-                        isRead: false,
-                        timestamp: serverTimestamp()
-                    });
-                    checkUnreadMessages(auth.currentUser.uid);
-                } catch (e) { console.error(e); }
-                return { ...data, ...updatedFields };
+            const questNode = document.getElementById('quest-node');
+
+            // 1. האם יש משימה קיימת שטרם הושלמה?
+            if (data.currentQuestStatus === 'pending') {
+                questNode.classList.remove('hidden');
+                questNode.href = `Games/${data.assignedGame}`;
+                return null;
             }
+
+            // 2. האם השחקן הגיע ל-XP של עליית רמה?
+            if (currentXP >= xpNeeded) {
+                // במקום לעלות רמה ישר, נגריל משחק משימה
+                const randomGame = gamesLibrary[Math.floor(Math.random() * gamesLibrary.length)];
+                
+                await updateDoc(docRef, {
+                    currentQuestStatus: 'pending',
+                    assignedGame: randomGame
+                });
+
+                // הצגת העיגול המהבהב
+                questNode.classList.remove('hidden');
+                questNode.href = `Games/${randomGame}`;
+                
+                alert("מערכת: זיהיתי התקדמות משמעותית! עליך להשלים משימת שטח כדי לעלות בדרגה.");
+                return null;
+            }
+            
+            questNode.classList.add('hidden');
             return null;
         }
 
@@ -243,13 +266,6 @@
         }
 
         function updateDashboardUI(data, currentEnergy) {
-            if (data.level >= 5) {
-                const raceNode = document.querySelector('a[href="ayalon-race.html"]');
-                if (raceNode) {
-                    raceNode.style.boxShadow = "0 0 30px #a855f7";
-                    raceNode.setAttribute('data-label', "מבצע: פרוטוקול ארכניד");
-                }
-            }
             document.getElementById('player-username').innerText = data.username || "UNKNOWN";
             document.getElementById('stat-level').innerText = data.level || 1;
             document.getElementById('stat-coins').innerText = (data.coins || 0).toLocaleString();
