@@ -214,7 +214,7 @@
             const xpNeeded = currentLevel * 10;
 
             if (currentXP >= xpNeeded && data.currentQuestStatus !== 'pending') {
-                const questGames = ['Digger.html'];
+                const questGames = ['Games/Digger.html'];
                 const selectedGame = questGames[Math.floor(Math.random() * questGames.length)];
                 await updateDoc(docRef, {
                     currentQuestStatus: 'pending',
@@ -223,7 +223,7 @@
                 renderQuestNode(selectedGame);
             } 
             else if (data.currentQuestStatus === 'pending') {
-                renderQuestNode(data.activeQuestGame || 'Digger.html');
+                renderQuestNode(data.activeQuestGame || 'Games/Digger.html');
             }
         }
 
