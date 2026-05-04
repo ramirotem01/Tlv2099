@@ -17,18 +17,17 @@
 
     <div class="mb-6 text-center">
         <h1 class="text-4xl font-black italic tracking-tighter neon-text text-blue-500 uppercase">Data Digger 2099</h1>
-        <p class="text-slate-400 text-sm mb-4">התחמק מהווירוס ואסוף 50 שבבי נתונים</p>
+        <p class="text-slate-400 text-sm mb-4">הערם על הווירוס ואסוף 50 שבבים</p>
         
         <div class="flex gap-4 justify-center">
-            <div class="stat-box px-6 py-2 rounded-full font-bold text-xl">
-                שבבים: <span id="chips" class="text-blue-400">0</span> / 50
+            <div class="stat-box px-6 py-2 rounded-full font-bold text-xl text-blue-400">
+                שבבים: <span id="chips">0</span> / 50
             </div>
         </div>
     </div>
 
     <canvas id="gameCanvas" width="600" height="400"></canvas>
 
-    <!-- כפתורי שליטה למובייל -->
     <div class="mt-8 grid grid-cols-3 gap-3 md:hidden">
         <div></div>
         <button onmousedown="move('up')" class="bg-slate-800 h-16 w-16 rounded-2xl flex items-center justify-center text-2xl border-b-4 border-slate-900 active:translate-y-1 active:border-b-0">⬆️</button>
@@ -61,12 +60,10 @@
             for (let r = 0; r < ROWS; r++) {
                 grid[r] = [];
                 for (let c = 0; c < COLS; c++) {
-                    // נקודות פנויות סביב השחקן והמפלצת בהתחלה
                     if ((r < 2 && c < 2) || (r > ROWS-3 && c > COLS-3)) {
                         grid[r][c] = 0; 
                     } else {
-                        // 40% סיכוי ליהלום כדי לוודא שיש מעל 50
-                        grid[r][c] = Math.random() < 0.4 ? 2 : 1;
+                        grid[r][c] = Math.random() < 0.45 ? 2 : 1;
                     }
                 }
             }
@@ -75,14 +72,13 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // ציור המפה
             for (let r = 0; r < ROWS; r++) {
                 for (let c = 0; c < COLS; c++) {
                     if (grid[r][c] === 1) {
-                        ctx.fillStyle = '#1e293b'; // אדמה
+                        ctx.fillStyle = '#1e293b'; 
                         ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE - 1, TILE_SIZE - 1);
                     } else if (grid[r][c] === 2) {
-                        ctx.fillStyle = '#3b82f6'; // יהלום
+                        ctx.fillStyle = '#3b82f6';
                         ctx.shadowBlur = 10; ctx.shadowColor = '#3b82f6';
                         ctx.beginPath();
                         ctx.arc(c * TILE_SIZE + TILE_SIZE/2, r * TILE_SIZE + TILE_SIZE/2, 8, 0, Math.PI * 2);
@@ -92,12 +88,10 @@
                 }
             }
 
-            // ציור המפלצת (הווירוס)
             ctx.font = "24px Arial";
             ctx.shadowBlur = 15; ctx.shadowColor = '#facc15';
             ctx.fillText("👾", enemy.x * TILE_SIZE + 8, enemy.y * TILE_SIZE + 30);
             
-            // ציור השחקן
             ctx.fillStyle = '#f87171';
             ctx.shadowBlur = 15; ctx.shadowColor = '#ef4444';
             ctx.fillRect(player.x * TILE_SIZE + 6, player.y * TILE_SIZE + 6, TILE_SIZE - 12, TILE_SIZE - 12);
@@ -105,11 +99,29 @@
         }
 
         function moveEnemy() {
-            // בינה מלאכותית פשוטה: צעד אחד לכיוון השחקן
-            if (enemy.x < player.x) enemy.x++;
-            else if (enemy.x > player.x) enemy.x--;
-            else if (enemy.y < player.y) enemy.y++;
-            else if (enemy.y > player.y) enemy.y--;
+            // רמת קושי: המפלצת זזה רק ב-75% מהמקרים
+            if (Math.random() > 0.75) return;
+
+            // החלטה: האם לזוז לכיוון השחקן או רנדומלי?
+            const moveRandomly = Math.random() < 0.3; // 30% סיכוי לתנועה רנדומלית
+
+            if (moveRandomly) {
+                const dirs = ['up', 'down', 'left', 'right'];
+                const randomDir = dirs[Math.floor(Math.random() * dirs.length)];
+                if (randomDir === 'up' && enemy.y > 0) enemy.y--;
+                else if (randomDir === 'down' && enemy.y < ROWS - 1) enemy.y++;
+                else if (randomDir === 'left' && enemy.x > 0) enemy.x--;
+                else if (randomDir === 'right' && enemy.x < COLS - 1) enemy.x++;
+            } else {
+                // תנועה חכמה לכיוון השחקן
+                if (Math.abs(player.x - enemy.x) > Math.abs(player.y - enemy.y)) {
+                    if (enemy.x < player.x) enemy.x++;
+                    else if (enemy.x > player.x) enemy.x--;
+                } else {
+                    if (enemy.y < player.y) enemy.y++;
+                    else if (enemy.y > player.y) enemy.y--;
+                }
+            }
 
             if (enemy.x === player.x && enemy.y === player.y) {
                 gameOver();
@@ -118,7 +130,7 @@
 
         function gameOver() {
             gameActive = false;
-            alert("הווירוס הדביק את הנתונים! נסה שוב.");
+            alert("המערכת הושבתה על ידי הווירוס! נסה שוב.");
             location.reload(); 
         }
 
@@ -133,11 +145,9 @@
                         xp: 0,
                         coins: increment(500)
                     });
-                    alert("פריצה הושלמה! שבבי הנתונים אצלך.");
+                    alert("המשימה הושלמה! שבבי הנתונים חולצו בהצלחה.");
                     window.location.href = '../dashboard.html';
-                } catch (e) {
-                    console.error("Firebase Error:", e);
-                }
+                } catch (e) { console.error(e); }
             }
         }
 
@@ -156,19 +166,16 @@
                     player.chips++;
                     chipsDisplay.innerText = player.chips;
                 }
-                grid[newY][newX] = 0; // חפירה
+                grid[newY][newX] = 0; 
                 player.x = newX;
                 player.y = newY;
                 
-                // המפלצת זזה רק אחרי צעד של השחקן
                 moveEnemy(); 
-                
                 draw();
                 if (player.chips >= 50) handleWin();
             }
         }
 
-        // חשיפה ל-HTML
         window.move = move;
 
         window.addEventListener('keydown', (e) => {
