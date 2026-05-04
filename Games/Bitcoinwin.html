@@ -11,7 +11,6 @@
         #game-container { position: relative; width: 100vw; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         canvas { 
             border: 4px solid #1e293b; 
-            /* הרקע מוגדר כאן ונשאר קבוע */
             background: url('https://res.cloudinary.com/dxygefiai/image/upload/v1777130914/%D7%91%D7%99%D7%98%D7%A7%D7%95%D7%95%D7%99%D7%9F_rm4xa9.png') no-repeat center center;
             background-size: cover;
             box-shadow: 0 0 50px rgba(0,0,0,0.9) inset;
@@ -23,8 +22,8 @@
 
 <div id="game-container">
     <div class="mb-4 text-center">
-        <h1 id="status-text" class="text-4xl font-black italic tracking-tighter neon-text text-blue-500 uppercase">The Bitcoin Breach: Hard Mode</h1>
-        <p class="text-slate-400 text-sm font-bold">חמק ממערכות ההגנה הדינמיות והגע לליבה</p>
+        <h1 id="status-text" class="text-4xl font-black italic tracking-tighter neon-text text-blue-500 uppercase">Extreme Breach: Chaos Mode</h1>
+        <p class="text-red-500 text-sm font-bold animate-pulse">זהירות: מערכת ההגנה השתגעה! לייזרים רנדומליים פעילים.</p>
     </div>
     
     <canvas id="gameCanvas"></canvas>
@@ -43,24 +42,29 @@
     let gameActive = true;
     let currentUser = null;
 
-    const player = { x: 30, y: 30, size: 16, speed: 4.5 };
+    // שחקן מעט מהיר יותר כדי להתמודד עם הקושי
+    const player = { x: 30, y: 30, size: 14, speed: 5.5 };
     const goal = { x: 830, y: 470, size: 45 };
     
-    // מערך מכשולים מורכב יותר
+    // יצירת מכשולים מאתגרים
     const obstacles = [
-        // לייזרים אנכיים מהירים
-        { x: 150, y: 0, w: 8, h: 300, sy: 5 },
-        { x: 300, y: 250, w: 8, h: 300, sy: -6 },
-        { x: 450, y: 0, w: 8, h: 350, sy: 7 },
-        { x: 600, y: 200, w: 8, h: 350, sy: -5 },
-        { x: 750, y: 0, w: 8, h: 250, sy: 8 },
+        // לייזרים אנכיים במהירות מטורפת
+        { x: 120, y: 0, w: 10, h: 250, sy: 8 },
+        { x: 280, y: 300, w: 10, h: 250, sy: -9 },
+        { x: 440, y: 0, w: 10, h: 300, sy: 11 },
+        { x: 600, y: 250, w: 10, h: 300, sy: -10 },
+        { x: 760, y: 0, w: 10, h: 200, sy: 13 },
         
-        // לייזרים אופקיים "חונקים"
-        { x: 0, y: 120, w: 250, h: 8, sx: 4 },
-        { x: 500, y: 380, w: 300, h: 8, sx: -5 },
+        // לייזרים אופקיים רחבים
+        { x: 0, y: 180, w: 350, h: 10, sx: 6 },
+        { x: 550, y: 350, w: 350, h: 10, sx: -7 },
+
+        // --- לייזרים רנדומליים (Chaos Lasers) ---
+        { x: 450, y: 275, w: 20, h: 20, sx: 5, sy: 5, isRandom: true, lastChange: 0 },
+        { x: 200, y: 400, w: 15, h: 15, sx: -6, sy: 4, isRandom: true, lastChange: 0 },
         
-        // לייזר פועם (משנה גודל)
-        { x: 350, y: 150, w: 100, h: 100, pulse: 0, baseSize: 100 }
+        // לייזר פועם ענק במרכז
+        { x: 400, y: 220, w: 80, h: 80, pulse: 0, baseSize: 70 }
     ];
 
     const keys = {};
@@ -70,7 +74,7 @@
     async function handleWin() {
         if (!gameActive) return;
         gameActive = false;
-        document.getElementById('status-text').innerText = "DATABASE BREACHED!";
+        document.getElementById('status-text').innerText = "SYSTEM CRACKED!";
         
         if (currentUser) {
             try {
@@ -79,7 +83,7 @@
                     currentQuestStatus: 'completed',
                     coins: increment(50)
                 });
-                alert("המשימה הושלמה! הדרגה עודכנה במערכת.");
+                alert("ניצחון מוחלט! המערכת נפרצה. חוזר למפקדה...");
                 window.location.href = '../dashboard.html';
             } catch (e) {
                 console.error(e);
@@ -91,34 +95,42 @@
     function update() {
         if (!gameActive) return;
 
-        // תנועת שחקן
         if ((keys['ArrowUp'] || keys['KeyW']) && player.y > 0) player.y -= player.speed;
         if ((keys['ArrowDown'] || keys['KeyS']) && player.y < canvas.height - player.size) player.y += player.speed;
         if ((keys['ArrowLeft'] || keys['KeyA']) && player.x > 0) player.x -= player.speed;
         if ((keys['ArrowRight'] || keys['KeyD']) && player.x < canvas.width - player.size) player.x += player.speed;
 
+        const now = Date.now();
+
         obstacles.forEach(ob => {
-            // תנועה אנכית
+            // לוגיקה למכשולים רנדומליים
+            if (ob.isRandom) {
+                if (now - ob.lastChange > 1200) { // שינוי כיוון כל 1.2 שניות
+                    ob.sx = (Math.random() - 0.5) * 15;
+                    ob.sy = (Math.random() - 0.5) * 15;
+                    ob.lastChange = now;
+                }
+            }
+
             if (ob.sy) {
                 ob.y += ob.sy;
                 if (ob.y + ob.h > canvas.height || ob.y < 0) ob.sy *= -1;
             }
-            // תנועה אופקית
             if (ob.sx) {
                 ob.x += ob.sx;
                 if (ob.x + ob.w > canvas.width || ob.x < 0) ob.sx *= -1;
             }
-            // אפקט פעימה (קושי נוסף)
+
             if (ob.pulse !== undefined) {
-                ob.pulse += 0.05;
-                ob.w = ob.baseSize + Math.sin(ob.pulse) * 50;
-                ob.h = ob.baseSize + Math.cos(ob.pulse) * 50;
+                ob.pulse += 0.08;
+                ob.w = ob.baseSize + Math.sin(ob.pulse) * 60;
+                ob.h = ob.baseSize + Math.cos(ob.pulse) * 60;
             }
 
             // בדיקת התנגשות
             if (player.x < ob.x + ob.w && player.x + player.size > ob.x &&
                 player.y < ob.y + ob.h && player.y + player.size > ob.y) {
-                player.x = 30; player.y = 30; // מוות
+                player.x = 30; player.y = 30; // איפוס
             }
         });
 
@@ -129,30 +141,28 @@
     }
 
     function draw() {
-        // מנקים את הקנבס כדי לראות את תמונת הרקע של ה-CSS
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // שכבת כהות עדינה מאוד כדי להבליט את האלמנטים
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // המטרה
-        ctx.shadowBlur = 30; ctx.shadowColor = '#facc15';
+        // מטרה
+        ctx.shadowBlur = 35; ctx.shadowColor = '#facc15';
         ctx.fillStyle = '#facc15';
         ctx.beginPath();
         ctx.arc(goal.x + 22, goal.y + 22, 22, 0, Math.PI*2);
         ctx.fill();
 
-        // לייזרים - אדום בוהק
-        ctx.shadowBlur = 15; ctx.shadowColor = '#ff0000';
-        ctx.fillStyle = '#ff1111';
+        // לייזרים
         obstacles.forEach(ob => {
+            ctx.shadowBlur = ob.isRandom ? 25 : 15;
+            ctx.shadowColor = ob.isRandom ? '#ff00ff' : '#ff1111'; // לייזר רנדומלי בצבע סגול
+            ctx.fillStyle = ob.isRandom ? '#ff00ff' : '#ff1111';
             ctx.fillRect(ob.x, ob.y, ob.w, ob.h);
         });
 
-        // שחקן - כחול ניאון
-        ctx.shadowBlur = 20; ctx.shadowColor = '#00d2ff';
-        ctx.fillStyle = '#00d2ff';
+        // שחקן
+        ctx.shadowBlur = 20; ctx.shadowColor = '#00ff41';
+        ctx.fillStyle = '#00ff41';
         ctx.fillRect(player.x, player.y, player.size, player.size);
         
         ctx.shadowBlur = 0;
