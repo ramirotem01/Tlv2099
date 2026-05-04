@@ -17,11 +17,9 @@
         .neon-text { text-shadow: 0 0 15px rgba(255, 255, 255, 0.3); }
         .neon-border { border: 1px solid rgba(59, 130, 246, 0.3); box-shadow: 0 0 15px rgba(59, 130, 246, 0.1); }
         
-        /* Node Styling */
         .nav-node { position: absolute; width: 40px; height: 40px; background: rgba(59, 130, 246, 0.6); border: 2px solid white; border-radius: 50%; cursor: pointer; box-shadow: 0 0 20px rgba(59, 130, 246, 0.8); animation: pulse 2s infinite; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; z-index: 20; text-decoration: none; }
         .nav-node:hover { transform: scale(1.2); background: #3b82f6; box-shadow: 0 0 40px #3b82f6; }
         
-        /* Quest Node - Same as nav-node but with special position and color */
         .quest-node { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(220, 38, 38, 0.8); border-color: #fca5a5; box-shadow: 0 0 20px rgba(220, 38, 38, 0.8); animation: pulse-red 1s infinite; z-index: 50; }
 
         .node-gold { background: rgba(234, 179, 8, 0.6); box-shadow: 0 0 20px rgba(234, 179, 8, 0.8); border-color: #fef08a; animation: pulse-gold 2s infinite; }
@@ -51,7 +49,6 @@
     <a href="ayalon-race.html" class="nav-node" style="top: 75%; left: 15%;" data-label="מרוץ סייבר (איילון)">🏍️</a>
     <a href="bitcoin.html" class="nav-node node-gold" style="top: 45%; left: 35%;" data-label="מסע אל הביטקויין">₿</a>
 
-    <!-- Quest Anchor (Dynamically filled) -->
     <div id="quest-anchor"></div>
 
     <header class="flex justify-between items-center mb-10 pb-6 border-b border-slate-800 relative z-10">
@@ -68,7 +65,6 @@
     </header>
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8 max-w-7xl mx-auto relative z-10">
-        <!-- Stats Cards -->
         <div class="glass p-6 rounded-3xl flex flex-col items-center text-center shadow-lg border border-slate-800">
             <div class="text-[10px] uppercase text-slate-500 mb-2 font-bold tracking-widest italic">רמת סוכן</div>
             <div id="stat-level" class="text-5xl font-extrabold text-blue-500 tracking-tighter">-</div>
@@ -95,7 +91,6 @@
         </div>
     </div>
 
-    <!-- Inventory Section -->
     <div class="max-w-7xl mx-auto mb-10 relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="glass p-6 rounded-[2.5rem] border border-slate-800 relative overflow-hidden">
             <div class="flex items-center justify-between mb-6 px-2">
@@ -213,7 +208,21 @@
             const currentXP = data.xp || 0;
             const xpNeeded = currentLevel * 10;
 
-            if (currentXP >= xpNeeded && data.currentQuestStatus !== 'pending') {
+            // בדיקה אם המשימה הושלמה - אם כן, לעלות רמה
+            if (data.currentQuestStatus === 'completed') {
+                await updateDoc(docRef, {
+                    level: currentLevel + 1,
+                    xp: 0, // איפוס XP לרמה החדשה
+                    currentQuestStatus: 'none',
+                    activeQuestGame: null
+                });
+                // ריענון הדף לעדכון הנתונים
+                location.reload();
+                return;
+            }
+
+            // אם הגיע ל-XP הנדרש ואין משימה פעילה, הגרל משימה
+            if (currentXP >= xpNeeded && (!data.currentQuestStatus || data.currentQuestStatus === 'none')) {
                 const questGames = ['Games/Digger.html'];
                 const selectedGame = questGames[Math.floor(Math.random() * questGames.length)];
                 await updateDoc(docRef, {
@@ -222,6 +231,7 @@
                 });
                 renderQuestNode(selectedGame);
             } 
+            // אם יש משימה בהמתנה, הצג אותה
             else if (data.currentQuestStatus === 'pending') {
                 renderQuestNode(data.activeQuestGame || 'Games/Digger.html');
             }
