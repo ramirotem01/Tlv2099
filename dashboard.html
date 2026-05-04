@@ -164,7 +164,7 @@
         const xpNeeded = currentLevel * 10;
 
         // 1. בדיקה אם השחקן חזר ממשימה שהושלמה
-        if (data.currentQuestStatus === 'completed') {
+       if (data.currentQuestStatus === 'completed' && currentXP >= xpNeeded) {
             const newLevel = currentLevel + 1;
             
             // עדכון השחקן ב-DB
