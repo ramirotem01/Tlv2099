@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DATA DIGGER | TLV2099</title>
+    <title>DATA DIGGER | PCS365</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@800&display=swap" rel="stylesheet">
     <style>
@@ -40,7 +40,7 @@
     <script type="module">
         import { auth, db } from '../firebase-config.js'; 
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { doc, updateDoc, increment, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -99,11 +99,8 @@
         }
 
         function moveEnemy() {
-            // רמת קושי: המפלצת זזה רק ב-75% מהמקרים
             if (Math.random() > 0.75) return;
-
-            // החלטה: האם לזוז לכיוון השחקן או רנדומלי?
-            const moveRandomly = Math.random() < 0.3; // 30% סיכוי לתנועה רנדומלית
+            const moveRandomly = Math.random() < 0.3;
 
             if (moveRandomly) {
                 const dirs = ['up', 'down', 'left', 'right'];
@@ -113,7 +110,6 @@
                 else if (randomDir === 'left' && enemy.x > 0) enemy.x--;
                 else if (randomDir === 'right' && enemy.x < COLS - 1) enemy.x++;
             } else {
-                // תנועה חכמה לכיוון השחקן
                 if (Math.abs(player.x - enemy.x) > Math.abs(player.y - enemy.y)) {
                     if (enemy.x < player.x) enemy.x++;
                     else if (enemy.x > player.x) enemy.x--;
@@ -139,15 +135,17 @@
             if (currentUser) {
                 try {
                     const docRef = doc(db, "players", currentUser.uid);
+                    
+                    // עדכון סטטוס ל-completed בלבד. 
+                    // ה-Dashboard יזהה זאת, יעלה רמה, יאפס XP וישלח הודעה.
                     await updateDoc(docRef, {
                         currentQuestStatus: 'completed',
-                        level: increment(1),
-                        xp: 0,
                         coins: increment(500)
                     });
-                    alert("המשימה הושלמה! שבבי הנתונים חולצו בהצלחה.");
+
+                    alert("המשימה הושלמה! שבבי הנתונים חולצו בהצלחה. חוזר למפקדה לעדכון דרגה...");
                     window.location.href = '../dashboard.html';
-                } catch (e) { console.error(e); }
+                } catch (e) { console.error("Error updating win status:", e); }
             }
         }
 
