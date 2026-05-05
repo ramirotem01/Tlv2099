@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>Neon Pacman</title>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+body { margin:0; overflow:hidden; background:#020617; color:white; }
+canvas { display:block; margin:auto; }
+.neon { text-shadow:0 0 10px #0ff,0 0 20px #0ff; }
+
+#overlay {
+  position:absolute;
+  inset:0;
+  display:none;
+  background:rgba(0,0,0,0.9);
+  justify-content:center;
+  align-items:center;
+  flex-direction:column;
+}
+</style>
+</head>
+
+<body class="flex flex-col items-center justify-center h-screen">
+
+<h1 class="text-4xl neon mb-4">🟡 Neon Pacman</h1>
+
+<canvas id="gameCanvas" width="600" height="600"></canvas>
+
+<div id="overlay" class="flex">
+  <h2 class="text-5xl neon text-green-400 mb-4">🎉 ניצחת!</h2>
+  <p>+50 מטבעות נוספו</p>
+</div>
+
+<script type="module">
+import { auth, db } from "../firebase-config.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+let gameActive = true;
+let winTriggered = false;
+let currentUser = null;
+let loopStarted = false;
+
+const tile = 30;
+
+// 🧱 Map (1=wall, 0=dot)
+const map = [
+[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+[1,0,1,1,0,1,1,1,0,1,1,1,0,1,1,0,1,1,0,1],
+[1,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1],
+[1,1,1,0,1,1,0,1,1,1,0,1,1,0,1,1,0,1,1,1],
+[1,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,1],
+[1,0,1,1,0,1,1,1,0,1,1,1,0,1,1,0,1,1,0,1],
+[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+];
+
+let dots = 0;
+
+// 🟡 Player
+const player = { x:1, y:1 };
+
+// 👻 Ghosts
+const ghosts = [
+  {x:18,y:1,dx:-1,dy:0},
+  {x:18,y:7,dx:-1,dy:0}
+];
+
+// ספירת נקודות
+map.forEach(row=>{
+  row.forEach(cell=>{
+    if(cell===0) dots++;
+  });
+});
+
+// 🎮 Controls
+const keys = {};
+window.addEventListener("keydown", e=>keys[e.code]=true);
+
+// 🔥 Firebase win
+async function handleWin(){
+  if(winTriggered) return;
+  winTriggered = true;
+  gameActive = false;
+
+  document.getElementById("overlay").style.display="flex";
+
+  try{
+    const ref = doc(db,"players",currentUser.uid);
+    await updateDoc(ref,{
+      currentQuestStatus:"completed",
+      coins: increment(50)
+    });
+    console.log("WIN saved");
+  }catch(e){
+    console.error("DB error:",e);
+  }
+
+  setTimeout(()=>{
+    window.location.href="../dashboard.html";
+  },2500);
+}
+
+// 🎯 Movement
+function canMove(x,y){
+  return map[y][x] !== 1;
+}
+
+function update(){
+  if(!gameActive) return;
+
+  let nx = player.x;
+  let ny = player.y;
+
+  if(keys["ArrowUp"]) ny--;
+  if(keys["ArrowDown"]) ny++;
+  if(keys["ArrowLeft"]) nx--;
+  if(keys["ArrowRight"]) nx++;
+
+  if(canMove(nx,ny)){
+    player.x = nx;
+    player.y = ny;
+  }
+
+  // אכילת נקודות
+  if(map[player.y][player.x] === 0){
+    map[player.y][player.x] = 2;
+    dots--;
+  }
+
+  // תנועת רוחות (פשוטה)
+  ghosts.forEach(g=>{
+    if(Math.random() < 0.1){
+      const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+      const d = dirs[Math.floor(Math.random()*dirs.length)];
+      if(canMove(g.x+d[0], g.y+d[1])){
+        g.dx = d[0];
+        g.dy = d[1];
+      }
+    }
+
+    if(canMove(g.x+g.dx, g.y+g.dy)){
+      g.x += g.dx;
+      g.y += g.dy;
+    }
+
+    // התנגשות
+    if(g.x === player.x && g.y === player.y){
+      player.x = 1;
+      player.y = 1;
+    }
+  });
+
+  if(dots === 0){
+    handleWin();
+  }
+}
+
+// 🎨 Draw
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  map.forEach((row,y)=>{
+    row.forEach((cell,x)=>{
+      if(cell === 1){
+        ctx.fillStyle="#0ff";
+        ctx.fillRect(x*tile,y*tile,tile,tile);
+      } else if(cell === 0){
+        ctx.fillStyle="#fff";
+        ctx.beginPath();
+        ctx.arc(x*tile+15,y*tile+15,3,0,Math.PI*2);
+        ctx.fill();
+      }
+    });
+  });
+
+  // player
+  ctx.fillStyle="#ff0";
+  ctx.beginPath();
+  ctx.arc(player.x*tile+15,player.y*tile+15,10,0,Math.PI*2);
+  ctx.fill();
+
+  // ghosts
+  ctx.fillStyle="#f00";
+  ghosts.forEach(g=>{
+    ctx.beginPath();
+    ctx.arc(g.x*tile+15,g.y*tile+15,10,0,Math.PI*2);
+    ctx.fill();
+  });
+}
+
+// 🔁 Loop
+function loop(){
+  if(!gameActive) return;
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// 🔐 Auth
+onAuthStateChanged(auth,user=>{
+  if(!user){
+    window.location.href="../index.html";
+    return;
+  }
+
+  currentUser = user;
+
+  if(!loopStarted){
+    loopStarted = true;
+    loop();
+  }
+});
+</script>
+
+</body>
+</html>
