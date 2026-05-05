@@ -1,253 +1,206 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cyber-Path: Future Quest</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+  <meta charset="UTF-8" />
+  <title>Neon Reflex Runner</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 
-        body {
-            background-color: #050505;
-            color: #00f2ff;
-            font-family: 'Orbitron', sans-serif;
-            overflow: hidden;
-            margin: 0;
-        }
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: radial-gradient(circle at center, #050510, #000000);
+      font-family: sans-serif;
+    }
 
-        .neon-border {
-            box-shadow: 0 0 15px rgba(0, 242, 255, 0.5), inset 0 0 10px rgba(0, 242, 255, 0.2);
-            border: 1px solid #00f2ff;
-        }
+    canvas {
+      display: block;
+      margin: auto;
+      background: transparent;
+    }
 
-        .neon-text {
-            text-shadow: 0 0 10px #00f2ff, 0 0 20px #00f2ff;
-        }
+    .neon {
+      text-shadow:
+        0 0 5px #0ff,
+        0 0 10px #0ff,
+        0 0 20px #0ff;
+    }
 
-        canvas {
-            display: block;
-            background: radial-gradient(circle, #1a1a1a 0%, #050505 100%);
-            cursor: none;
-        }
-
-        #ui-overlay {
-            pointer-events: none;
-        }
-    </style>
+    .glow-box {
+      box-shadow:
+        0 0 10px #0ff,
+        0 0 20px #0ff,
+        inset 0 0 10px #0ff;
+    }
+  </style>
 </head>
-<body class="flex flex-col items-center justify-center min-h-screen">
 
-    <div class="absolute top-8 w-full text-center z-10">
-        <h1 class="text-4xl font-bold tracking-widest neon-text mb-2">CYBER-PATH</h1>
-        <p class="text-sm text-cyan-400 opacity-80 uppercase tracking-tighter">התחמק מהלייזרים והגע לליבה</p>
-    </div>
+<body class="flex flex-col items-center justify-center h-screen text-white">
 
-    <div class="relative p-1 rounded-lg neon-border">
-        <canvas id="gameCanvas" width="800" height="500"></canvas>
-        
-        <div id="ui-overlay" class="absolute inset-0 flex flex-col justify-between p-4">
-            <div class="flex justify-between items-start">
-                <div id="status-msg" class="text-xs bg-black/50 p-2 rounded border border-cyan-900">מערכת: מוכנה</div>
-            </div>
-        </div>
-    </div>
+  <h1 class="text-4xl mb-4 neon">⚡ Neon Reflex Runner ⚡</h1>
 
-    <script type="module">
-        // 1. Imports
-        import { auth, db } from '../firebase-config.js';
-        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  <canvas id="gameCanvas" width="600" height="400" class="glow-box"></canvas>
 
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const statusMsg = document.getElementById('status-msg');
+  <p class="mt-3 neon">השתמש בחצים כדי לנוע ולהגיע ליעד הירוק</p>
 
-        // Game Constants
-        const PLAYER_SIZE = 20;
-        const GOAL_SIZE = 30;
-        const OBSTACLE_COUNT = 6;
-        
-        let gameActive = false;
-        let animationId = null;
-        let currentUser = null;
+  <script type="module">
+    // Firebase imports (STRICT VERSION)
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        const player = {
-            x: 50,
-            y: canvas.height / 2,
-            targetX: 50,
-            targetY: canvas.height / 2,
-            speed: 0.15,
-            color: '#00f2ff'
-        };
+    import { auth, db } from "../firebase-config.js";
 
-        const goal = {
-            x: canvas.width - 60,
-            y: canvas.height / 2,
-            color: '#f0f'
-        };
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
 
-        let obstacles = [];
+    let gameStarted = false;
 
-        // 2. Auth Guard & Initialization
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                console.log("משתמש מחובר:", user.uid);
-                if (!gameActive) {
-                    initGame();
-                }
-            } else {
-                console.log("אין משתמש מחובר, מעביר לדף כניסה...");
-                window.location.href = '../index.html';
-            }
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        window.location.href = "../index.html";
+        return;
+      }
+
+      if (gameStarted) return;
+      gameStarted = true;
+
+      console.log("User authenticated:", user.uid);
+
+      // ===== GAME STATE =====
+      const player = {
+        x: 50,
+        y: 50,
+        size: 15,
+        speed: 3
+      };
+
+      const goal = {
+        x: 550,
+        y: 350,
+        size: 20
+      };
+
+      const obstacles = [];
+
+      for (let i = 0; i < 5; i++) {
+        obstacles.push({
+          x: Math.random() * 550,
+          y: Math.random() * 350,
+          size: 20,
+          dx: (Math.random() * 2 + 1),
+          dy: (Math.random() * 2 + 1)
+        });
+      }
+
+      const keys = {};
+
+      document.addEventListener("keydown", e => keys[e.key] = true);
+      document.addEventListener("keyup", e => keys[e.key] = false);
+
+      function resetPlayer() {
+        player.x = 50;
+        player.y = 50;
+      }
+
+      function movePlayer() {
+        if (keys["ArrowUp"]) player.y -= player.speed;
+        if (keys["ArrowDown"]) player.y += player.speed;
+        if (keys["ArrowLeft"]) player.x -= player.speed;
+        if (keys["ArrowRight"]) player.x += player.speed;
+      }
+
+      function moveObstacles() {
+        obstacles.forEach(o => {
+          o.x += o.dx;
+          o.y += o.dy;
+
+          if (o.x < 0 || o.x > canvas.width - o.size) o.dx *= -1;
+          if (o.y < 0 || o.y > canvas.height - o.size) o.dy *= -1;
+        });
+      }
+
+      function detectCollision(a, b) {
+        return (
+          a.x < b.x + b.size &&
+          a.x + a.size > b.x &&
+          a.y < b.y + b.size &&
+          a.y + a.size > b.y
+        );
+      }
+
+      async function handleWin() {
+        try {
+          console.log("Player WON - updating DB...");
+
+          const playerRef = doc(db, "players", user.uid);
+
+          await updateDoc(playerRef, {
+            currentQuestStatus: "completed",
+            coins: increment(50)
+          });
+
+          console.log("DB updated successfully");
+
+          window.location.href = "../dashboard.html";
+
+        } catch (error) {
+          console.error("🔥 Firebase Error:", error);
+        }
+      }
+
+      function update() {
+        movePlayer();
+        moveObstacles();
+
+        // Collision with obstacles
+        for (let o of obstacles) {
+          if (detectCollision(player, o)) {
+            console.log("Hit obstacle - reset");
+            resetPlayer();
+          }
+        }
+
+        // Win condition
+        if (detectCollision(player, goal)) {
+          handleWin();
+        }
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Player (cyan glow)
+        ctx.fillStyle = "#0ff";
+        ctx.shadowColor = "#0ff";
+        ctx.shadowBlur = 15;
+        ctx.fillRect(player.x, player.y, player.size, player.size);
+
+        // Goal (green glow)
+        ctx.fillStyle = "#0f0";
+        ctx.shadowColor = "#0f0";
+        ctx.fillRect(goal.x, goal.y, goal.size, goal.size);
+
+        // Obstacles (red glow)
+        ctx.fillStyle = "#f00";
+        ctx.shadowColor = "#f00";
+
+        obstacles.forEach(o => {
+          ctx.fillRect(o.x, o.y, o.size, o.size);
         });
 
-        function initGame() {
-            gameActive = true;
-            statusMsg.innerText = "מערכת: אונליין | משתמש: " + (currentUser.displayName || 'סוכן');
-            
-            // Create obstacles
-            for(let i=0; i < OBSTACLE_COUNT; i++) {
-                obstacles.push({
-                    x: 150 + (i * 100),
-                    y: Math.random() * canvas.height,
-                    width: 15,
-                    height: 80 + Math.random() * 100,
-                    speed: 2 + Math.random() * 4,
-                    direction: 1
-                });
-            }
+        ctx.shadowBlur = 0;
+      }
 
-            // Listen for mouse
-            canvas.addEventListener('mousemove', (e) => {
-                const rect = canvas.getBoundingClientRect();
-                player.targetX = e.clientX - rect.left;
-                player.targetY = e.clientY - rect.top;
-            });
+      function gameLoop() {
+        update();
+        draw();
+        requestAnimationFrame(gameLoop);
+      }
 
-            gameLoop();
-        }
+      // Start game loop ONLY ONCE
+      gameLoop();
+    });
+  </script>
 
-        // 3. Game Logic & Rendering
-        function gameLoop() {
-            if (!gameActive) return;
-
-            // Clear Canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            updatePlayer();
-            drawGoal();
-            updateObstacles();
-            checkCollisions();
-
-            animationId = requestAnimationFrame(gameLoop);
-        }
-
-        function updatePlayer() {
-            // Smooth movement (Lerp)
-            player.x += (player.targetX - player.x) * player.speed;
-            player.y += (player.targetY - player.y) * player.speed;
-
-            // Draw player with Glow
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = player.color;
-            ctx.fillStyle = player.color;
-            ctx.fillRect(player.x - PLAYER_SIZE/2, player.y - PLAYER_SIZE/2, PLAYER_SIZE, PLAYER_SIZE);
-            ctx.shadowBlur = 0;
-        }
-
-        function drawGoal() {
-            ctx.shadowBlur = 20;
-            ctx.shadowColor = goal.color;
-            ctx.strokeStyle = goal.color;
-            ctx.lineWidth = 3;
-            ctx.strokeRect(goal.x, goal.y - GOAL_SIZE/2, GOAL_SIZE, GOAL_SIZE);
-            
-            // Pulsing inner
-            const pulse = Math.sin(Date.now() / 200) * 5;
-            ctx.fillStyle = goal.color;
-            ctx.fillRect(goal.x + 5 - pulse/2, goal.y - GOAL_SIZE/2 + 5 - pulse/2, GOAL_SIZE - 10 + pulse, GOAL_SIZE - 10 + pulse);
-            ctx.shadowBlur = 0;
-        }
-
-        function updateObstacles() {
-            ctx.fillStyle = '#ff003c';
-            ctx.shadowColor = '#ff003c';
-            ctx.shadowBlur = 10;
-
-            obstacles.forEach(obs => {
-                obs.y += obs.speed * obs.direction;
-                
-                if (obs.y <= 0 || obs.y + obs.height >= canvas.height) {
-                    obs.direction *= -1;
-                }
-
-                ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
-            });
-            ctx.shadowBlur = 0;
-        }
-
-        function checkCollisions() {
-            // Wall/Obstacle Collision
-            obstacles.forEach(obs => {
-                if (player.x + PLAYER_SIZE/2 > obs.x && 
-                    player.x - PLAYER_SIZE/2 < obs.x + obs.width &&
-                    player.y + PLAYER_SIZE/2 > obs.y && 
-                    player.y - PLAYER_SIZE/2 < obs.y + obs.height) {
-                    resetPlayer();
-                }
-            });
-
-            // Goal Collision
-            if (player.x + PLAYER_SIZE/2 > goal.x && 
-                player.y > goal.y - GOAL_SIZE/2 && 
-                player.y < goal.y + GOAL_SIZE/2) {
-                handleWin();
-            }
-        }
-
-        function resetPlayer() {
-            player.x = 50;
-            player.y = canvas.height / 2;
-            player.targetX = 50;
-            player.targetY = canvas.height / 2;
-            statusMsg.innerText = "מערכת: זוהתה פגיעה! אתחול מיקום...";
-            statusMsg.classList.add('text-red-500');
-            setTimeout(() => statusMsg.classList.remove('text-red-500'), 1000);
-        }
-
-        // 4. Firebase Sync Logic
-        async function handleWin() {
-            if (!gameActive) return;
-            gameActive = false; // Stop game loop
-            cancelAnimationFrame(animationId);
-
-            statusMsg.innerText = "מערכת: יעד הושג! מעדכן נתונים...";
-            statusMsg.classList.add('text-green-400');
-
-            try {
-                const playerDocRef = doc(db, 'players', currentUser.uid);
-                
-                await updateDoc(playerDocRef, {
-                    currentQuestStatus: 'completed',
-                    coins: increment(50)
-                });
-
-                console.log("DB Update Success: Player won and earned 50 coins");
-                
-                // Redirect to dashboard
-                setTimeout(() => {
-                    window.location.href = '../dashboard.html';
-                }, 1500);
-
-            } catch (error) {
-                console.error("Firebase Error (Write):", error);
-                statusMsg.innerText = "שגיאה בסנכרון הנתונים. נסה שוב.";
-                gameActive = true;
-                gameLoop();
-            }
-        }
-    </script>
 </body>
 </html>
