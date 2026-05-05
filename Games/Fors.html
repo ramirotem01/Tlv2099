@@ -1,106 +1,160 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <title>Neon Memory Rush</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8">
+<title>Neon Memory Match</title>
+<script src="https://cdn.tailwindcss.com"></script>
 
-  <style>
-    body { margin:0; overflow:hidden; background:#020617; color:white; }
-    canvas { display:block; margin:auto; }
-    .neon { text-shadow:0 0 10px #0ff,0 0 20px #0ff; }
+<style>
+body { margin:0; background:#020617; color:white; overflow:hidden; }
+.neon { text-shadow:0 0 10px #0ff,0 0 20px #0ff; }
 
-    #overlay {
-      position:absolute;
-      inset:0;
-      display:none;
-      background:rgba(0,0,0,0.85);
-      justify-content:center;
-      align-items:center;
-      flex-direction:column;
-      z-index:10;
-    }
-  </style>
+#game {
+  display:grid;
+  grid-template-columns: repeat(4, 100px);
+  gap:15px;
+}
+
+.card {
+  width:100px;
+  height:100px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#0f172a;
+  cursor:pointer;
+  font-size:30px;
+  border-radius:10px;
+  box-shadow:0 0 10px #0ff;
+}
+
+.revealed {
+  background:#06b6d4;
+}
+
+.matched {
+  background:#22c55e;
+}
+
+#overlay {
+  position:absolute;
+  inset:0;
+  display:none;
+  background:rgba(0,0,0,0.9);
+  justify-content:center;
+  align-items:center;
+  flex-direction:column;
+}
+</style>
 </head>
 
 <body class="flex flex-col items-center justify-center h-screen">
 
-<h1 class="text-4xl neon mb-2">🧠 Neon Memory Rush</h1>
-<p class="text-sm mb-2">זכור את הסדר → אסוף נכון → מהר!</p>
+<h1 class="text-4xl neon mb-4">🧠 Memory Match</h1>
+<p class="mb-2">מצא את כל הזוגות במהירות!</p>
+<p id="timer" class="mb-4 text-yellow-400">⏱ זמן: 60</p>
+
+<div id="game"></div>
 
 <div id="overlay" class="flex">
   <h2 class="text-5xl neon text-green-400 mb-4">🎉 ניצחת!</h2>
   <p>+50 מטבעות נוספו</p>
 </div>
 
-<canvas id="gameCanvas" width="700" height="450"></canvas>
-
 <script type="module">
 import { auth, db } from "../firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
-
+let currentUser;
 let gameActive = true;
 let winTriggered = false;
-let currentUser = null;
 let loopStarted = false;
 
-const player = { x:50, y:50, size:15, speed:4 };
+const symbols = ["🍕","🚀","🎮","💎","🔥","⚡","🧠","🎯"];
+let cards = [...symbols, ...symbols];
 
-// סמלים (targets)
-const symbols = [];
-const sequence = [];
-let currentIndex = 0;
+// ערבוב
+cards.sort(()=>Math.random()-0.5);
 
-// יצירת 5 סמלים
-for(let i=0;i<5;i++){
-  const s = {
-    x:100 + i*110,
-    y:200,
-    size:25,
-    id:i,
-    collected:false
-  };
-  symbols.push(s);
-  sequence.push(i);
+const game = document.getElementById("game");
+
+let firstCard = null;
+let secondCard = null;
+let lockBoard = false;
+let matches = 0;
+
+// יצירת קלפים
+cards.forEach((symbol,index)=>{
+  const card = document.createElement("div");
+  card.className="card";
+  card.dataset.symbol = symbol;
+  card.dataset.index = index;
+  game.appendChild(card);
+
+  card.addEventListener("click", ()=>{
+    if(!gameActive || lockBoard || card.classList.contains("revealed")) return;
+
+    card.innerText = symbol;
+    card.classList.add("revealed");
+
+    if(!firstCard){
+      firstCard = card;
+    } else {
+      secondCard = card;
+      lockBoard = true;
+
+      if(firstCard.dataset.symbol === secondCard.dataset.symbol){
+        firstCard.classList.add("matched");
+        secondCard.classList.add("matched");
+        matches++;
+
+        resetTurn();
+
+        if(matches === symbols.length){
+          handleWin();
+        }
+      } else {
+        setTimeout(()=>{
+          firstCard.innerText="";
+          secondCard.innerText="";
+          firstCard.classList.remove("revealed");
+          secondCard.classList.remove("revealed");
+          resetTurn();
+        },700);
+      }
+    }
+  });
+});
+
+function resetTurn(){
+  firstCard = null;
+  secondCard = null;
+  lockBoard = false;
 }
 
-// ערבוב סדר (memory challenge)
-sequence.sort(()=>Math.random()-0.5);
+// טיימר (זריזות)
+let time = 60;
+const timerEl = document.getElementById("timer");
 
-let showSequence = true;
-let showTimer = 120; // פריימים להצגת רצף
+const timerInterval = setInterval(()=>{
+  if(!gameActive) return;
 
-// מכשולים עדינים (לא לייזר)
-const obstacles = [
-  {x:200,y:0,w:20,h:200,dy:2},
-  {x:400,y:250,w:20,h:200,dy:-2}
-];
+  time--;
+  timerEl.innerText = "⏱ זמן: " + time;
 
-const keys = {};
-window.addEventListener("keydown",e=>keys[e.code]=true);
-window.addEventListener("keyup",e=>keys[e.code]=false);
+  if(time <= 0){
+    location.reload();
+  }
+},1000);
 
-function resetPlayer(){
-  player.x=50; player.y=50;
-  currentIndex=0;
-  symbols.forEach(s=>s.collected=false);
-}
-
-function collision(a,b){
-  return a.x<a.x+a.size &&
-         a.x+a.size>b.x &&
-         a.y<b.y+b.size &&
-         a.y+a.size>b.y;
-}
-
+// 🔥 Firebase win
 async function handleWin(){
   if(winTriggered) return;
   winTriggered = true;
   gameActive = false;
+
+  clearInterval(timerInterval);
 
   document.getElementById("overlay").style.display="flex";
 
@@ -110,7 +164,9 @@ async function handleWin(){
       currentQuestStatus:"completed",
       coins: increment(50)
     });
+
     console.log("WIN saved");
+
   }catch(e){
     console.error("DB error:",e);
   }
@@ -120,104 +176,17 @@ async function handleWin(){
   },2500);
 }
 
-function update(){
-  if(!gameActive) return;
-
-  if(keys["ArrowUp"]||keys["KeyW"]) player.y-=player.speed;
-  if(keys["ArrowDown"]||keys["KeyS"]) player.y+=player.speed;
-  if(keys["ArrowLeft"]||keys["KeyA"]) player.x-=player.speed;
-  if(keys["ArrowRight"]||keys["KeyD"]) player.x+=player.speed;
-
-  obstacles.forEach(o=>{
-    o.y+=o.dy;
-    if(o.y<0 || o.y+o.h>canvas.height) o.dy*=-1;
-
-    if(player.x<o.x+o.w && player.x+player.size>o.x &&
-       player.y<o.y+o.h && player.y+player.size>o.y){
-      resetPlayer();
-    }
-  });
-
-  // הצגת רצף
-  if(showSequence){
-    showTimer--;
-    if(showTimer<=0) showSequence=false;
-    return;
-  }
-
-  // בדיקת איסוף נכון
-  symbols.forEach(s=>{
-    if(!s.collected &&
-       player.x < s.x+s.size &&
-       player.x+player.size > s.x &&
-       player.y < s.y+s.size &&
-       player.y+player.size > s.y){
-
-        if(s.id === sequence[currentIndex]){
-          s.collected = true;
-          currentIndex++;
-
-          if(currentIndex === sequence.length){
-            handleWin();
-          }
-        } else {
-          // טעות → ריסט
-          resetPlayer();
-        }
-    }
-  });
-}
-
-function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  // סמלים
-  symbols.forEach(s=>{
-    ctx.shadowBlur=15;
-    ctx.shadowColor = s.collected ? "#555" : "#0ff";
-    ctx.fillStyle = s.collected ? "#555" : "#0ff";
-    ctx.fillRect(s.x,s.y,s.size,s.size);
-
-    // הצגת סדר בהתחלה
-    if(showSequence){
-      ctx.fillStyle="#fff";
-      ctx.fillText(sequence.indexOf(s.id)+1, s.x+5, s.y+18);
-    }
-  });
-
-  // מכשולים
-  ctx.fillStyle="#f00";
-  obstacles.forEach(o=>{
-    ctx.fillRect(o.x,o.y,o.w,o.h);
-  });
-
-  // שחקן
-  ctx.shadowBlur=20;
-  ctx.shadowColor="#0f0";
-  ctx.fillStyle="#0f0";
-  ctx.fillRect(player.x,player.y,player.size,player.size);
-
-  ctx.shadowBlur=0;
-}
-
-function loop(){
-  if(!gameActive) return;
-  update();
-  draw();
-  requestAnimationFrame(loop);
-}
-
+// 🔐 Auth
 onAuthStateChanged(auth,user=>{
   if(!user){
     window.location.href="../index.html";
     return;
   }
 
-  currentUser=user;
+  currentUser = user;
 
   if(!loopStarted){
-    loopStarted=true;
-    loop();
+    loopStarted = true;
   }
 });
 </script>
