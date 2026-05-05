@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>Neon Breakout</title>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+body { margin:0; overflow:hidden; background:#020617; color:white; }
+canvas { display:block; margin:auto; }
+
+.neon { text-shadow:0 0 10px #0ff,0 0 20px #0ff; }
+
+#overlay {
+  position:absolute;
+  inset:0;
+  display:none;
+  background:rgba(0,0,0,0.9);
+  justify-content:center;
+  align-items:center;
+  flex-direction:column;
+}
+</style>
+</head>
+
+<body class="flex flex-col items-center justify-center h-screen">
+
+<h1 class="text-4xl neon mb-4">🧱 Neon Breakout</h1>
+
+<canvas id="gameCanvas" width="700" height="500"></canvas>
+
+<div id="overlay" class="flex">
+  <h2 class="text-5xl neon text-green-400 mb-4">🎉 ניצחת!</h2>
+  <p>+50 מטבעות נוספו</p>
+</div>
+
+<script type="module">
+import { auth, db } from "../firebase-config.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+let gameActive = true;
+let winTriggered = false;
+let currentUser = null;
+let loopStarted = false;
+
+// 🟦 Paddle
+const paddle = {
+  x: canvas.width/2 - 60,
+  y: canvas.height - 30,
+  w: 120,
+  h: 12,
+  speed: 7
+};
+
+// ⚪ Ball
+const ball = {
+  x: canvas.width/2,
+  y: canvas.height - 50,
+  r: 8,
+  dx: 4,
+  dy: -4
+};
+
+// 🧱 Bricks (Random)
+const rows = 5;
+const cols = 8;
+const bricks = [];
+
+for(let r=0;r<rows;r++){
+  for(let c=0;c<cols;c++){
+    if(Math.random() > 0.3){ // רנדומלי
+      bricks.push({
+        x: c*80 + 30,
+        y: r*40 + 40,
+        w: 60,
+        h: 20,
+        alive: true
+      });
+    }
+  }
+}
+
+// 🎮 Controls
+const keys = {};
+window.addEventListener("keydown", e => keys[e.code]=true);
+window.addEventListener("keyup", e => keys[e.code]=false);
+
+// 🔥 Firebase win
+async function handleWin(){
+  if(winTriggered) return;
+  winTriggered = true;
+  gameActive = false;
+
+  document.getElementById("overlay").style.display="flex";
+
+  try{
+    const ref = doc(db,"players",currentUser.uid);
+    await updateDoc(ref,{
+      currentQuestStatus:"completed",
+      coins: increment(50)
+    });
+    console.log("WIN saved");
+  }catch(e){
+    console.error("DB error:",e);
+  }
+
+  setTimeout(()=>{
+    window.location.href="../dashboard.html";
+  },2500);
+}
+
+// 🎯 Update
+function update(){
+  if(!gameActive) return;
+
+  // Paddle move
+  if(keys["ArrowLeft"] || keys["KeyA"]) paddle.x -= paddle.speed;
+  if(keys["ArrowRight"] || keys["KeyD"]) paddle.x += paddle.speed;
+
+  if(paddle.x < 0) paddle.x = 0;
+  if(paddle.x + paddle.w > canvas.width) paddle.x = canvas.width - paddle.w;
+
+  // Ball move
+  ball.x += ball.dx;
+  ball.y += ball.dy;
+
+  // Walls
+  if(ball.x < ball.r || ball.x > canvas.width - ball.r) ball.dx *= -1;
+  if(ball.y < ball.r) ball.dy *= -1;
+
+  // Paddle collision
+  if(
+    ball.x > paddle.x &&
+    ball.x < paddle.x + paddle.w &&
+    ball.y + ball.r > paddle.y
+  ){
+    ball.dy *= -1;
+
+    // שינוי זווית לפי מיקום
+    let hit = (ball.x - (paddle.x + paddle.w/2)) / (paddle.w/2);
+    ball.dx = hit * 5;
+  }
+
+  // נפילה → ריסט
+  if(ball.y > canvas.height){
+    ball.x = canvas.width/2;
+    ball.y = canvas.height - 50;
+    ball.dx = 4;
+    ball.dy = -4;
+  }
+
+  // Brick collision
+  let remaining = 0;
+
+  bricks.forEach(b=>{
+    if(!b.alive) return;
+
+    remaining++;
+
+    if(
+      ball.x > b.x &&
+      ball.x < b.x + b.w &&
+      ball.y > b.y &&
+      ball.y < b.y + b.h
+    ){
+      b.alive = false;
+      ball.dy *= -1;
+    }
+  });
+
+  // Win
+  if(remaining === 0){
+    handleWin();
+  }
+}
+
+// 🎨 Draw
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // Paddle
+  ctx.shadowBlur=20;
+  ctx.shadowColor="#0ff";
+  ctx.fillStyle="#0ff";
+  ctx.fillRect(paddle.x,paddle.y,paddle.w,paddle.h);
+
+  // Ball
+  ctx.shadowColor="#fff";
+  ctx.fillStyle="#fff";
+  ctx.beginPath();
+  ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);
+  ctx.fill();
+
+  // Bricks
+  bricks.forEach(b=>{
+    if(!b.alive) return;
+
+    ctx.shadowColor="#f00";
+    ctx.fillStyle="#f00";
+    ctx.fillRect(b.x,b.y,b.w,b.h);
+  });
+
+  ctx.shadowBlur=0;
+}
+
+// 🔁 Loop
+function loop(){
+  if(!gameActive) return;
+
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// 🔐 Auth
+onAuthStateChanged(auth,user=>{
+  if(!user){
+    window.location.href="../index.html";
+    return;
+  }
+
+  currentUser = user;
+
+  if(!loopStarted){
+    loopStarted = true;
+    loop();
+  }
+});
+</script>
+
+</body>
+</html>
