@@ -17,7 +17,8 @@
         }
         canvas {
             display: block;
-            filter: drop-shadow(0 0 10px rgba(0, 255, 255, 0.5));
+            /* אפקט זוהר עדין על כל הקנבס */
+            filter: drop-shadow(0 0 5px rgba(0, 243, 255, 0.3));
         }
         .neon-glow {
             text-shadow: 0 0 10px #00f3ff, 0 0 20px #00f3ff;
@@ -26,9 +27,7 @@
             box-shadow: 0 0 15px #00f3ff, inset 0 0 15px #00f3ff;
             border: 2px solid #00f3ff;
         }
-        #ui-overlay {
-            pointer-events: none;
-        }
+        #ui-overlay { pointer-events: none; }
     </style>
 </head>
 <body class="h-screen flex items-center justify-center">
@@ -36,18 +35,18 @@
     <!-- UI Overlay -->
     <div id="ui-overlay" class="absolute inset-0 flex flex-col justify-between p-8 z-10">
         <div class="flex justify-between items-start">
-            <h1 class="text-4xl font-bold text-cyan-400 neon-glow tracking-widest uppercase">
-                System Breach: Level 01
+            <h1 id="status-text" class="text-4xl font-bold text-cyan-400 neon-glow tracking-widest uppercase italic">
+                System Breach: Neural Link
             </h1>
-            <div id="status" class="text-pink-500 font-bold text-xl neon-glow">
+            <div id="status-indicator" class="text-pink-500 font-bold text-xl neon-glow">
                 STATUS: ENCRYPTED
             </div>
         </div>
         
         <div class="flex justify-center">
-            <div class="bg-black/60 p-4 neon-border rounded-lg text-cyan-300 text-center pointer-events-auto">
-                <p>השתמש בחיצים או ב-WASD כדי להגיע לליבה הירוקה</p>
-                <p class="text-xs mt-2 opacity-70">אל תיגע במחסומי האבטחה האדומים</p>
+            <div class="bg-black/70 p-4 neon-border rounded-lg text-cyan-300 text-center pointer-events-auto">
+                <p class="font-bold">השתמש בחיצים או ב-WASD כדי להגיע לליבה הירוקה</p>
+                <p class="text-xs mt-2 opacity-70">מערכת אבטחה פעילה - אל תיגע בלייזרים</p>
             </div>
         </div>
     </div>
@@ -56,59 +55,43 @@
 
     <script type="module">
         import { auth, db } from '../firebase-config.js';
-        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        
+        canvas.width = 900;
+        canvas.height = 550;
+
+        let gameActive = false; // המשחק יופעל רק אחרי זיהוי משתמש
         let currentUser = null;
 
-        // הגדרות קנבס
-        canvas.width = 800;
-        canvas.height = 600;
+        // הגדרות שחקן ויעד
+        const player = { x: 40, y: 275, size: 18, speed: 5 };
+        const goal = { x: 820, y: 255, size: 40 };
 
-        // וידוא אימות משתמש
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                initGame();
-            } else {
-                window.location.href = '../index.html';
-            }
-        });
-
-        // לוגיקת המשחק
-        const player = {
-            x: 50,
-            y: 300,
-            size: 20,
-            speed: 5,
-            color: '#00f3ff',
-            glow: '#00f3ff'
-        };
-
-        const goal = {
-            x: 730,
-            y: 280,
-            size: 40,
-            color: '#39ff14'
-        };
-
+        // מכשולים מאתגרים בסגנון Cyber
         const obstacles = [
-            { x: 200, y: 0, w: 30, h: 400, speed: 3 },
-            { x: 400, y: 200, w: 30, h: 400, speed: -4 },
-            { x: 600, y: 0, w: 30, h: 450, speed: 5 }
+            { x: 200, y: 0, w: 15, h: 350, sy: 5 },
+            { x: 400, y: 200, w: 15, h: 350, sy: -6 },
+            { x: 600, y: 0, w: 15, h: 400, sy: 7 },
+            { x: 300, y: 100, w: 200, h: 15, sx: 4 },
+            { x: 500, y: 400, w: 250, h: 15, sx: -5 }
         ];
 
         const keys = {};
         window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
 
+        // פונקציית הניצחון המתוקנת
         async function handleWin() {
-            if (!currentUser) return;
+            if (!gameActive || !currentUser) return;
             
-            document.getElementById('status').innerText = "ACCESS GRANTED. UPLOADING...";
-            
+            gameActive = false; // עצירת המשחק מיד למניעת לולאת שגיאות
+            document.getElementById('status-indicator').innerText = "ACCESS GRANTED";
+            document.getElementById('status-text').innerText = "CORE BREACHED!";
+
             try {
                 const playerRef = doc(db, "players", currentUser.uid);
                 await updateDoc(playerRef, {
@@ -116,86 +99,93 @@
                     coins: increment(50)
                 });
                 
-                window.location.href = '../dashboard.html';
+                setTimeout(() => {
+                    window.location.href = '../dashboard.html';
+                }, 1000);
             } catch (error) {
-                console.error("Error updating victory:", error);
-                alert("שגיאה בעדכון הנתונים");
+                console.error("Firebase Error:", error);
+                // במקרה של שגיאה, עדיין נעביר דף כדי לא לתקוע את המשתמש
+                window.location.href = '../dashboard.html';
             }
         }
 
         function update() {
-            // תנועת שחקן
-            if (keys['ArrowUp'] || keys['KeyW']) player.y -= player.speed;
-            if (keys['ArrowDown'] || keys['KeyS']) player.y += player.speed;
-            if (keys['ArrowLeft'] || keys['KeyA']) player.x -= player.speed;
-            if (keys['ArrowRight'] || keys['KeyD']) player.x += player.speed;
+            if (!gameActive) return;
 
-            // גבולות מסך
-            player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
-            player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
+            // תנועה
+            if ((keys['ArrowUp'] || keys['KeyW']) && player.y > 0) player.y -= player.speed;
+            if ((keys['ArrowDown'] || keys['KeyS']) && player.y < canvas.height - player.size) player.y += player.speed;
+            if ((keys['ArrowLeft'] || keys['KeyA']) && player.x > 0) player.x -= player.speed;
+            if ((keys['ArrowRight'] || keys['KeyD']) && player.x < canvas.width - player.size) player.x += player.speed;
 
-            // עדכון מכשולים
-            obstacles.forEach(obs => {
-                obs.y += obs.speed;
-                if (obs.y + obs.h > canvas.height || obs.y < 0) obs.speed *= -1;
+            // עדכון מכשולים ובדיקת התנגשות
+            obstacles.forEach(ob => {
+                if (ob.sy) {
+                    ob.y += ob.sy;
+                    if (ob.y + ob.h > canvas.height || ob.y < 0) ob.sy *= -1;
+                }
+                if (ob.sx) {
+                    ob.x += ob.sx;
+                    if (ob.x + ob.w > canvas.width || ob.x < 0) ob.sx *= -1;
+                }
 
-                // בדיקת התנגשות
-                if (player.x < obs.x + obs.w &&
-                    player.x + player.size > obs.x &&
-                    player.y < obs.y + obs.h &&
-                    player.y + player.size > obs.y) {
-                    resetPlayer();
+                if (player.x < ob.x + ob.w && player.x + player.size > ob.x &&
+                    player.y < ob.y + ob.h && player.y + player.size > ob.y) {
+                    player.x = 40; player.y = 275; // איפוס מיקום
                 }
             });
 
-            // בדיקת ניצחון
-            if (player.x < goal.x + goal.size &&
-                player.x + player.size > goal.x &&
-                player.y < goal.y + goal.size &&
-                player.y + player.size > goal.y) {
-                cancelAnimationFrame(gameLoop);
+            // בדיקת הגעה ליעד
+            if (player.x < goal.x + goal.size && player.x + player.size > goal.x &&
+                player.y < goal.y + goal.size && player.y + player.size > goal.y) {
                 handleWin();
             }
         }
 
-        function resetPlayer() {
-            player.x = 50;
-            player.y = 300;
-        }
-
         function draw() {
+            // ניקוי הקנבס - שומר על הרקע של ה-CSS גלוי
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             // ציור יעד (The Core)
-            ctx.shadowBlur = 25;
-            ctx.shadowColor = goal.color;
-            ctx.fillStyle = goal.color;
+            ctx.shadowBlur = 30;
+            ctx.shadowColor = '#39ff14';
+            ctx.fillStyle = '#39ff14';
             ctx.fillRect(goal.x, goal.y, goal.size, goal.size);
 
-            // ציור שחקן
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = player.glow;
-            ctx.fillStyle = player.color;
-            ctx.fillRect(player.x, player.y, player.size, player.size);
-
-            // ציור מכשולים
+            // ציור לייזרים (Obstacles)
             ctx.shadowBlur = 20;
             ctx.shadowColor = '#ff003c';
             ctx.fillStyle = '#ff003c';
-            obstacles.forEach(obs => {
-                ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+            obstacles.forEach(ob => {
+                ctx.fillRect(ob.x, ob.y, ob.w, ob.h);
             });
+
+            // ציור שחקן
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#00f3ff';
+            ctx.fillStyle = '#00f3ff';
+            ctx.fillRect(player.x, player.y, player.size, player.size);
+
+            // איפוס צל לביצועים
+            ctx.shadowBlur = 0;
         }
 
-        let gameLoop;
-        function initGame() {
-            function loop() {
-                update();
-                draw();
-                gameLoop = requestAnimationFrame(loop);
-            }
-            loop();
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
         }
+
+        // כניסת משתמש ותחילת עבודה
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                gameActive = true;
+                gameLoop();
+            } else {
+                window.location.href = '../index.html';
+            }
+        });
     </script>
 </body>
 </html>
