@@ -17,8 +17,7 @@
         }
         canvas {
             display: block;
-            /* אפקט זוהר עדין על כל הקנבס */
-            filter: drop-shadow(0 0 5px rgba(0, 243, 255, 0.3));
+            filter: drop-shadow(0 0 10px rgba(0, 255, 255, 0.2));
         }
         .neon-glow {
             text-shadow: 0 0 10px #00f3ff, 0 0 20px #00f3ff;
@@ -27,26 +26,18 @@
             box-shadow: 0 0 15px #00f3ff, inset 0 0 15px #00f3ff;
             border: 2px solid #00f3ff;
         }
-        #ui-overlay { pointer-events: none; }
     </style>
 </head>
 <body class="h-screen flex items-center justify-center">
 
-    <!-- UI Overlay -->
-    <div id="ui-overlay" class="absolute inset-0 flex flex-col justify-between p-8 z-10">
+    <div id="ui-overlay" class="absolute inset-0 flex flex-col justify-between p-8 z-10 pointer-events-none">
         <div class="flex justify-between items-start">
-            <h1 id="status-text" class="text-4xl font-bold text-cyan-400 neon-glow tracking-widest uppercase italic">
-                System Breach: Neural Link
-            </h1>
-            <div id="status-indicator" class="text-pink-500 font-bold text-xl neon-glow">
-                STATUS: ENCRYPTED
-            </div>
+            <h1 class="text-4xl font-bold text-cyan-400 neon-glow tracking-widest uppercase italic">Neural Link: Online</h1>
+            <div id="status" class="text-pink-500 font-bold text-xl neon-glow">FIREWALL ACTIVE</div>
         </div>
-        
         <div class="flex justify-center">
-            <div class="bg-black/70 p-4 neon-border rounded-lg text-cyan-300 text-center pointer-events-auto">
-                <p class="font-bold">השתמש בחיצים או ב-WASD כדי להגיע לליבה הירוקה</p>
-                <p class="text-xs mt-2 opacity-70">מערכת אבטחה פעילה - אל תיגע בלייזרים</p>
+            <div class="bg-black/80 p-4 neon-border rounded-lg text-cyan-300 text-center pointer-events-auto">
+                <p>השתמש ב-WASD או בחיצים כדי להגיע לליבה הירוקה</p>
             </div>
         </div>
     </div>
@@ -60,51 +51,48 @@
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        
         canvas.width = 900;
         canvas.height = 550;
 
-        let gameActive = false; // המשחק יופעל רק אחרי זיהוי משתמש
+        let gameActive = false;
         let currentUser = null;
+        let animationId;
 
-        // הגדרות שחקן ויעד
-        const player = { x: 40, y: 275, size: 18, speed: 5 };
-        const goal = { x: 820, y: 255, size: 40 };
+        const player = { x: 50, y: 275, size: 20, speed: 5 };
+        const goal = { x: 820, y: 250, size: 50 };
 
-        // מכשולים מאתגרים בסגנון Cyber
         const obstacles = [
-            { x: 200, y: 0, w: 15, h: 350, sy: 5 },
-            { x: 400, y: 200, w: 15, h: 350, sy: -6 },
-            { x: 600, y: 0, w: 15, h: 400, sy: 7 },
-            { x: 300, y: 100, w: 200, h: 15, sx: 4 },
-            { x: 500, y: 400, w: 250, h: 15, sx: -5 }
+            { x: 250, y: 0, w: 20, h: 350, sy: 6 },
+            { x: 450, y: 200, w: 20, h: 350, sy: -8 },
+            { x: 650, y: 0, w: 20, h: 400, sy: 10 }
         ];
 
         const keys = {};
         window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
 
-        // פונקציית הניצחון המתוקנת
         async function handleWin() {
             if (!gameActive || !currentUser) return;
             
-            gameActive = false; // עצירת המשחק מיד למניעת לולאת שגיאות
-            document.getElementById('status-indicator').innerText = "ACCESS GRANTED";
-            document.getElementById('status-text').innerText = "CORE BREACHED!";
+            // עצירה מיידית של המנוע (כמו ב-Data Digger)
+            gameActive = false;
+            cancelAnimationFrame(animationId);
 
             try {
                 const playerRef = doc(db, "players", currentUser.uid);
+                
+                // עדכון הנתונים
                 await updateDoc(playerRef, {
                     currentQuestStatus: 'completed',
                     coins: increment(50)
                 });
-                
-                setTimeout(() => {
-                    window.location.href = '../dashboard.html';
-                }, 1000);
+
+                // Alert עוצר את הדף ומבטיח שהבקשה נשלחה
+                alert("ACCESS GRANTED: נתונים חולצו בהצלחה!");
+                window.location.href = '../dashboard.html';
+
             } catch (error) {
-                console.error("Firebase Error:", error);
-                // במקרה של שגיאה, עדיין נעביר דף כדי לא לתקוע את המשתמש
+                console.error("Critical Update Error:", error);
                 window.location.href = '../dashboard.html';
             }
         }
@@ -112,7 +100,7 @@
         function update() {
             if (!gameActive) return;
 
-            // תנועה
+            // תנועת שחקן
             if ((keys['ArrowUp'] || keys['KeyW']) && player.y > 0) player.y -= player.speed;
             if ((keys['ArrowDown'] || keys['KeyS']) && player.y < canvas.height - player.size) player.y += player.speed;
             if ((keys['ArrowLeft'] || keys['KeyA']) && player.x > 0) player.x -= player.speed;
@@ -120,22 +108,16 @@
 
             // עדכון מכשולים ובדיקת התנגשות
             obstacles.forEach(ob => {
-                if (ob.sy) {
-                    ob.y += ob.sy;
-                    if (ob.y + ob.h > canvas.height || ob.y < 0) ob.sy *= -1;
-                }
-                if (ob.sx) {
-                    ob.x += ob.sx;
-                    if (ob.x + ob.w > canvas.width || ob.x < 0) ob.sx *= -1;
-                }
+                ob.y += ob.sy;
+                if (ob.y + ob.h > canvas.height || ob.y < 0) ob.sy *= -1;
 
                 if (player.x < ob.x + ob.w && player.x + player.size > ob.x &&
                     player.y < ob.y + ob.h && player.y + player.size > ob.y) {
-                    player.x = 40; player.y = 275; // איפוס מיקום
+                    player.x = 50; player.y = 275; // איפוס
                 }
             });
 
-            // בדיקת הגעה ליעד
+            // בדיקת ניצחון
             if (player.x < goal.x + goal.size && player.x + player.size > goal.x &&
                 player.y < goal.y + goal.size && player.y + player.size > goal.y) {
                 handleWin();
@@ -143,45 +125,38 @@
         }
 
         function draw() {
-            // ניקוי הקנבס - שומר על הרקע של ה-CSS גלוי
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // ציור יעד (The Core)
-            ctx.shadowBlur = 30;
-            ctx.shadowColor = '#39ff14';
+            // יעד (Neon Green)
+            ctx.shadowBlur = 35; ctx.shadowColor = '#39ff14';
             ctx.fillStyle = '#39ff14';
             ctx.fillRect(goal.x, goal.y, goal.size, goal.size);
 
-            // ציור לייזרים (Obstacles)
-            ctx.shadowBlur = 20;
-            ctx.shadowColor = '#ff003c';
+            // מכשולים (Neon Red)
+            ctx.shadowBlur = 25; ctx.shadowColor = '#ff003c';
             ctx.fillStyle = '#ff003c';
-            obstacles.forEach(ob => {
-                ctx.fillRect(ob.x, ob.y, ob.w, ob.h);
-            });
+            obstacles.forEach(ob => ctx.fillRect(ob.x, ob.y, ob.w, ob.h));
 
-            // ציור שחקן
-            ctx.shadowBlur = 20;
-            ctx.shadowColor = '#00f3ff';
+            // שחקן (Neon Blue)
+            ctx.shadowBlur = 20; ctx.shadowColor = '#00f3ff';
             ctx.fillStyle = '#00f3ff';
             ctx.fillRect(player.x, player.y, player.size, player.size);
 
-            // איפוס צל לביצועים
             ctx.shadowBlur = 0;
         }
 
-        function gameLoop() {
+        function loop() {
+            if (!gameActive) return;
             update();
             draw();
-            requestAnimationFrame(gameLoop);
+            animationId = requestAnimationFrame(loop);
         }
 
-        // כניסת משתמש ותחילת עבודה
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 currentUser = user;
                 gameActive = true;
-                gameLoop();
+                loop();
             } else {
                 window.location.href = '../index.html';
             }
