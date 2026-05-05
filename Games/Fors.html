@@ -3,147 +3,158 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bitcoin Breach - Cyberpunk Edition</title>
+    <title>Neon Quest - PCS365</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
 
         body {
             margin: 0;
-            overflow: hidden;
-            background-color: #000;
+            padding: 0;
+            background-color: #0d0d12;
+            color: #00f2ff;
             font-family: 'Orbitron', sans-serif;
-            color: #0ff;
-        }
-
-        #game-container {
-            position: relative;
-            width: 100vw;
+            overflow: hidden;
             height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            /* רקע ביטקוין חיצוני עם שכבת כהות */
-            background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), 
-                        url('https://images.unsplash.com/photo-1518546305928-3853bb22b078?auto=format&fit=crop&q=80&w=1920');
-            background-size: cover;
-            background-position: center;
+        }
+
+        #game-container {
+            position: relative;
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.3);
+            border: 2px solid #00f2ff;
+            border-radius: 12px;
+            background: #050505;
         }
 
         canvas {
-            border: 2px solid #0ff;
-            box-shadow: 0 0 20px #0ff, inset 0 0 10px #0ff;
-            background: rgba(0, 20, 20, 0.4);
-            cursor: none; /* מסתיר את העכבר כשהוא על המשחק */
+            display: block;
+            background: radial-gradient(circle, #16213e 0%, #0d0d12 100%);
         }
 
-        .neon-text {
-            text-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+        .neon-glow {
+            text-shadow: 0 0 10px #00f2ff, 0 0 20px #00f2ff;
         }
 
-        #loading-overlay {
-            position: fixed;
-            inset: 0;
-            background: black;
+        .status-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 15px;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
-            flex-direction: column;
+            justify-content: space-between;
+            pointer-events: none;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+        }
+
+        .ui-box {
+            background: rgba(0, 242, 255, 0.1);
+            border: 1px solid #00f2ff;
+            padding: 5px 15px;
+            border-radius: 4px;
+            backdrop-filter: blur(5px);
         }
     </style>
 </head>
 <body>
 
-    <div id="loading-overlay">
-        <h1 class="text-4xl neon-text animate-pulse mb-4">INITIALIZING NEURAL LINK...</h1>
-        <p id="auth-status">Checking Authentication...</p>
+    <div class="mb-8 text-center">
+        <h1 class="text-5xl font-bold neon-glow uppercase tracking-tighter">Neon Protocol</h1>
+        <p class="text-cyan-400 opacity-70 mt-2">משימת איסוף מטבעות - הגע ליעד הסגול</p>
     </div>
 
     <div id="game-container">
-        <div class="mb-4 w-[800px] flex justify-between items-end">
-            <div>
-                <h1 class="text-4xl font-bold neon-text uppercase tracking-widest">Bitcoin Breach</h1>
-                <p class="text-cyan-400 text-xs mt-1 opacity-80">PCS365 SECURITY PROTOCOL ACTIVE</p>
-            </div>
-            <div id="status-display" class="text-sm border border-cyan-500 p-2 px-4 bg-cyan-900/30">
-                SYSTEM READY
-            </div>
+        <div class="status-panel">
+            <div id="user-display" class="ui-box text-sm">סוכן: טוען...</div>
+            <div id="quest-status" class="ui-box text-sm text-yellow-400">סטטוס: בתנועה</div>
         </div>
+        <canvas id="gameCanvas" width="900" height="500"></canvas>
+    </div>
 
-        <canvas id="gameCanvas" width="800" height="500"></canvas>
-        
-        <div class="mt-6 flex gap-8 text-cyan-500 text-sm italic">
-            <span>[ARROWS] TO NAVIGATE</span>
-            <span>[GOAL] REACH THE GOLDEN CORE</span>
-            <span>[WARNING] AVOID SECURITY BLOCKS</span>
-        </div>
+    <div class="mt-6 flex space-x-6 space-x-reverse text-xs text-cyan-700 uppercase tracking-widest">
+        <span>[חיצים לתנועה]</span>
+        <span>[הימנע ממגע באדום]</span>
+        <span>[גרסה 1.0.4]</span>
     </div>
 
     <script type="module">
-        // ייבוא הקונפיגורציה המקומית שלך
         import { auth, db } from '../firebase-config.js';
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const loadingOverlay = document.getElementById('loading-overlay');
-        const statusDisplay = document.getElementById('status-display');
-        
+        const userDisplay = document.getElementById('user-display');
+
         let currentUser = null;
+        let gameRunning = false;
 
-        // הגדרות משחק
-        const PLAYER_SIZE = 22;
-        const GOAL_SIZE = 45;
-        const OBSTACLE_COUNT = 5;
-        
-        let player = { x: 40, y: 250, speed: 5 };
-        let goal = { x: 720, y: 225 };
+        // Player Config
+        const player = {
+            x: 50,
+            y: 250,
+            size: 22,
+            speed: 6,
+            color: '#00f2ff'
+        };
+
+        // Goal Config
+        const goal = {
+            x: 820,
+            y: 225,
+            size: 40,
+            color: '#bd00ff'
+        };
+
+        // Obstacles
         let obstacles = [];
-        let gameActive = false;
+        const OBSTACLE_COUNT = 10;
 
-        // בדיקת חיבור ל-Firebase
+        const keys = {};
+        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keyup', e => keys[e.code] = false);
+
+        // Security Check & Auth
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 currentUser = user;
-                console.log("User authorized:", user.uid);
-                loadingOverlay.style.display = 'none';
-                initGame();
+                userDisplay.innerText = `סוכן: ${user.email.split('@')[0]}`;
+                console.log("משתמש מחובר בהצלחה:", user.uid);
+                setupGame();
+                gameRunning = true;
                 requestAnimationFrame(gameLoop);
             } else {
-                console.log("No user found, redirecting...");
+                console.warn("אין משתמש מחובר, מעביר לדף כניסה...");
                 window.location.href = '../index.html';
             }
         });
 
-        // אתחול שלב/משחק
-        function initGame() {
-            player.x = 40;
-            player.y = 250;
-            obstacles = [];
+        function setupGame() {
+            player.x = 50;
+            player.y = canvas.height / 2;
             
-            // יצירת מכשולים רנדומליים
+            obstacles = [];
             for (let i = 0; i < OBSTACLE_COUNT; i++) {
                 obstacles.push({
-                    x: 180 + (i * 110),
-                    y: Math.random() * (canvas.height - 120),
-                    width: 25,
-                    height: 100 + Math.random() * 150,
-                    speedY: (2 + Math.random() * 4) * (Math.random() > 0.5 ? 1 : -1)
+                    x: 200 + (i * 60),
+                    y: Math.random() * (canvas.height - 100),
+                    width: 15 + Math.random() * 25,
+                    height: 60 + Math.random() * 120,
+                    speedY: (2 + Math.random() * 4) * (Math.random() > 0.5 ? 1 : -1),
+                    glow: Math.floor(Math.random() * 20) + 10
                 });
             }
-            gameActive = true;
-            statusDisplay.innerText = "SYSTEM READY";
-            statusDisplay.classList.remove('text-red-500');
         }
 
-        // פונקציית ניצחון - עדכון Firestore
         async function handleWin() {
-            gameActive = false;
-            statusDisplay.innerText = "BREACH SUCCESSFUL - UPLOADING...";
-            console.log("Victory! Updating Firestore for UID:", currentUser.uid);
+            if (!gameRunning) return;
+            gameRunning = false;
+            
+            console.log("ניצחון זוהה! מעדכן נתונים ב-Firestore...");
             
             try {
                 const playerRef = doc(db, "players", currentUser.uid);
@@ -151,98 +162,98 @@
                     currentQuestStatus: 'completed',
                     coins: increment(50)
                 });
-                
-                console.log("DB Update Success");
-                statusDisplay.innerText = "DATA SYNCED. REDIRECTING...";
-                
-                // הפניה לאחר חצי שנייה כדי שהשחקן יראה את הסטטוס
-                setTimeout(() => {
-                    window.location.href = '../dashboard.html';
-                }, 800);
-
+                console.log("ה-DB עודכן בהצלחה: +50 מטבעות");
+                window.location.href = '../dashboard.html';
             } catch (error) {
-                console.error("Database Error:", error);
-                statusDisplay.innerText = "DB ERROR - RETRYING";
-                statusDisplay.classList.add('text-red-500');
-                gameActive = true; // מאפשר ניסיון חוזר אם נכשל
+                console.error("שגיאה קריטית בכתיבה ל-Firestore:", error);
+                alert("שגיאת מערכת בעדכון המשימה. בדוק את הקונסול.");
+                gameRunning = true; // החזרת השליטה במקרה של שגיאה
             }
         }
 
-        // שליטה במקלדת
-        const keys = {};
-        window.addEventListener('keydown', e => keys[e.code] = true);
-        window.addEventListener('keyup', e => keys[e.code] = false);
-
         function update() {
-            if (!gameActive) return;
+            if (!gameRunning) return;
 
-            // תנועת שחקן
-            if (keys['ArrowUp'] && player.y > 0) player.y -= player.speed;
-            if (keys['ArrowDown'] && player.y < canvas.height - PLAYER_SIZE) player.y += player.speed;
-            if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
-            if (keys['ArrowRight'] && player.x < canvas.width - PLAYER_SIZE) player.x += player.speed;
+            // Move Player
+            if (keys['ArrowUp'] || keys['KeyW']) player.y -= player.speed;
+            if (keys['ArrowDown'] || keys['KeyS']) player.y += player.speed;
+            if (keys['ArrowLeft'] || keys['KeyA']) player.x -= player.speed;
+            if (keys['ArrowRight'] || keys['KeyD']) player.x += player.speed;
 
-            // עדכון מכשולים ובדיקת התנגשות
+            // Screen Bounds
+            player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
+            player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
+
+            // Move Obstacles
             obstacles.forEach(obs => {
                 obs.y += obs.speedY;
-                if (obs.y <= 0 || obs.y + obs.height >= canvas.height) obs.speedY *= -1;
+                if (obs.y < 0 || obs.y + obs.height > canvas.height) {
+                    obs.speedY *= -1;
+                }
 
-                // לוגיקת התנגשות
-                if (player.x < obs.x + obs.width &&
-                    player.x + PLAYER_SIZE > obs.x &&
+                // Collision Detection
+                if (
+                    player.x < obs.x + obs.width &&
+                    player.x + player.size > obs.x &&
                     player.y < obs.y + obs.height &&
-                    player.y + PLAYER_SIZE > obs.y) {
-                    initGame(); // חזרה להתחלה
+                    player.y + player.size > obs.y
+                ) {
+                    console.log("התנגשות! חזרה לנקודת ההתחלה.");
+                    setupGame();
                 }
             });
 
-            // בדיקת הגעה ליעד
-            if (player.x < goal.x + GOAL_SIZE &&
-                player.x + PLAYER_SIZE > goal.x &&
-                player.y < goal.y + GOAL_SIZE &&
-                player.y + PLAYER_SIZE > goal.y) {
+            // Check Win
+            if (
+                player.x < goal.x + goal.size &&
+                player.x + player.size > goal.x &&
+                player.y < goal.y + goal.size &&
+                player.y + player.size > goal.y
+            ) {
                 handleWin();
             }
         }
 
         function draw() {
-            // ניקוי הקנבס - שומר על הרקע של ה-CSS גלוי
+            // Background Clean
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // ציור יעד (מטבע זהוב/ליבה)
-            ctx.shadowBlur = 30;
-            ctx.shadowColor = "#ffcc00";
-            ctx.fillStyle = "#ffcc00";
-            ctx.fillRect(goal.x, goal.y, GOAL_SIZE, GOAL_SIZE);
-            // טקסט קטן בתוך היעד
-            ctx.fillStyle = "#000";
-            ctx.font = "bold 10px Orbitron";
-            ctx.fillText("CORE", goal.x + 5, goal.y + 25);
+            // Draw Goal (Purple Neon)
+            ctx.shadowBlur = 25;
+            ctx.shadowColor = goal.color;
+            ctx.fillStyle = goal.color;
+            ctx.fillRect(goal.x, goal.y, goal.size, goal.size);
 
-            // ציור שחקן (ניאון תכלת)
-            ctx.shadowBlur = 20;
-            ctx.shadowColor = "#0ff";
-            ctx.fillStyle = "#0ff";
-            ctx.fillRect(player.x, player.y, PLAYER_SIZE, PLAYER_SIZE);
-
-            // ציור מכשולים (ניאון ירוק Matrix)
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = "#0f0";
-            ctx.fillStyle = "rgba(0, 255, 0, 0.8)";
+            // Draw Obstacles (Red Neon)
             obstacles.forEach(obs => {
+                ctx.shadowBlur = obs.glow;
+                ctx.shadowColor = '#ff003c';
+                ctx.fillStyle = '#ff003c';
                 ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
-                // אפקט קווי מטריקס קטנים בתוך המכשול
-                ctx.strokeStyle = "#000";
-                ctx.strokeRect(obs.x + 2, obs.y + 2, obs.width - 4, obs.height - 4);
             });
-            
-            ctx.shadowBlur = 0; // איפוס הצל לפריימים הבאים
+
+            // Draw Player (Cyan Neon)
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = player.color;
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, player.size, player.size);
+
+            // Grid Effect Overlay
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = 'rgba(0, 242, 255, 0.05)';
+            ctx.lineWidth = 1;
+            for(let i=0; i<canvas.width; i+=40) {
+                ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i, canvas.height); ctx.stroke();
+            }
+            for(let i=0; i<canvas.height; i+=40) {
+                ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width, i); ctx.stroke();
+            }
         }
 
         function gameLoop() {
             update();
             draw();
-            if (gameActive || !currentUser) { // ממשיך לרוץ כל עוד יש משתמש
+            if (gameRunning) {
                 requestAnimationFrame(gameLoop);
             }
         }
