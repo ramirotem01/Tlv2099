@@ -15,21 +15,10 @@
     canvas {
       display: block;
       margin: auto;
-      background: transparent;
     }
 
     .neon {
-      text-shadow:
-        0 0 5px #0ff,
-        0 0 10px #0ff,
-        0 0 20px #0ff;
-    }
-
-    .glow-box {
-      box-shadow:
-        0 0 10px #0ff,
-        0 0 20px #0ff,
-        inset 0 0 10px #0ff;
+      text-shadow: 0 0 5px #0ff, 0 0 15px #0ff, 0 0 30px #0ff;
     }
   </style>
 </head>
@@ -38,12 +27,9 @@
 
   <h1 class="text-4xl mb-4 neon">⚡ Neon Reflex Runner ⚡</h1>
 
-  <canvas id="gameCanvas" width="600" height="400" class="glow-box"></canvas>
+  <canvas id="gameCanvas" width="600" height="400"></canvas>
 
-  <p class="mt-3 neon">השתמש בחצים כדי לנוע ולהגיע ליעד הירוק</p>
-
-  <!-- הודעת ניצחון -->
-  <div id="winMessage" class="hidden absolute text-3xl neon">
+  <div id="winMessage" class="hidden absolute text-4xl neon">
     🎉 ניצחת! +50 מטבעות 🎉
   </div>
 
@@ -55,9 +41,8 @@
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
-    let gameStarted = false;
-    let hasWon = false;
     let loopId;
+    let gameActive = true; // 🔒 שליטה מלאה על המשחק
 
     onAuthStateChanged(auth, (user) => {
       if (!user) {
@@ -65,22 +50,16 @@
         return;
       }
 
-      if (gameStarted) return;
-      gameStarted = true;
-
       const player = { x: 50, y: 50, size: 15, speed: 3 };
       const goal = { x: 550, y: 350, size: 20 };
 
-      const obstacles = [];
-      for (let i = 0; i < 5; i++) {
-        obstacles.push({
-          x: Math.random() * 550,
-          y: Math.random() * 350,
-          size: 20,
-          dx: (Math.random() * 2 + 1),
-          dy: (Math.random() * 2 + 1)
-        });
-      }
+      const obstacles = Array.from({ length: 5 }, () => ({
+        x: Math.random() * 550,
+        y: Math.random() * 350,
+        size: 20,
+        dx: Math.random() * 2 + 1,
+        dy: Math.random() * 2 + 1
+      }));
 
       const keys = {};
 
@@ -90,23 +69,6 @@
       function resetPlayer() {
         player.x = 50;
         player.y = 50;
-      }
-
-      function movePlayer() {
-        if (keys["ArrowUp"]) player.y -= player.speed;
-        if (keys["ArrowDown"]) player.y += player.speed;
-        if (keys["ArrowLeft"]) player.x -= player.speed;
-        if (keys["ArrowRight"]) player.x += player.speed;
-      }
-
-      function moveObstacles() {
-        obstacles.forEach(o => {
-          o.x += o.dx;
-          o.y += o.dy;
-
-          if (o.x < 0 || o.x > canvas.width - o.size) o.dx *= -1;
-          if (o.y < 0 || o.y > canvas.height - o.size) o.dy *= -1;
-        });
       }
 
       function detectCollision(a, b) {
@@ -119,46 +81,58 @@
       }
 
       async function handleWin() {
+        if (!gameActive) return; // 🔒 חסימה נוספת
+        gameActive = false;
+
+        // עצירה מיידית
+        cancelAnimationFrame(loopId);
+
+        // הצגת הודעה מיד
+        document.getElementById("winMessage").classList.remove("hidden");
+
         try {
-          console.log("Player WON - updating DB...");
+          console.log("Updating DB...");
 
-          const playerRef = doc(db, "players", user.uid);
+          const ref = doc(db, "players", user.uid);
 
-          await updateDoc(playerRef, {
+          await updateDoc(ref, {
             currentQuestStatus: "completed",
             coins: increment(50)
           });
 
-          console.log("DB updated successfully");
+          console.log("SUCCESS: coins +50");
 
-          // הודעה
-          document.getElementById("winMessage").classList.remove("hidden");
-
-          // עצירת המשחק
-          cancelAnimationFrame(loopId);
-
-          // מעבר אחרי 2 שניות
-          setTimeout(() => {
-            window.location.href = "../dashboard.html";
-          }, 2000);
-
-        } catch (error) {
-          console.error("🔥 Firebase Error:", error);
+        } catch (e) {
+          console.error("🔥 Firebase error:", e);
         }
+
+        // מעבר אחרי 2 שניות
+        setTimeout(() => {
+          window.location.href = "../dashboard.html";
+        }, 2000);
       }
 
       function update() {
-        movePlayer();
-        moveObstacles();
+        if (!gameActive) return;
 
-        for (let o of obstacles) {
+        if (keys["ArrowUp"]) player.y -= player.speed;
+        if (keys["ArrowDown"]) player.y += player.speed;
+        if (keys["ArrowLeft"]) player.x -= player.speed;
+        if (keys["ArrowRight"]) player.x += player.speed;
+
+        obstacles.forEach(o => {
+          o.x += o.dx;
+          o.y += o.dy;
+
+          if (o.x < 0 || o.x > 580) o.dx *= -1;
+          if (o.y < 0 || o.y > 380) o.dy *= -1;
+
           if (detectCollision(player, o)) {
             resetPlayer();
           }
-        }
+        });
 
-        if (!hasWon && detectCollision(player, goal)) {
-          hasWon = true;
+        if (detectCollision(player, goal)) {
           handleWin();
         }
       }
@@ -166,18 +140,15 @@
       function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Player
         ctx.fillStyle = "#0ff";
         ctx.shadowColor = "#0ff";
         ctx.shadowBlur = 15;
         ctx.fillRect(player.x, player.y, player.size, player.size);
 
-        // Goal
         ctx.fillStyle = "#0f0";
         ctx.shadowColor = "#0f0";
         ctx.fillRect(goal.x, goal.y, goal.size, goal.size);
 
-        // Obstacles
         ctx.fillStyle = "#f00";
         ctx.shadowColor = "#f00";
 
@@ -188,13 +159,13 @@
         ctx.shadowBlur = 0;
       }
 
-      function gameLoop() {
+      function loop() {
         update();
         draw();
-        loopId = requestAnimationFrame(gameLoop);
+        loopId = requestAnimationFrame(loop);
       }
 
-      gameLoop();
+      loop();
     });
   </script>
 
