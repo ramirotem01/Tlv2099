@@ -1,177 +1,203 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <title>Neon Reflex Runner</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      background: radial-gradient(circle at center, #050510, #000000);
-    }
-
-    canvas {
-      display: block;
-      margin: auto;
-      border: 2px solid #1a1a2e;
-      border-radius: 8px;
-    }
-
-    .neon {
-      text-shadow: 0 0 5px #0ff, 0 0 15px #0ff, 0 0 30px #0ff;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THE BITCOIN BREACH | PCS365</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@800&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #020617; color: white; font-family: 'Assistant', sans-serif; }
+        #game-container { position: relative; width: 100vw; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        canvas { 
+            border: 4px solid #1e293b; 
+            background: url('https://res.cloudinary.com/dxygefiai/image/upload/v1777130914/%D7%91%D7%99%D7%98%D7%A7%D7%95%D7%95%D7%99%D7%9F_rm4xa9.png') no-repeat center center;
+            background-size: cover;
+            box-shadow: 0 0 50px rgba(0,0,0,0.9) inset;
+        }
+        .neon-text { text-shadow: 0 0 15px #3b82f6; }
+        /* שכבת הודעת ניצחון */
+        #win-overlay {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 50;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
 </head>
+<body class="flex flex-col items-center justify-center">
 
-<body class="flex flex-col items-center justify-center h-screen text-white">
-
-  <h1 class="text-4xl mb-4 neon">⚡ Neon Reflex Runner ⚡</h1>
-
-  <div class="relative">
-    <canvas id="gameCanvas" width="600" height="400"></canvas>
-    
-    <!-- הודעת ניצחון משופרת שמופיעה במרכז הקנבס -->
-    <div id="winMessage" class="hidden absolute inset-0 flex items-center justify-center bg-black/60 text-4xl neon rounded-lg">
-      🎉 ניצחת! +50 מטבעות 🎉
+<div id="game-container">
+    <!-- הודעת ניצחון שמוסתרת כברירת מחדל -->
+    <div id="win-overlay">
+        <h2 class="text-6xl font-black neon-text text-yellow-400 mb-4 animate-bounce">SYSTEM CRACKED!</h2>
+        <p class="text-2xl text-white">ניצחון מוחלט! המערכת נפרצה.</p>
+        <p class="text-blue-400 mt-2">מעביר נתונים למפקדה... (50 מטבעות נאספו)</p>
     </div>
-  </div>
 
-  <script type="module">
+    <div class="mb-4 text-center">
+        <h1 id="status-text" class="text-4xl font-black italic tracking-tighter neon-text text-blue-500 uppercase">Extreme Breach: Chaos Mode</h1>
+        <p id="sub-text" class="text-red-500 text-sm font-bold animate-pulse">זהירות: מערכת ההגנה השתגעה! לייזרים רנדומליים פעילים.</p>
+    </div>
+    
+    <canvas id="gameCanvas"></canvas>
+</div>
+
+<script type="module">
+    import { auth, db } from '../firebase-config.js'; 
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { auth, db } from "../firebase-config.js";
 
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 900;
+    canvas.height = 550;
 
-    let loopId;
-    let gameActive = true; 
+    let gameActive = true;
+    let winTriggered = false; // 🔒 מנעול קריטי למניעת לופ ניצחון
+    let currentUser = null;
 
-    onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        window.location.href = "../index.html";
-        return;
-      }
+    const player = { x: 30, y: 30, size: 14, speed: 5.5 };
+    const goal = { x: 830, y: 470, size: 45 };
+    
+    const obstacles = [
+        { x: 120, y: 0, w: 10, h: 250, sy: 8 },
+        { x: 280, y: 300, w: 10, h: 250, sy: -9 },
+        { x: 440, y: 0, w: 10, h: 300, sy: 11 },
+        { x: 600, y: 250, w: 10, h: 300, sy: -10 },
+        { x: 760, y: 0, w: 10, h: 200, sy: 13 },
+        { x: 0, y: 180, w: 350, h: 10, sx: 6 },
+        { x: 550, y: 350, w: 350, h: 10, sx: -7 },
+        { x: 450, y: 275, w: 20, h: 20, sx: 5, sy: 5, isRandom: true, lastChange: 0 },
+        { x: 200, y: 400, w: 15, h: 15, sx: -6, sy: 4, isRandom: true, lastChange: 0 },
+        { x: 400, y: 220, w: 80, h: 80, pulse: 0, baseSize: 70 }
+    ];
 
-      const player = { x: 50, y: 50, size: 15, speed: 3 };
-      const goal = { x: 550, y: 350, size: 20 };
+    const keys = {};
+    window.addEventListener('keydown', e => keys[e.code] = true);
+    window.addEventListener('keyup', e => keys[e.code] = false);
 
-      const obstacles = Array.from({ length: 5 }, () => ({
-        x: Math.random() * 550,
-        y: Math.random() * 350,
-        size: 20,
-        dx: Math.random() * 2 + 1,
-        dy: Math.random() * 2 + 1
-      }));
+    async function handleWin() {
+        if (winTriggered) return; // אם כבר התחלנו תהליך ניצחון - צא
+        winTriggered = true; 
+        gameActive = false; // עצירת הלוגיקה מיד
 
-      const keys = {};
-
-      document.addEventListener("keydown", e => keys[e.key] = true);
-      document.addEventListener("keyup", e => keys[e.key] = false);
-
-      function resetPlayer() {
-        player.x = 50;
-        player.y = 50;
-      }
-
-      function detectCollision(a, b) {
-        return (
-          a.x < b.x + b.size &&
-          a.x + a.size > b.x &&
-          a.y < b.y + b.size &&
-          a.y + a.size > b.y
-        );
-      }
-
-      async function handleWin() {
-        if (!gameActive) return; 
-        gameActive = false; // עצירה לוגית מיידית
-
-        // הצגת הודעה
-        document.getElementById("winMessage").classList.remove("hidden");
-
-        try {
-          const ref = doc(db, "players", user.uid);
-          await updateDoc(ref, {
-            currentQuestStatus: "completed",
-            coins: increment(50)
-          });
-        } catch (e) {
-          console.error("🔥 Firebase error:", e);
+        // הצגת ה-UI של הניצחון
+        document.getElementById('win-overlay').style.display = 'flex';
+        document.getElementById('status-text').innerText = "SYSTEM CRACKED!";
+        
+        if (currentUser) {
+            try {
+                const docRef = doc(db, "players", currentUser.uid);
+                await updateDoc(docRef, {
+                    currentQuestStatus: 'completed',
+                    coins: increment(50)
+                });
+                
+                // השהייה קלה כדי שהמשתמש יראה את הודעת הניצחון לפני המעבר
+                setTimeout(() => {
+                    window.location.href = '../dashboard.html';
+                }, 2500);
+            } catch (e) {
+                console.error(e);
+                window.location.href = '../dashboard.html';
+            }
         }
+    }
 
-        setTimeout(() => {
-          window.location.href = "../dashboard.html";
-        }, 2000);
-      }
-
-      function update() {
+    function update() {
         if (!gameActive) return;
 
-        if (keys["ArrowUp"]) player.y -= player.speed;
-        if (keys["ArrowDown"]) player.y += player.speed;
-        if (keys["ArrowLeft"]) player.x -= player.speed;
-        if (keys["ArrowRight"]) player.x += player.speed;
+        if ((keys['ArrowUp'] || keys['KeyW']) && player.y > 0) player.y -= player.speed;
+        if ((keys['ArrowDown'] || keys['KeyS']) && player.y < canvas.height - player.size) player.y += player.speed;
+        if ((keys['ArrowLeft'] || keys['KeyA']) && player.x > 0) player.x -= player.speed;
+        if ((keys['ArrowRight'] || keys['KeyD']) && player.x < canvas.width - player.size) player.x += player.speed;
 
-        // גבולות מסך לשחקן
-        player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
-        player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
+        const now = Date.now();
 
-        obstacles.forEach(o => {
-          o.x += o.dx;
-          o.y += o.dy;
+        obstacles.forEach(ob => {
+            if (ob.isRandom) {
+                if (now - ob.lastChange > 1200) {
+                    ob.sx = (Math.random() - 0.5) * 15;
+                    ob.sy = (Math.random() - 0.5) * 15;
+                    ob.lastChange = now;
+                }
+            }
+            if (ob.sy) {
+                ob.y += ob.sy;
+                if (ob.y + ob.h > canvas.height || ob.y < 0) ob.sy *= -1;
+            }
+            if (ob.sx) {
+                ob.x += ob.sx;
+                if (ob.x + ob.w > canvas.width || ob.x < 0) ob.sx *= -1;
+            }
+            if (ob.pulse !== undefined) {
+                ob.pulse += 0.08;
+                ob.w = ob.baseSize + Math.sin(ob.pulse) * 60;
+                ob.h = ob.baseSize + Math.cos(ob.pulse) * 60;
+            }
 
-          if (o.x < 0 || o.x > canvas.width - o.size) o.dx *= -1;
-          if (o.y < 0 || o.y > canvas.height - o.size) o.dy *= -1;
-
-          if (detectCollision(player, o)) {
-            resetPlayer();
-          }
+            if (player.x < ob.x + ob.w && player.x + player.size > ob.x &&
+                player.y < ob.y + ob.h && player.y + player.size > ob.y) {
+                player.x = 30; player.y = 30;
+            }
         });
 
-        if (detectCollision(player, goal)) {
-          handleWin();
+        if (player.x < goal.x + goal.size && player.x + player.size > goal.x &&
+            player.y < goal.y + goal.size && player.y + player.size > goal.y) {
+            handleWin();
         }
-      }
+    }
 
-      function draw() {
+    function draw() {
+        // גם אם המשחק לא פעיל, נרצה להשאיר את הפריים האחרון מצויר (או לא לצייר כלל כדי להדגיש את ה-Overlay)
+        if (!gameActive && winTriggered) return; 
+
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // מטרה
+        ctx.shadowBlur = 35; ctx.shadowColor = '#facc15';
+        ctx.fillStyle = '#facc15';
+        ctx.beginPath();
+        ctx.arc(goal.x + 22, goal.y + 22, 22, 0, Math.PI*2);
+        ctx.fill();
+
+        // לייזרים
+        obstacles.forEach(ob => {
+            ctx.shadowBlur = ob.isRandom ? 25 : 15;
+            ctx.shadowColor = ob.isRandom ? '#ff00ff' : '#ff1111';
+            ctx.fillStyle = ob.isRandom ? '#ff00ff' : '#ff1111';
+            ctx.fillRect(ob.x, ob.y, ob.w, ob.h);
+        });
 
         // שחקן
-        ctx.fillStyle = "#0ff";
-        ctx.shadowColor = "#0ff";
-        ctx.shadowBlur = 15;
+        ctx.shadowBlur = 20; ctx.shadowColor = '#00ff41';
+        ctx.fillStyle = '#00ff41';
         ctx.fillRect(player.x, player.y, player.size, player.size);
-
-        // יעד
-        ctx.fillStyle = "#0f0";
-        ctx.shadowColor = "#0f0";
-        ctx.fillRect(goal.x, goal.y, goal.size, goal.size);
-
-        // מכשולים
-        ctx.fillStyle = "#f00";
-        ctx.shadowColor = "#f00";
-        obstacles.forEach(o => {
-          ctx.fillRect(o.x, o.y, o.size, o.size);
-        });
-
+        
         ctx.shadowBlur = 0;
-      }
+    }
 
-      function loop() {
-        if (!gameActive) return; // 🛑 התיקון הקריטי כאן
-
+    function loop() {
+        if (!gameActive) return; // 🛑 התיקון הקריטי: מפסיק לבקש פריימים חדשים
+        
         update();
         draw();
-        
-        loopId = requestAnimationFrame(loop);
-      }
+        requestAnimationFrame(loop);
+    }
 
-      loop();
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            currentUser = user;
+            loop();
+        } else {
+            window.location.href = '../index.html';
+        }
     });
-  </script>
-
+</script>
 </body>
 </html>
