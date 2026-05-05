@@ -15,6 +15,8 @@
     canvas {
       display: block;
       margin: auto;
+      border: 2px solid #1a1a2e;
+      border-radius: 8px;
     }
 
     .neon {
@@ -27,10 +29,13 @@
 
   <h1 class="text-4xl mb-4 neon">⚡ Neon Reflex Runner ⚡</h1>
 
-  <canvas id="gameCanvas" width="600" height="400"></canvas>
-
-  <div id="winMessage" class="hidden absolute text-4xl neon">
-    🎉 ניצחת! +50 מטבעות 🎉
+  <div class="relative">
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
+    
+    <!-- הודעת ניצחון משופרת שמופיעה במרכז הקנבס -->
+    <div id="winMessage" class="hidden absolute inset-0 flex items-center justify-center bg-black/60 text-4xl neon rounded-lg">
+      🎉 ניצחת! +50 מטבעות 🎉
+    </div>
   </div>
 
   <script type="module">
@@ -42,7 +47,7 @@
     const ctx = canvas.getContext("2d");
 
     let loopId;
-    let gameActive = true; // 🔒 שליטה מלאה על המשחק
+    let gameActive = true; 
 
     onAuthStateChanged(auth, (user) => {
       if (!user) {
@@ -81,32 +86,22 @@
       }
 
       async function handleWin() {
-        if (!gameActive) return; // 🔒 חסימה נוספת
-        gameActive = false;
+        if (!gameActive) return; 
+        gameActive = false; // עצירה לוגית מיידית
 
-        // עצירה מיידית
-        cancelAnimationFrame(loopId);
-
-        // הצגת הודעה מיד
+        // הצגת הודעה
         document.getElementById("winMessage").classList.remove("hidden");
 
         try {
-          console.log("Updating DB...");
-
           const ref = doc(db, "players", user.uid);
-
           await updateDoc(ref, {
             currentQuestStatus: "completed",
             coins: increment(50)
           });
-
-          console.log("SUCCESS: coins +50");
-
         } catch (e) {
           console.error("🔥 Firebase error:", e);
         }
 
-        // מעבר אחרי 2 שניות
         setTimeout(() => {
           window.location.href = "../dashboard.html";
         }, 2000);
@@ -120,12 +115,16 @@
         if (keys["ArrowLeft"]) player.x -= player.speed;
         if (keys["ArrowRight"]) player.x += player.speed;
 
+        // גבולות מסך לשחקן
+        player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
+        player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
+
         obstacles.forEach(o => {
           o.x += o.dx;
           o.y += o.dy;
 
-          if (o.x < 0 || o.x > 580) o.dx *= -1;
-          if (o.y < 0 || o.y > 380) o.dy *= -1;
+          if (o.x < 0 || o.x > canvas.width - o.size) o.dx *= -1;
+          if (o.y < 0 || o.y > canvas.height - o.size) o.dy *= -1;
 
           if (detectCollision(player, o)) {
             resetPlayer();
@@ -140,18 +139,20 @@
       function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+        // שחקן
         ctx.fillStyle = "#0ff";
         ctx.shadowColor = "#0ff";
         ctx.shadowBlur = 15;
         ctx.fillRect(player.x, player.y, player.size, player.size);
 
+        // יעד
         ctx.fillStyle = "#0f0";
         ctx.shadowColor = "#0f0";
         ctx.fillRect(goal.x, goal.y, goal.size, goal.size);
 
+        // מכשולים
         ctx.fillStyle = "#f00";
         ctx.shadowColor = "#f00";
-
         obstacles.forEach(o => {
           ctx.fillRect(o.x, o.y, o.size, o.size);
         });
@@ -160,8 +161,11 @@
       }
 
       function loop() {
+        if (!gameActive) return; // 🛑 התיקון הקריטי כאן
+
         update();
         draw();
+        
         loopId = requestAnimationFrame(loop);
       }
 
