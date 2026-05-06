@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>PCS365 - Neon Mario Challenge</title>
+<title>PCS365 - Neon Mario Pro</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
@@ -20,7 +20,7 @@
 <body class="flex flex-col items-center justify-center h-screen">
 
 <div id="game-ui" class="bg-black/70 p-4 border border-cyan-500/50 rounded-xl backdrop-blur-md">
-    <div class="text-cyan-400 text-[10px] tracking-widest mb-1 uppercase font-bold">Progress (Reset on Fail)</div>
+    <div class="text-cyan-400 text-[10px] tracking-widest mb-1 uppercase font-bold">Progress (Full Reset on Death)</div>
     <div id="coin-counter" class="text-3xl font-black text-white">0 / 30</div>
     <div id="status-msg" class="text-[10px] text-red-400 mt-1 uppercase animate-pulse">חובה לאסוף 30 שקים לסיום!</div>
 </div>
@@ -46,7 +46,6 @@ import { doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// --- מריו משודרג (SVG נקי יותר ומפורט) ---
 const marioImg = new Image();
 const marioSVG = `<svg width="32" height="42" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
     <path fill="#e21b1b" d="M4 0h8v1H4zm-1 1h10v1H3zm2 8h6v1H5zm1 1h4v1H6z"/>
@@ -66,14 +65,13 @@ let scrollX = 0;
 let facingRight = true;
 
 const player = {
-    x: 100, y: 300, w: 32, h: 42, dx: 0, dy: 0,
+    x: 100, y: 300, w: 30, h: 40, dx: 0, dy: 0,
     speed: 5.5, jump: -15, gravity: 0.7, onGround: false
 };
 
 const levelEnd = 5000;
 const winTarget = 30;
 
-// בניית עולם משופרת
 const platforms = [
     {x:0, y:350, w:5500, h:50, type: 'ground'},
     {x:300, y:260, w:150, h:15}, {x:600, y:180, w:150, h:15}, {x:950, y:250, w:200, h:15},
@@ -86,7 +84,14 @@ const monsters = [];
 for(let i=1; i<=12; i++) monsters.push({ x: i * 450, y: 320, size: 30, dir: 1, range: 100, startX: i * 450 });
 
 const moneyBags = [];
-for(let i=0; i<45; i++) moneyBags.push({ x: 400 + (i * 105), y: 100 + Math.random() * 200, collected: false });
+for(let i=0; i<45; i++) {
+    moneyBags.push({ 
+        x: 400 + (i * 105), 
+        y: 100 + Math.random() * 200, 
+        w: 24, h: 24, // הוספת מידות קבועות לזיהוי נגיעה
+        collected: false 
+    });
+}
 
 const keys = {};
 window.addEventListener("keydown", e => keys[e.code] = true);
@@ -108,11 +113,7 @@ function updateUI() {
 }
 
 function resetGame() {
-    player.x = 100;
-    player.y = 300;
-    player.dy = 0;
-    scrollX = 0;
-    // איפוס מלא של מטבעות בגלל פסילה
+    player.x = 100; player.y = 300; player.dy = 0; scrollX = 0;
     moneyBags.forEach(b => b.collected = false);
     updateUI();
 }
@@ -134,7 +135,6 @@ function update(){
     player.dx = 0;
     if(keys["ArrowRight"] || keys["KeyD"]) { player.dx = player.speed; facingRight = true; }
     if(keys["ArrowLeft"] || keys["KeyA"]) { player.dx = -player.speed; facingRight = false; }
-    
     if((keys["Space"] || keys["ArrowUp"] || keys["KeyW"]) && player.onGround){
         player.dy = player.jump; player.onGround = false;
     }
@@ -154,13 +154,20 @@ function update(){
     monsters.forEach(m => {
         m.x += m.dir * 3.5;
         if(Math.abs(m.x - m.startX) > m.range) m.dir *= -1;
-        if(player.x < m.x + m.size-5 && player.x + player.w > m.x+5 &&
-           player.y < m.y + m.size-5 && player.y + player.h > m.y+5) resetGame();
+        // נגיעה במפלצת
+        if(player.x < m.x + m.size && player.x + player.w > m.x &&
+           player.y < m.y + m.size && player.y + player.h > m.y) resetGame();
     });
 
+    // --- תיקון זיהוי נגיעה בשקי כסף ---
     moneyBags.forEach(b => {
-        if(!b.collected && Math.hypot(player.x - b.x, player.y - b.y) < 35){
-            b.collected = true; updateUI();
+        if(!b.collected){
+            // שימוש בבדיקת מלבן-מול-מלבן (AABB) לדיוק מקסימלי
+            if(player.x < b.x + b.w && player.x + player.w > b.x &&
+               player.y < b.y + b.h && player.y + player.h > b.y) {
+                b.collected = true; 
+                updateUI();
+            }
         }
     });
 
@@ -188,11 +195,17 @@ function draw(){
 
     // Money Bags
     ctx.font = "24px Arial";
-    moneyBags.forEach(b => { if(!b.collected) ctx.fillText("💰", b.x, b.y); });
+    moneyBags.forEach(b => { if(!b.collected) ctx.fillText("💰", b.x, b.y + 20); });
 
-    // Monsters
+    // --- מפלצות עם נאון אדום זוהר ---
+    const glowIntensity = Math.sin(Date.now() / 200) * 10 + 15; // אפקט פעימה
     ctx.font = "30px Arial";
-    monsters.forEach(m => { ctx.fillText("👾", m.x, m.y + m.size); });
+    monsters.forEach(m => { 
+        ctx.shadowBlur = glowIntensity; 
+        ctx.shadowColor = "#ff0000";
+        ctx.fillText("👾", m.x, m.y + m.size); 
+    });
+    ctx.shadowBlur = 0; // איפוס הילה לשאר האלמנטים
 
     // DRAW MARIO
     ctx.save();
@@ -209,6 +222,7 @@ function draw(){
     ctx.fillStyle = collected >= winTarget ? "#39ff14" : "#ff0055";
     ctx.shadowBlur = 20; ctx.shadowColor = collected >= winTarget ? "#39ff14" : "#ff0055";
     ctx.fillRect(levelEnd + 100, 50, 20, 300);
+    ctx.shadowBlur = 0;
 
     ctx.restore();
 }
