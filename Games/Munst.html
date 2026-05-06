@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>Neon Hunter</title>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+body { margin:0; overflow:hidden; background:#020617; color:white; cursor:none; }
+canvas { display:block; margin:auto; }
+.neon { text-shadow:0 0 10px #0ff,0 0 20px #0ff; }
+
+#overlay {
+  position:absolute;
+  inset:0;
+  display:none;
+  background:rgba(0,0,0,0.9);
+  justify-content:center;
+  align-items:center;
+  flex-direction:column;
+}
+</style>
+</head>
+
+<body class="flex flex-col items-center justify-center h-screen">
+
+<h1 class="text-3xl neon mb-2">🎯 Neon Hunter</h1>
+<p>ירה במפלצות והתחמק מרימונים!</p>
+
+<canvas id="gameCanvas" width="800" height="500"></canvas>
+
+<div id="overlay" class="flex">
+  <h2 id="overlayText" class="text-5xl neon mb-4"></h2>
+  <p id="overlaySub"></p>
+</div>
+
+<script type="module">
+import { auth, db } from "../firebase-config.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+let gameActive = true;
+let winTriggered = false;
+let currentUser = null;
+let loopStarted = false;
+
+let score = 0;
+const targetScore = 20;
+
+// 🧍 Player (bottom)
+const player = {
+  x: canvas.width/2,
+  y: canvas.height - 30,
+  w: 40,
+  h: 10,
+  speed: 6
+};
+
+// 🎯 Crosshair
+const mouse = { x:400, y:250 };
+
+// 👾 Monsters
+const monsters = [];
+
+// 💣 Grenades
+const grenades = [];
+
+// 🎮 Controls
+const keys = {};
+window.addEventListener("keydown", e=>keys[e.code]=true);
+window.addEventListener("keyup", e=>keys[e.code]=false);
+
+canvas.addEventListener("mousemove", e=>{
+  const rect = canvas.getBoundingClientRect();
+  mouse.x = e.clientX - rect.left;
+  mouse.y = e.clientY - rect.top;
+});
+
+canvas.addEventListener("click", ()=>{
+  shoot();
+});
+
+// 🔫 Shoot
+function shoot(){
+  monsters.forEach(m=>{
+    const dx = mouse.x - m.x;
+    const dy = mouse.y - m.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+
+    if(dist < m.r){
+      m.dead = true;
+      score++;
+    }
+  });
+}
+
+// 🔥 Firebase WIN
+async function handleWin(){
+  if(winTriggered) return;
+  winTriggered = true;
+  gameActive = false;
+
+  showOverlay("🎉 ניצחת!", "+50 מטבעות נוספו");
+
+  try{
+    const ref = doc(db,"players",currentUser.uid);
+    await updateDoc(ref,{
+      currentQuestStatus:"completed",
+      coins: increment(50)
+    });
+  }catch(e){
+    console.error(e);
+  }
+
+  setTimeout(()=> window.location.href="../dashboard.html",2500);
+}
+
+// 💀 Lose
+function handleLose(){
+  if(winTriggered) return;
+  winTriggered = true;
+  gameActive = false;
+
+  showOverlay("💀 נפסלת!", "נסה שוב...");
+}
+
+// UI
+function showOverlay(title, sub){
+  document.getElementById("overlay").style.display="flex";
+  document.getElementById("overlayText").innerText=title;
+  document.getElementById("overlaySub").innerText=sub;
+}
+
+// 🎯 Update
+function update(){
+  if(!gameActive) return;
+
+  // Player move
+  if(keys["ArrowLeft"] || keys["KeyA"]) player.x -= player.speed;
+  if(keys["ArrowRight"] || keys["KeyD"]) player.x += player.speed;
+
+  if(player.x < 0) player.x = 0;
+  if(player.x > canvas.width) player.x = canvas.width;
+
+  // Spawn monsters
+  if(Math.random() < 0.03){
+    monsters.push({
+      x: Math.random()*canvas.width,
+      y: Math.random()*300,
+      r: 20,
+      life: 100,
+      dead:false
+    });
+  }
+
+  // Spawn grenades
+  if(Math.random() < 0.02){
+    grenades.push({
+      x: Math.random()*canvas.width,
+      y: 0,
+      speed: 4
+    });
+  }
+
+  // Update monsters
+  monsters.forEach(m=>{
+    m.life--;
+  });
+
+  // Remove monsters
+  for(let i=monsters.length-1;i>=0;i--){
+    if(monsters[i].life <=0 || monsters[i].dead){
+      monsters.splice(i,1);
+    }
+  }
+
+  // Update grenades
+  grenades.forEach(g=>{
+    g.y += g.speed;
+
+    if(
+      g.x > player.x - 20 &&
+      g.x < player.x + 20 &&
+      g.y > player.y
+    ){
+      handleLose();
+    }
+  });
+
+  // Clean grenades
+  for(let i=grenades.length-1;i>=0;i--){
+    if(grenades[i].y > canvas.height){
+      grenades.splice(i,1);
+    }
+  }
+
+  if(score >= targetScore){
+    handleWin();
+  }
+}
+
+// 🎨 Draw
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // Player
+  ctx.fillStyle="#0f0";
+  ctx.fillRect(player.x-20,player.y,40,10);
+
+  // Monsters
+  ctx.fillStyle="#f00";
+  monsters.forEach(m=>{
+    ctx.beginPath();
+    ctx.arc(m.x,m.y,m.r,0,Math.PI*2);
+    ctx.fill();
+  });
+
+  // Grenades
+  ctx.fillStyle="#ff0";
+  grenades.forEach(g=>{
+    ctx.fillRect(g.x,g.y,6,12);
+  });
+
+  // Crosshair
+  ctx.strokeStyle="#0ff";
+  ctx.beginPath();
+  ctx.moveTo(mouse.x-10,mouse.y);
+  ctx.lineTo(mouse.x+10,mouse.y);
+  ctx.moveTo(mouse.x,mouse.y-10);
+  ctx.lineTo(mouse.x,mouse.y+10);
+  ctx.stroke();
+
+  // Score
+  ctx.fillStyle="#fff";
+  ctx.fillText("Kills: "+score+"/20", 20,20);
+}
+
+// 🔁 Loop
+function loop(){
+  if(!gameActive) return;
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// 🔐 Auth
+onAuthStateChanged(auth,user=>{
+  if(!user){
+    window.location.href="../index.html";
+    return;
+  }
+
+  currentUser = user;
+
+  if(!loopStarted){
+    loopStarted = true;
+    loop();
+  }
+});
+</script>
+
+</body>
+</html>
