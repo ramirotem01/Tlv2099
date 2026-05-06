@@ -1,146 +1,7 @@
-<!DOCTYPE html>
-<html lang="he" dir="rtl">
-<head>
-<meta charset="UTF-8">
-<title>Neon Mario Runner - Deluxe Edition</title>
-<script src="https://cdn.tailwindcss.com"></script>
-
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
-    
-    body { 
-        margin:0; 
-        overflow:hidden; 
-        background:#020617; 
-        color:white; 
-        font-family: 'Orbitron', sans-serif;
-    }
-    
-    canvas { 
-        display:block; 
-        margin:auto; 
-        box-shadow: 0 0 50px rgba(0, 255, 255, 0.1);
-        border-bottom: 2px solid #0ff;
-    }
-
-    .neon-title {
-        text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #0ff;
-        letter-spacing: 5px;
-    }
-
-    #overlay {
-        position:absolute;
-        inset:0;
-        display:none;
-        background: rgba(2, 6, 23, 0.85);
-        backdrop-filter: blur(10px);
-        justify-content:center;
-        align-items:center;
-        flex-direction:column;
-        z-index: 100;
-    }
-
-    /* אפקט סריקה (Scanline) על המשחק */
-    #gameCanvas {
-        background: linear-gradient(to bottom, #020617 0%, #0f172a 100%);
-    }
-</style>
-</head>
-
-<body class="flex flex-col items-center justify-center h-screen">
-
-<div class="mb-4 text-center">
-    <h1 class="text-5xl font-black neon-title italic uppercase">Neon Mario</h1>
-    <p class="text-cyan-400 text-xs mt-2 animate-pulse tracking-widest">PROCESSED BY PCS365 AI</p>
-</div>
-
-<div class="relative">
-    <canvas id="gameCanvas" width="900" height="400"></canvas>
-    
-    <div id="overlay">
-        <h2 class="text-6xl font-black text-green-400 mb-4 italic tracking-tighter">MISSION COMPLETE</h2>
-        <p class="text-xl text-white mb-6 uppercase tracking-widest">מערכות עודכנו: +50 זוזים</p>
-        <div class="w-24 h-1 bg-green-500 animate-bounce"></div>
-    </div>
-</div>
-
-<script type="module">
-import { auth, db } from "../firebase-config.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
-
-let gameActive = true;
-let winTriggered = false;
-let loopStarted = false;
-let currentUser = null;
-
-// 🧍 Player
-const player = {
-    x: 100, y: 300, w: 25, h: 25,
-    dx: 0, dy: 0,
-    speed: 5, jump: -14, gravity: 0.7,
-    onGround: false,
-    color: '#0ff',
-    trail: [] // לשובל תנועה
-};
-
-// 🌍 World
-let scrollX = 0;
-const levelEnd = 2500;
-
-// 🧱 Platforms (Added some neon styling objects)
-const platforms = [
-    {x:0, y:350, w:3000, h:50, type: 'ground'},
-    {x:300, y:260, w:120, h:15},
-    {x:550, y:180, w:150, h:15},
-    {x:850, y:270, w:120, h:15},
-    {x:1100, y:200, w:200, h:15},
-    {x:1450, y:280, w:120, h:15},
-    {x:1700, y:190, w:150, h:15},
-    {x:2100, y:250, w:100, h:15},
-];
-
-// 👾 Enemies (Better visuals)
-const enemies = [
-    {x:600, y:325, w:25, h:25, dir:1, range: 200, startX: 600},
-    {x:1200, y:325, w:25, h:25, dir:-1, range: 300, startX: 1200},
-    {x:1800, y:325, w:25, h:25, dir:1, range: 150, startX: 1800}
-];
-
-// 🪙 Coins
-const coins = [];
-for(let i=400; i<2300; i+=300){
-    coins.push({x:i, y:150, r:10, collected:false, offset: Math.random() * Math.PI});
-}
-
-// 🎮 Controls
-const keys = {};
-window.addEventListener("keydown", e => keys[e.code] = true);
-window.addEventListener("keyup", e => keys[e.code] = false);
-
-async function handleWin(){
-    if(winTriggered) return;
-    winTriggered = true;
-    gameActive = false;
-    document.getElementById("overlay").style.display="flex";
-
-    try{
-        const ref = doc(db, "players", currentUser.uid);
-        await updateDoc(ref, {
-            currentQuestStatus: "completed",
-            coins: increment(50)
-        });
-    } catch(e) { console.error("Update failed:", e); }
-
-    setTimeout(() => window.location.href="../dashboard.html", 3000);
-}
-
 function update(){
     if(!gameActive) return;
 
+    // תנועה
     player.dx = 0;
     if(keys["ArrowRight"] || keys["KeyD"]) player.dx = player.speed;
     if(keys["ArrowLeft"] || keys["KeyA"]) player.dx = -player.speed;
@@ -155,10 +16,11 @@ function update(){
     player.y += player.dy;
     player.onGround = false;
 
-    // Trail logic
+    // שובל תנועה
     player.trail.push({x: player.x, y: player.y, alpha: 0.5});
     if(player.trail.length > 8) player.trail.shift();
 
+    // התנגשות במשטחים
     platforms.forEach(p => {
         if(player.x < p.x + p.w && player.x + player.w > p.x &&
            player.y + player.h < p.y + 15 && player.y + player.h + player.dy >= p.y){
@@ -168,127 +30,46 @@ function update(){
         }
     });
 
+    // --- תיקון הפסילה ---
     enemies.forEach(e => {
         e.x += e.dir * 2.5;
         if(Math.abs(e.x - e.startX) > e.range) e.dir *= -1;
 
         if(player.x < e.x + e.w && player.x + player.w > e.x &&
            player.y < e.y + e.h && player.y + player.h > e.y){
-            player.x = 100; player.y = 300; // Reset
+            
+            // ריסט מלא - גם לשחקן וגם למצלמה
+            player.x = 100; 
+            player.y = 300;
+            player.dy = 0;
+            scrollX = 0; // חזרה של המצלמה לתחילת השלב
+            
+            // אפקט ויזואלי של פסילה (אופציונלי)
+            console.log("סוכן נוטרל! חוזר לנקודת התחלה...");
         }
     });
 
+    // איסוף מטבעות
     coins.forEach(c => {
         if(!c.collected && Math.hypot(player.x - c.x, player.y - c.y) < 30){
             c.collected = true;
         }
     });
 
-    if(player.x > 300) scrollX = player.x - 300;
+    // עדכון מצלמה - עוקבת אחרי השחקן רק אם הוא עבר את חצי המסך
+    if(player.x > 300) {
+        scrollX = player.x - 300;
+    } else {
+        scrollX = 0; // אם השחקן חזר להתחלה, גם המצלמה מתאפסת
+    }
+
     if(player.x > levelEnd) handleWin();
-}
-
-function draw(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-
-    // --- רקע פראלאקס (רשת עתידנית) ---
-    ctx.strokeStyle = "rgba(0, 255, 255, 0.05)";
-    ctx.lineWidth = 1;
-    for(let i=0; i<canvas.width; i+=40){
-        ctx.beginPath();
-        ctx.moveTo(i - (scrollX * 0.2) % 40, 0);
-        ctx.lineTo(i - (scrollX * 0.2) % 40, canvas.height);
-        ctx.stroke();
+    
+    // בדיקה אם השחקן נפל מהמסך (נפילה לתהום)
+    if(player.y > canvas.height) {
+        player.x = 100;
+        player.y = 300;
+        player.dy = 0;
+        scrollX = 0;
     }
-
-    ctx.save();
-    ctx.translate(-scrollX, 0);
-
-    // 🧱 Platforms (Neon Style)
-    platforms.forEach(p => {
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = p.type === 'ground' ? "#0f172a" : "#3b82f6";
-        ctx.fillStyle = p.type === 'ground' ? "#020617" : "#1e40af";
-        ctx.fillRect(p.x, p.y, p.w, p.h);
-        
-        // קו ניאון עליון
-        ctx.strokeStyle = "#60a5fa";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(p.x, p.y, p.w, 1);
-    });
-
-    // 🪙 Coins (Rotating/Floating)
-    coins.forEach(c => {
-        if(!c.collected){
-            const floatY = Math.sin(Date.now() / 200 + c.offset) * 5;
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = "#fbbf24";
-            ctx.fillStyle = "#fbbf24";
-            ctx.beginPath();
-            ctx.arc(c.x, c.y + floatY, c.r, 0, Math.PI*2);
-            ctx.fill();
-            
-            // נצנוץ פנימי
-            ctx.fillStyle = "#fff";
-            ctx.beginPath();
-            ctx.arc(c.x - 2, c.y + floatY - 2, 3, 0, Math.PI*2);
-            ctx.fill();
-        }
-    });
-
-    // 👾 Enemies (Glow Red)
-    enemies.forEach(e => {
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = "#ef4444";
-        ctx.fillStyle = "#7f1d1d";
-        ctx.fillRect(e.x, e.y, e.w, e.h);
-        ctx.strokeStyle = "#f87171";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(e.x, e.y, e.w, e.h);
-    });
-
-    // 🧍 Player (With Trail)
-    player.trail.forEach((t, i) => {
-        ctx.globalAlpha = i / 10;
-        ctx.fillStyle = player.color;
-        ctx.fillRect(t.x, t.y, player.w, player.h);
-    });
-    ctx.globalAlpha = 1;
-
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = player.color;
-    ctx.fillStyle = "#fff"; // הליבה של השחקן לבנה למראה ניאון אמיתי
-    ctx.fillRect(player.x, player.y, player.w, player.h);
-    ctx.strokeStyle = player.color;
-    ctx.lineWidth = 3;
-    ctx.strokeRect(player.x, player.y, player.w, player.h);
-
-    // דגל סיום
-    ctx.shadowBlur = 30;
-    ctx.shadowColor = "#39ff14";
-    ctx.fillStyle = "#39ff14";
-    ctx.fillRect(levelEnd + 50, 100, 10, 250);
-    ctx.fillText("FINISH", levelEnd + 35, 90);
-
-    ctx.restore();
 }
-
-function loop(){
-    if(!gameActive) return;
-    update();
-    draw();
-    requestAnimationFrame(loop);
-}
-
-onAuthStateChanged(auth, user => {
-    if(!user) { window.location.href="../index.html"; return; }
-    currentUser = user;
-    if(!loopStarted){
-        loopStarted = true;
-        loop();
-    }
-});
-</script>
-
-</body>
-</html>
