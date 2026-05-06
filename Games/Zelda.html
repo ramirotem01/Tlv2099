@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>Neon Zelda Quest - Fixed Combat</title>
+<title>Neon Zelda Quest - Shielded Enemies</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
@@ -28,13 +28,13 @@
         <div class="text-[10px] text-red-400 uppercase tracking-tighter">Enemies Slain</div>
         <div id="enemy-score" class="text-2xl font-black text-white">0 / 6</div>
     </div>
-    <div class="bg-black/60 p-3 border border-yellow-500/30 rounded-lg text-right">
-        <div class="text-[10px] text-yellow-400 uppercase tracking-tighter">Mission</div>
-        <div id="mission-status" class="text-xs font-bold text-white uppercase italic">Full Reset on Death</div>
+    <div class="bg-black/60 p-3 border border-green-500/30 rounded-lg text-right">
+        <div class="text-[10px] text-green-400 uppercase tracking-tighter">Tip</div>
+        <div class="text-xs font-bold text-white uppercase italic">Don't hit Green Shields!</div>
     </div>
 </div>
 
-<h1 class="text-3xl font-black neon-text mb-4 italic tracking-widest uppercase">Neon Zelda: Precision Combat</h1>
+<h1 class="text-3xl font-black neon-text mb-4 italic tracking-widest uppercase">Neon Zelda: Shield Master</h1>
 
 <div class="relative">
     <canvas id="gameCanvas" width="700" height="500"></canvas>
@@ -67,7 +67,7 @@ let winTriggered = false;
 let currentUser = null;
 
 const player = {
-    x: 350, y: 250, size: 30, speed: 4.5,
+    x: 350, y: 250, size: 30, speed: 5,
     attacking: false, attackTimer: 0, dir: 'down'
 };
 
@@ -83,8 +83,12 @@ function initLevel() {
     for(let i=0; i<6; i++) {
         enemies.push({
             x: Math.random()*600 + 50, y: Math.random()*400 + 50,
-            w: 25, h: 25, dx: (Math.random()-0.5)*4, dy: (Math.random()-0.5)*4,
-            alive: true
+            w: 25, h: 25, 
+            dx: (Math.random()-0.5)*6, // מהירות מוגברת
+            dy: (Math.random()-0.5)*6, // מהירות מוגברת
+            alive: true,
+            shieldActive: false,
+            shieldTimer: Math.random() * 100 // טיימר לשינוי מצב המגן
         });
     }
 }
@@ -138,9 +142,8 @@ function update() {
     if(player.attackTimer > 0) player.attackTimer--;
     else player.attacking = false;
 
-    // הגדרת אזור הפגיעה של החרב (Sword Hitbox)
     let swordHitbox = { x: 0, y: 0, w: 0, h: 0 };
-    const range = 40; 
+    const range = 45; 
     if(player.attacking) {
         if(player.dir === 'up') swordHitbox = { x: player.x - 10, y: player.y - range, w: player.size + 20, h: range };
         if(player.dir === 'down') swordHitbox = { x: player.x - 10, y: player.y + player.size, w: player.size + 20, h: range };
@@ -150,21 +153,30 @@ function update() {
 
     enemies.forEach(e => {
         if(!e.alive) return;
+
+        // ניהול מגן אקראי
+        e.shieldTimer--;
+        if(e.shieldTimer <= 0) {
+            e.shieldActive = !e.shieldActive;
+            e.shieldTimer = e.shieldActive ? (40 + Math.random() * 60) : (60 + Math.random() * 120);
+        }
+
         e.x += e.dx; e.y += e.dy;
         if(e.x < 0 || e.x > canvas.width - e.w) e.dx *= -1;
         if(e.y < 0 || e.y > canvas.height - e.h) e.dy *= -1;
 
-        // בדיקת פגיעה של החרב באויב (AABB Collision)
         if(player.attacking) {
             if(swordHitbox.x < e.x + e.w && swordHitbox.x + swordHitbox.w > e.x &&
                swordHitbox.y < e.y + e.h && swordHitbox.y + swordHitbox.h > e.y) {
-                e.alive = false;
-                updateUI();
-                return;
+                // רק אם המגן לא פעיל - המפלצת מתה
+                if(!e.shieldActive) {
+                    e.alive = false;
+                    updateUI();
+                    return;
+                }
             }
         }
 
-        // בדיקת פגיעה של אויב בשחקן
         if(player.x < e.x + e.w && player.x + player.size > e.x &&
            player.y < e.y + e.h && player.y + player.size > e.y) {
             resetGame();
@@ -198,6 +210,17 @@ function draw() {
 
     enemies.forEach(e => {
         if(e.alive) {
+            // ציור המגן הירוק אם פעיל
+            if(e.shieldActive) {
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = "#00ff00";
+                ctx.strokeStyle = "#00ff00";
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(e.x + 12, e.y + 12, 22, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
             ctx.shadowBlur = 20; ctx.shadowColor = "#f00";
             ctx.font = "26px Arial";
             ctx.fillText("💀", e.x, e.y + 22);
