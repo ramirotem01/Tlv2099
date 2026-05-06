@@ -195,7 +195,7 @@
 
         // 2. בדיקה אם הגיע הזמן למשימה חדשה
         if (currentXP >= xpNeeded && (!data.currentQuestStatus || data.currentQuestStatus === 'none')) {
-            const questGames = ['Games/Digger.html','Games/Bitcoinwin.html','Games/Fors.html','Games/Popcoren.html','Games/pacman.html','Games/Jangule.html','Games/Munst.html'];
+            const questGames = ['Games/Digger.html','Games/Bitcoinwin.html','Games/Fors.html','Games/Popcoren.html','Games/pacman.html','Games/Jangule.html','Games/Munst.html','Games/Super.html'];
             const selectedGame = questGames[Math.floor(Math.random() * questGames.length)];
             
             await updateDoc(docRef, {
