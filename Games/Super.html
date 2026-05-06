@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>Neon Mario - Monster Edition</title>
+<title>Neon Quest - Money Bag Edition</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
@@ -10,32 +10,37 @@
     canvas { display:block; margin:auto; border-bottom: 2px solid #0ff; background: #020617; }
     .neon-title { text-shadow: 0 0 10px #0ff, 0 0 20px #0ff; }
     #overlay {
-        position:absolute; inset:0; display:none; background: rgba(2, 6, 23, 0.9);
-        backdrop-filter: blur(10px); justify-content:center; align-items:center;
+        position:absolute; inset:0; display:none; background: rgba(2, 6, 23, 0.95);
+        backdrop-filter: blur(15px); justify-content:center; align-items:center;
         flex-direction:column; z-index: 100;
     }
     #game-ui {
         position: absolute; top: 20px; left: 20px; pointer-events: none;
     }
+    .warning-text { color: #ff0055; font-size: 10px; margin-top: 4px; animation: pulse 1s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 </style>
 </head>
 <body class="flex flex-col items-center justify-center h-screen">
 
-<div id="game-ui" class="bg-black/50 p-4 border border-cyan-500/30 rounded-xl">
-    <div class="text-cyan-400 text-xs tracking-widest mb-1">COINS COLLECTED</div>
-    <div id="coin-counter" class="text-2xl font-black text-white">0 / 0</div>
+<div id="game-ui" class="bg-black/60 p-4 border border-cyan-500/30 rounded-xl backdrop-blur-md">
+    <div class="text-cyan-400 text-[10px] tracking-widest mb-1 uppercase">Target: 30 Money Bags</div>
+    <div id="coin-counter" class="text-3xl font-black text-white">0 / 30</div>
+    <div id="status-msg" class="warning-text">אסוף עוד שקים כדי לפתוח את השער!</div>
 </div>
 
 <div class="mb-4 text-center">
-    <h1 class="text-4xl font-black neon-title italic uppercase">Neon Quest</h1>
+    <h1 class="text-4xl font-black neon-title italic uppercase tracking-tighter">Cyber Collector</h1>
 </div>
 
 <div class="relative">
     <canvas id="gameCanvas" width="900" height="400"></canvas>
     <div id="overlay">
-        <h2 class="text-6xl font-black text-green-400 mb-4 italic">MISSION COMPLETE</h2>
-        <p id="final-stats" class="text-xl text-white mb-6 uppercase tracking-widest"></p>
-        <div class="w-24 h-1 bg-green-500 animate-bounce"></div>
+        <h2 class="text-6xl font-black text-green-400 mb-2 italic">MISSION SUCCESS</h2>
+        <p class="text-white opacity-70 mb-8 uppercase tracking-widest">כל השקים נאספו והועברו לחשבון</p>
+        <div class="flex gap-4">
+             <div class="px-6 py-2 border border-green-500 text-green-500 font-bold">+50 COINS</div>
+        </div>
     </div>
 </div>
 
@@ -52,37 +57,47 @@ let winTriggered = false;
 let currentUser = null;
 let scrollX = 0;
 
-// השחקן
 const player = {
     x: 100, y: 300, w: 25, h: 25, dx: 0, dy: 0,
-    speed: 5, jump: -14, gravity: 0.7, onGround: false,
-    trail: []
+    speed: 5.5, jump: -14, gravity: 0.7, onGround: false
 };
 
-// עולם ומשטחים
-const levelEnd = 2500;
+const levelEnd = 5000; // הארכתי את השלב פי 2
+const winTarget = 30;
+
+// משטחים ארוכים יותר ומפוזרים
 const platforms = [
-    {x:0, y:350, w:3000, h:50, type: 'ground'},
-    {x:300, y:260, w:120, h:15},
-    {x:550, y:180, w:150, h:15},
-    {x:900, y:270, w:120, h:15},
-    {x:1200, y:200, w:200, h:15},
-    {x:1600, y:280, w:120, h:15},
-    {x:1900, y:190, w:150, h:15}
+    {x:0, y:350, w:5500, h:50, type: 'ground'},
+    {x:300, y:260, w:150, h:15},
+    {x:600, y:180, w:150, h:15},
+    {x:950, y:250, w:200, h:15},
+    {x:1300, y:180, w:150, h:15},
+    {x:1600, y:270, w:150, h:15},
+    {x:1900, y:160, w:200, h:15},
+    {x:2300, y:250, w:150, h:15},
+    {x:2700, y:180, w:200, h:15},
+    {x:3100, y:260, w:150, h:15},
+    {x:3500, y:170, w:200, h:15},
+    {x:3900, y:240, w:150, h:15},
+    {x:4300, y:180, w:300, h:15}
 ];
 
-// מפלצות (אייקונים)
-const monsters = [
-    {x:600, y:325, size: 30, dir:1, range: 150, startX: 600},
-    {x:1100, y:325, size: 30, dir:-1, range: 250, startX: 1100},
-    {x:1800, y:325, size: 30, dir:1, range: 200, startX: 1800},
-    {x:2200, y:325, size: 30, dir:-1, range: 100, startX: 2200}
-];
+// מפלצות
+const monsters = [];
+for(let i=1; i<=8; i++) {
+    monsters.push({
+        x: i * 600, y: 320, size: 30, dir: 1, range: 150, startX: i * 600
+    });
+}
 
-// מטבעות
-const coins = [];
-for(let i=400; i<2400; i+=250){
-    coins.push({x:i, y:150 + Math.random()*100, r:10, collected:false});
+// שקי כסף - יצירת 40 שקים כדי שיהיה קל להגיע ל-30
+const moneyBags = [];
+for(let i=0; i<40; i++) {
+    moneyBags.push({
+        x: 400 + (i * 110), 
+        y: 100 + Math.random() * 200, 
+        collected: false
+    });
 }
 
 const keys = {};
@@ -90,17 +105,23 @@ window.addEventListener("keydown", e => keys[e.code] = true);
 window.addEventListener("keyup", e => keys[e.code] = false);
 
 function updateUI() {
-    const collected = coins.filter(c => c.collected).length;
-    document.getElementById("coin-counter").innerText = `${collected} / ${coins.length}`;
+    const collected = moneyBags.filter(b => b.collected).length;
+    const counter = document.getElementById("coin-counter");
+    const msg = document.getElementById("status-msg");
+    
+    counter.innerText = `${collected} / ${winTarget}`;
+    
+    if(collected >= winTarget) {
+        counter.classList.replace("text-white", "text-green-400");
+        msg.innerText = "השער פתוח! רוץ לסוף המסלול!";
+        msg.classList.replace("text-slate-500", "text-green-500");
+    }
 }
 
 async function handleWin(){
     if(winTriggered) return;
     winTriggered = true;
     gameActive = false;
-
-    const collected = coins.filter(c => c.collected).length;
-    document.getElementById("final-stats").innerText = `אספת ${collected} מתוך ${coins.length} מטבעות`;
     document.getElementById("overlay").style.display="flex";
 
     try {
@@ -109,16 +130,12 @@ async function handleWin(){
             currentQuestStatus: "completed",
             coins: increment(50)
         });
-    } catch(e) { console.error("Firestore Error:", e); }
-
-    setTimeout(() => window.location.href="../dashboard.html", 3500);
+    } catch(e) { console.error(e); }
+    setTimeout(() => window.location.href="../dashboard.html", 4000);
 }
 
 function resetGame() {
-    player.x = 100;
-    player.y = 300;
-    player.dy = 0;
-    scrollX = 0;
+    player.x = 100; player.y = 300; player.dy = 0; scrollX = 0;
 }
 
 function update(){
@@ -128,8 +145,7 @@ function update(){
     if(keys["ArrowRight"] || keys["KeyD"]) player.dx = player.speed;
     if(keys["ArrowLeft"] || keys["KeyA"]) player.dx = -player.speed;
     if((keys["Space"] || keys["ArrowUp"] || keys["KeyW"]) && player.onGround){
-        player.dy = player.jump;
-        player.onGround = false;
+        player.dy = player.jump; player.onGround = false;
     }
 
     player.dy += player.gravity;
@@ -137,32 +153,25 @@ function update(){
     player.y += player.dy;
     player.onGround = false;
 
-    player.trail.push({x: player.x, y: player.y});
-    if(player.trail.length > 5) player.trail.shift();
-
     platforms.forEach(p => {
         if(player.x < p.x + p.w && player.x + player.w > p.x &&
            player.y + player.h < p.y + 15 && player.y + player.h + player.dy >= p.y){
-            player.y = p.y - player.h;
-            player.dy = 0;
-            player.onGround = true;
+            player.y = p.y - player.h; player.dy = 0; player.onGround = true;
         }
     });
 
     monsters.forEach(m => {
-        m.x += m.dir * 3;
+        m.x += m.dir * 3.5;
         if(Math.abs(m.x - m.startX) > m.range) m.dir *= -1;
-
-        // בדיקת פגיעה במפלצת
-        if(player.x < m.x + m.size && player.x + player.w > m.x &&
-           player.y < m.y + m.size && player.y + player.h > m.y){
+        if(player.x < m.x + m.size-5 && player.x + player.w > m.x+5 &&
+           player.y < m.y + m.size-5 && player.y + player.h > m.y+5){
             resetGame();
         }
     });
 
-    coins.forEach(c => {
-        if(!c.collected && Math.hypot(player.x - c.x, player.y - c.y) < 30){
-            c.collected = true;
+    moneyBags.forEach(b => {
+        if(!b.collected && Math.hypot(player.x - b.x, player.y - b.y) < 35){
+            b.collected = true;
             updateUI();
         }
     });
@@ -171,14 +180,22 @@ function update(){
     else scrollX = 0;
 
     if(player.y > canvas.height) resetGame();
-    if(player.x > levelEnd) handleWin();
+    
+    // בדיקת ניצחון: גם הגעה לסוף וגם כמות שקים
+    const collectedCount = moneyBags.filter(b => b.collected).length;
+    if(player.x > levelEnd && collectedCount >= winTarget) {
+        handleWin();
+    } else if (player.x > levelEnd && collectedCount < winTarget) {
+        // אם הגיע לסוף בלי מספיק שקים - מחזיר אותו קצת אחורה כדי שישלים
+        player.x = levelEnd - 200;
+    }
 }
 
 function draw(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    // Grid Background
-    ctx.strokeStyle = "rgba(0, 255, 255, 0.05)";
+    // Background Grid
+    ctx.strokeStyle = "rgba(0, 242, 255, 0.05)";
     for(let i=0; i<canvas.width; i+=50){
         ctx.beginPath(); ctx.moveTo(i - (scrollX*0.1)%50, 0); ctx.lineTo(i - (scrollX*0.1)%50, canvas.height); ctx.stroke();
     }
@@ -190,33 +207,40 @@ function draw(){
     platforms.forEach(p => {
         ctx.fillStyle = p.type === 'ground' ? "#020617" : "#1e40af";
         ctx.fillRect(p.x, p.y, p.w, p.h);
-        ctx.strokeStyle = "#60a5fa";
+        ctx.strokeStyle = "#0ff";
+        ctx.lineWidth = 1;
         ctx.strokeRect(p.x, p.y, p.w, 2);
     });
 
-    // Coins
-    coins.forEach(c => {
-        if(!c.collected){
-            ctx.shadowBlur = 15; ctx.shadowColor = "#fbbf24";
-            ctx.fillStyle = "#fbbf24";
-            ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, Math.PI*2); ctx.fill();
+    // Money Bags (💰)
+    ctx.font = "24px Arial";
+    moneyBags.forEach(b => {
+        if(!b.collected){
+            ctx.shadowBlur = 10; ctx.shadowColor = "#fbbf24";
+            ctx.fillText("💰", b.x, b.y);
         }
     });
 
-    // Monsters (Icons)
+    // Monsters
     ctx.font = "30px Arial";
     ctx.shadowBlur = 20; ctx.shadowColor = "#ff0055";
-    monsters.forEach(m => {
-        ctx.fillText("👾", m.x, m.y + m.size);
-    });
+    monsters.forEach(m => { ctx.fillText("👾", m.x, m.y + m.size); });
 
     // Player
-    ctx.shadowBlur = 20; ctx.shadowColor = "#0ff";
+    ctx.shadowBlur = 25; ctx.shadowColor = "#0ff";
     ctx.fillStyle = "#fff";
     ctx.fillRect(player.x, player.y, player.w, player.h);
     ctx.strokeStyle = "#0ff";
     ctx.lineWidth = 2;
     ctx.strokeRect(player.x, player.y, player.w, player.h);
+
+    // Finish Gate
+    const collected = moneyBags.filter(b => b.collected).length;
+    ctx.shadowColor = collected >= winTarget ? "#39ff14" : "#ff0055";
+    ctx.fillStyle = collected >= winTarget ? "#39ff14" : "#ff0055";
+    ctx.fillRect(levelEnd + 100, 50, 20, 300);
+    ctx.font = "bold 20px Orbitron";
+    ctx.fillText(collected >= winTarget ? "OPEN" : "LOCKED", levelEnd + 60, 40);
 
     ctx.restore();
 }
