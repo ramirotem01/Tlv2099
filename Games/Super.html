@@ -1,11 +1,132 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>Neon Mario - Monster Edition</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
+    body { margin:0; overflow:hidden; background:#020617; color:white; font-family: 'Orbitron', sans-serif; }
+    canvas { display:block; margin:auto; border-bottom: 2px solid #0ff; background: #020617; }
+    .neon-title { text-shadow: 0 0 10px #0ff, 0 0 20px #0ff; }
+    #overlay {
+        position:absolute; inset:0; display:none; background: rgba(2, 6, 23, 0.9);
+        backdrop-filter: blur(10px); justify-content:center; align-items:center;
+        flex-direction:column; z-index: 100;
+    }
+    #game-ui {
+        position: absolute; top: 20px; left: 20px; pointer-events: none;
+    }
+</style>
+</head>
+<body class="flex flex-col items-center justify-center h-screen">
+
+<div id="game-ui" class="bg-black/50 p-4 border border-cyan-500/30 rounded-xl">
+    <div class="text-cyan-400 text-xs tracking-widest mb-1">COINS COLLECTED</div>
+    <div id="coin-counter" class="text-2xl font-black text-white">0 / 0</div>
+</div>
+
+<div class="mb-4 text-center">
+    <h1 class="text-4xl font-black neon-title italic uppercase">Neon Quest</h1>
+</div>
+
+<div class="relative">
+    <canvas id="gameCanvas" width="900" height="400"></canvas>
+    <div id="overlay">
+        <h2 class="text-6xl font-black text-green-400 mb-4 italic">MISSION COMPLETE</h2>
+        <p id="final-stats" class="text-xl text-white mb-6 uppercase tracking-widest"></p>
+        <div class="w-24 h-1 bg-green-500 animate-bounce"></div>
+    </div>
+</div>
+
+<script type="module">
+import { auth, db } from "../firebase-config.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+let gameActive = true;
+let winTriggered = false;
+let currentUser = null;
+let scrollX = 0;
+
+// השחקן
+const player = {
+    x: 100, y: 300, w: 25, h: 25, dx: 0, dy: 0,
+    speed: 5, jump: -14, gravity: 0.7, onGround: false,
+    trail: []
+};
+
+// עולם ומשטחים
+const levelEnd = 2500;
+const platforms = [
+    {x:0, y:350, w:3000, h:50, type: 'ground'},
+    {x:300, y:260, w:120, h:15},
+    {x:550, y:180, w:150, h:15},
+    {x:900, y:270, w:120, h:15},
+    {x:1200, y:200, w:200, h:15},
+    {x:1600, y:280, w:120, h:15},
+    {x:1900, y:190, w:150, h:15}
+];
+
+// מפלצות (אייקונים)
+const monsters = [
+    {x:600, y:325, size: 30, dir:1, range: 150, startX: 600},
+    {x:1100, y:325, size: 30, dir:-1, range: 250, startX: 1100},
+    {x:1800, y:325, size: 30, dir:1, range: 200, startX: 1800},
+    {x:2200, y:325, size: 30, dir:-1, range: 100, startX: 2200}
+];
+
+// מטבעות
+const coins = [];
+for(let i=400; i<2400; i+=250){
+    coins.push({x:i, y:150 + Math.random()*100, r:10, collected:false});
+}
+
+const keys = {};
+window.addEventListener("keydown", e => keys[e.code] = true);
+window.addEventListener("keyup", e => keys[e.code] = false);
+
+function updateUI() {
+    const collected = coins.filter(c => c.collected).length;
+    document.getElementById("coin-counter").innerText = `${collected} / ${coins.length}`;
+}
+
+async function handleWin(){
+    if(winTriggered) return;
+    winTriggered = true;
+    gameActive = false;
+
+    const collected = coins.filter(c => c.collected).length;
+    document.getElementById("final-stats").innerText = `אספת ${collected} מתוך ${coins.length} מטבעות`;
+    document.getElementById("overlay").style.display="flex";
+
+    try {
+        const ref = doc(db, "players", currentUser.uid);
+        await updateDoc(ref, {
+            currentQuestStatus: "completed",
+            coins: increment(50)
+        });
+    } catch(e) { console.error("Firestore Error:", e); }
+
+    setTimeout(() => window.location.href="../dashboard.html", 3500);
+}
+
+function resetGame() {
+    player.x = 100;
+    player.y = 300;
+    player.dy = 0;
+    scrollX = 0;
+}
+
 function update(){
     if(!gameActive) return;
 
-    // תנועה
     player.dx = 0;
     if(keys["ArrowRight"] || keys["KeyD"]) player.dx = player.speed;
     if(keys["ArrowLeft"] || keys["KeyA"]) player.dx = -player.speed;
-
     if((keys["Space"] || keys["ArrowUp"] || keys["KeyW"]) && player.onGround){
         player.dy = player.jump;
         player.onGround = false;
@@ -16,11 +137,9 @@ function update(){
     player.y += player.dy;
     player.onGround = false;
 
-    // שובל תנועה
-    player.trail.push({x: player.x, y: player.y, alpha: 0.5});
-    if(player.trail.length > 8) player.trail.shift();
+    player.trail.push({x: player.x, y: player.y});
+    if(player.trail.length > 5) player.trail.shift();
 
-    // התנגשות במשטחים
     platforms.forEach(p => {
         if(player.x < p.x + p.w && player.x + player.w > p.x &&
            player.y + player.h < p.y + 15 && player.y + player.h + player.dy >= p.y){
@@ -30,46 +149,91 @@ function update(){
         }
     });
 
-    // --- תיקון הפסילה ---
-    enemies.forEach(e => {
-        e.x += e.dir * 2.5;
-        if(Math.abs(e.x - e.startX) > e.range) e.dir *= -1;
+    monsters.forEach(m => {
+        m.x += m.dir * 3;
+        if(Math.abs(m.x - m.startX) > m.range) m.dir *= -1;
 
-        if(player.x < e.x + e.w && player.x + player.w > e.x &&
-           player.y < e.y + e.h && player.y + player.h > e.y){
-            
-            // ריסט מלא - גם לשחקן וגם למצלמה
-            player.x = 100; 
-            player.y = 300;
-            player.dy = 0;
-            scrollX = 0; // חזרה של המצלמה לתחילת השלב
-            
-            // אפקט ויזואלי של פסילה (אופציונלי)
-            console.log("סוכן נוטרל! חוזר לנקודת התחלה...");
+        // בדיקת פגיעה במפלצת
+        if(player.x < m.x + m.size && player.x + player.w > m.x &&
+           player.y < m.y + m.size && player.y + player.h > m.y){
+            resetGame();
         }
     });
 
-    // איסוף מטבעות
     coins.forEach(c => {
         if(!c.collected && Math.hypot(player.x - c.x, player.y - c.y) < 30){
             c.collected = true;
+            updateUI();
         }
     });
 
-    // עדכון מצלמה - עוקבת אחרי השחקן רק אם הוא עבר את חצי המסך
-    if(player.x > 300) {
-        scrollX = player.x - 300;
-    } else {
-        scrollX = 0; // אם השחקן חזר להתחלה, גם המצלמה מתאפסת
+    if(player.x > 300) scrollX = player.x - 300;
+    else scrollX = 0;
+
+    if(player.y > canvas.height) resetGame();
+    if(player.x > levelEnd) handleWin();
+}
+
+function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // Grid Background
+    ctx.strokeStyle = "rgba(0, 255, 255, 0.05)";
+    for(let i=0; i<canvas.width; i+=50){
+        ctx.beginPath(); ctx.moveTo(i - (scrollX*0.1)%50, 0); ctx.lineTo(i - (scrollX*0.1)%50, canvas.height); ctx.stroke();
     }
 
-    if(player.x > levelEnd) handleWin();
-    
-    // בדיקה אם השחקן נפל מהמסך (נפילה לתהום)
-    if(player.y > canvas.height) {
-        player.x = 100;
-        player.y = 300;
-        player.dy = 0;
-        scrollX = 0;
-    }
+    ctx.save();
+    ctx.translate(-scrollX, 0);
+
+    // Platforms
+    platforms.forEach(p => {
+        ctx.fillStyle = p.type === 'ground' ? "#020617" : "#1e40af";
+        ctx.fillRect(p.x, p.y, p.w, p.h);
+        ctx.strokeStyle = "#60a5fa";
+        ctx.strokeRect(p.x, p.y, p.w, 2);
+    });
+
+    // Coins
+    coins.forEach(c => {
+        if(!c.collected){
+            ctx.shadowBlur = 15; ctx.shadowColor = "#fbbf24";
+            ctx.fillStyle = "#fbbf24";
+            ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, Math.PI*2); ctx.fill();
+        }
+    });
+
+    // Monsters (Icons)
+    ctx.font = "30px Arial";
+    ctx.shadowBlur = 20; ctx.shadowColor = "#ff0055";
+    monsters.forEach(m => {
+        ctx.fillText("👾", m.x, m.y + m.size);
+    });
+
+    // Player
+    ctx.shadowBlur = 20; ctx.shadowColor = "#0ff";
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(player.x, player.y, player.w, player.h);
+    ctx.strokeStyle = "#0ff";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(player.x, player.y, player.w, player.h);
+
+    ctx.restore();
 }
+
+function loop(){
+    if(!gameActive) return;
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+onAuthStateChanged(auth, user => {
+    if(!user) { window.location.href="../index.html"; return; }
+    currentUser = user;
+    updateUI();
+    loop();
+});
+</script>
+</body>
+</html>
