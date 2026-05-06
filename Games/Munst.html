@@ -2,36 +2,55 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>Neon Hunter</title>
+<title>Neon Hunter PRO</title>
 <script src="https://cdn.tailwindcss.com"></script>
 
 <style>
-body { margin:0; overflow:hidden; background:#020617; color:white; cursor:none; }
-canvas { display:block; margin:auto; }
-.neon { text-shadow:0 0 10px #0ff,0 0 20px #0ff; }
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
+
+body { margin:0; overflow:hidden; background:#020617; color:white; cursor:none; font-family: 'Orbitron', sans-serif; }
+canvas { display:block; margin:auto; filter: drop-shadow(0 0 10px rgba(0, 255, 255, 0.2)); }
+.neon-text { text-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 40px #0ff; }
 
 #overlay {
   position:absolute;
   inset:0;
   display:none;
-  background:rgba(0,0,0,0.9);
+  background:rgba(2, 6, 23, 0.9);
+  backdrop-filter: blur(8px);
   justify-content:center;
   align-items:center;
   flex-direction:column;
+  z-index: 100;
+}
+
+.stats-panel {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: rgba(0, 255, 255, 0.1);
+    border: 1px solid #0ff;
+    padding: 10px 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
 }
 </style>
 </head>
 
 <body class="flex flex-col items-center justify-center h-screen">
 
-<h1 class="text-3xl neon mb-2">🎯 Neon Hunter</h1>
-<p>ירה במפלצות והתחמק מרימונים!</p>
+<div class="stats-panel">
+    <p class="text-cyan-400 font-bold" id="scoreDisplay">SCORE: 0 / 20</p>
+</div>
 
-<canvas id="gameCanvas" width="800" height="500"></canvas>
+<h1 class="text-4xl neon-text mb-4 tracking-widest">NEON HUNTER</h1>
 
-<div id="overlay" class="flex">
-  <h2 id="overlayText" class="text-5xl neon mb-4"></h2>
-  <p id="overlaySub"></p>
+<canvas id="gameCanvas" width="850" height="550"></canvas>
+
+<div id="overlay">
+  <h2 id="overlayText" class="text-7xl neon-text mb-6"></h2>
+  <p id="overlaySub" class="text-xl text-cyan-300"></p>
+  <div class="mt-10 animate-pulse text-cyan-500">INITIALIZING DASHBOARD...</div>
 </div>
 
 <script type="module">
@@ -49,26 +68,22 @@ let loopStarted = false;
 
 let score = 0;
 const targetScore = 20;
+let gridOffset = 0;
 
-// 🧍 Player (bottom)
+// 🚀 Player
 const player = {
   x: canvas.width/2,
-  y: canvas.height - 30,
-  w: 40,
-  h: 10,
-  speed: 6
+  y: canvas.height - 40,
+  w: 50,
+  h: 15,
+  speed: 8
 };
 
-// 🎯 Crosshair
 const mouse = { x:400, y:250 };
-
-// 👾 Monsters
 const monsters = [];
-
-// 💣 Grenades
 const grenades = [];
+const particles = []; // אפקטים של פיצוץ
 
-// 🎮 Controls
 const keys = {};
 window.addEventListener("keydown", e=>keys[e.code]=true);
 window.addEventListener("keyup", e=>keys[e.code]=false);
@@ -79,31 +94,45 @@ canvas.addEventListener("mousemove", e=>{
   mouse.y = e.clientY - rect.top;
 });
 
-canvas.addEventListener("click", ()=>{
-  shoot();
-});
+canvas.addEventListener("click", () => shoot());
 
-// 🔫 Shoot
+function createExplosion(x, y, color) {
+    for(let i=0; i<10; i++) {
+        particles.push({
+            x, y,
+            vx: (Math.random()-0.5)*10,
+            vy: (Math.random()-0.5)*10,
+            life: 20,
+            color
+        });
+    }
+}
+
 function shoot(){
+  if(!gameActive) return;
+  
+  // אפקט ירי בכוונת
+  createExplosion(mouse.x, mouse.y, "#0ff");
+
   monsters.forEach(m=>{
     const dx = mouse.x - m.x;
     const dy = mouse.y - m.y;
     const dist = Math.sqrt(dx*dx + dy*dy);
 
-    if(dist < m.r){
+    if(dist < m.r + 10){
       m.dead = true;
       score++;
+      createExplosion(m.x, m.y, "#f0f");
+      document.getElementById("scoreDisplay").innerText = `SCORE: ${score} / 20`;
     }
   });
 }
 
-// 🔥 Firebase WIN
 async function handleWin(){
   if(winTriggered) return;
   winTriggered = true;
   gameActive = false;
-
-  showOverlay("🎉 ניצחת!", "+50 מטבעות נוספו");
+  showOverlay("SYSTEM CLEARED", "REWARD: 50 NEON COINS");
 
   try{
     const ref = doc(db,"players",currentUser.uid);
@@ -111,134 +140,148 @@ async function handleWin(){
       currentQuestStatus:"completed",
       coins: increment(50)
     });
-  }catch(e){
-    console.error(e);
-  }
-
-  setTimeout(()=> window.location.href="../dashboard.html",2500);
+  }catch(e){ console.error(e); }
+  setTimeout(()=> window.location.href="../dashboard.html",3000);
 }
 
-// 💀 Lose
 function handleLose(){
   if(winTriggered) return;
   winTriggered = true;
   gameActive = false;
-
-  showOverlay("💀 נפסלת!", "נסה שוב...");
+  showOverlay("SYSTEM FAILURE", "REBOOTING...");
+  setTimeout(()=> location.reload(), 2500);
 }
 
-// UI
 function showOverlay(title, sub){
   document.getElementById("overlay").style.display="flex";
   document.getElementById("overlayText").innerText=title;
   document.getElementById("overlaySub").innerText=sub;
 }
 
-// 🎯 Update
 function update(){
   if(!gameActive) return;
 
-  // Player move
+  gridOffset = (gridOffset + 1) % 40;
+
   if(keys["ArrowLeft"] || keys["KeyA"]) player.x -= player.speed;
   if(keys["ArrowRight"] || keys["KeyD"]) player.x += player.speed;
+  player.x = Math.max(25, Math.min(canvas.width - 25, player.x));
 
-  if(player.x < 0) player.x = 0;
-  if(player.x > canvas.width) player.x = canvas.width;
-
-  // Spawn monsters
-  if(Math.random() < 0.03){
+  if(Math.random() < 0.04){
     monsters.push({
       x: Math.random()*canvas.width,
-      y: Math.random()*300,
-      r: 20,
-      life: 100,
-      dead:false
+      y: Math.random()*350,
+      r: 15 + Math.random()*10,
+      pulse: 0,
+      life: 120,
+      dead: false
     });
   }
 
-  // Spawn grenades
-  if(Math.random() < 0.02){
+  if(Math.random() < 0.025){
     grenades.push({
       x: Math.random()*canvas.width,
-      y: 0,
-      speed: 4
+      y: -20,
+      speed: 4 + Math.random()*3
     });
   }
 
-  // Update monsters
-  monsters.forEach(m=>{
-    m.life--;
-  });
-
-  // Remove monsters
-  for(let i=monsters.length-1;i>=0;i--){
-    if(monsters[i].life <=0 || monsters[i].dead){
-      monsters.splice(i,1);
-    }
+  monsters.forEach(m => { m.life--; m.pulse += 0.1; });
+  for(let i=monsters.length-1; i>=0; i--){
+    if(monsters[i].life <=0 || monsters[i].dead) monsters.splice(i,1);
   }
 
-  // Update grenades
   grenades.forEach(g=>{
     g.y += g.speed;
-
-    if(
-      g.x > player.x - 20 &&
-      g.x < player.x + 20 &&
-      g.y > player.y
-    ){
-      handleLose();
-    }
+    if(Math.abs(g.x - player.x) < 30 && g.y > player.y - 10) handleLose();
   });
 
-  // Clean grenades
-  for(let i=grenades.length-1;i>=0;i--){
-    if(grenades[i].y > canvas.height){
-      grenades.splice(i,1);
-    }
+  for(let i=grenades.length-1; i>=0; i--){
+    if(grenades[i].y > canvas.height) grenades.splice(i,1);
   }
 
-  if(score >= targetScore){
-    handleWin();
-  }
+  particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.life--; });
+  for(let i=particles.length-1; i>=0; i--) if(particles[i].life <=0) particles.splice(i,1);
+
+  if(score >= targetScore) handleWin();
 }
 
-// 🎨 Draw
 function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // רקע גריד ניאון
+  ctx.fillStyle = "#020617";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  
+  ctx.strokeStyle = "rgba(0, 255, 255, 0.05)";
+  ctx.lineWidth = 1;
+  for(let x=0; x<canvas.width; x+=40) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+  }
+  for(let y=gridOffset; y<canvas.height; y+=40) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+  }
 
-  // Player
-  ctx.fillStyle="#0f0";
-  ctx.fillRect(player.x-20,player.y,40,10);
+  // Player - חללית ניאון
+  ctx.shadowBlur = 15;
+  ctx.shadowColor = "#0f0";
+  ctx.fillStyle = "#0f0";
+  ctx.beginPath();
+  ctx.moveTo(player.x, player.y - 15);
+  ctx.lineTo(player.x - 25, player.y + 10);
+  ctx.lineTo(player.x + 25, player.y + 10);
+  ctx.closePath();
+  ctx.fill();
 
-  // Monsters
-  ctx.fillStyle="#f00";
+  // Monsters - עיני ניאון
   monsters.forEach(m=>{
+    const s = Math.sin(m.pulse) * 5;
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = "#f0f";
+    ctx.fillStyle = "#f0f";
     ctx.beginPath();
-    ctx.arc(m.x,m.y,m.r,0,Math.PI*2);
+    ctx.arc(m.x, m.y, m.r + s, 0, Math.PI*2);
+    ctx.fill();
+    // עין פנימית
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(m.x, m.y, (m.r+s)/2, 0, Math.PI*2);
     ctx.fill();
   });
 
-  // Grenades
-  ctx.fillStyle="#ff0";
+  // Grenades - פצצות אנרגיה
+  ctx.shadowColor = "#ff0";
   grenades.forEach(g=>{
-    ctx.fillRect(g.x,g.y,6,12);
+    ctx.fillStyle = "#ff0";
+    ctx.beginPath();
+    ctx.arc(g.x, g.y, 8, 0, Math.PI*2);
+    ctx.fill();
+    // הילה
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 2;
+    ctx.stroke();
   });
 
-  // Crosshair
-  ctx.strokeStyle="#0ff";
-  ctx.beginPath();
-  ctx.moveTo(mouse.x-10,mouse.y);
-  ctx.lineTo(mouse.x+10,mouse.y);
-  ctx.moveTo(mouse.x,mouse.y-10);
-  ctx.lineTo(mouse.x,mouse.y+10);
-  ctx.stroke();
+  // Particles
+  particles.forEach(p => {
+      ctx.shadowBlur = 5;
+      ctx.shadowColor = p.color;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x, p.y, 3, 3);
+  });
 
-  // Score
-  ctx.fillStyle="#fff";
-  ctx.fillText("Kills: "+score+"/20", 20,20);
+  // Crosshair - לייזר
+  ctx.shadowBlur = 10;
+  ctx.shadowColor = "#0ff";
+  ctx.strokeStyle = "#0ff";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(mouse.x, mouse.y, 15, 0, Math.PI*2); // עיגול כוונת
+  ctx.moveTo(mouse.x - 25, mouse.y); ctx.lineTo(mouse.x + 25, mouse.y);
+  ctx.moveTo(mouse.x, mouse.y - 25); ctx.lineTo(mouse.x, mouse.y + 25);
+  ctx.stroke();
+  
+  ctx.shadowBlur = 0;
 }
 
-// 🔁 Loop
 function loop(){
   if(!gameActive) return;
   update();
@@ -246,19 +289,10 @@ function loop(){
   requestAnimationFrame(loop);
 }
 
-// 🔐 Auth
-onAuthStateChanged(auth,user=>{
-  if(!user){
-    window.location.href="../index.html";
-    return;
-  }
-
+onAuthStateChanged(auth, user=>{
+  if(!user){ window.location.href="../index.html"; return; }
   currentUser = user;
-
-  if(!loopStarted){
-    loopStarted = true;
-    loop();
-  }
+  if(!loopStarted){ loopStarted = true; loop(); }
 });
 </script>
 
