@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>Neon Zelda Quest - Combat Edition</title>
+<title>Neon Zelda Quest - Fixed Combat</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
@@ -30,17 +30,17 @@
     </div>
     <div class="bg-black/60 p-3 border border-yellow-500/30 rounded-lg text-right">
         <div class="text-[10px] text-yellow-400 uppercase tracking-tighter">Mission</div>
-        <div id="mission-status" class="text-xs font-bold text-white uppercase italic">Clear the area!</div>
+        <div id="mission-status" class="text-xs font-bold text-white uppercase italic">Full Reset on Death</div>
     </div>
 </div>
 
-<h1 class="text-3xl font-black neon-text mb-4 italic tracking-widest uppercase">Neon Zelda: Total War</h1>
+<h1 class="text-3xl font-black neon-text mb-4 italic tracking-widest uppercase">Neon Zelda: Precision Combat</h1>
 
 <div class="relative">
     <canvas id="gameCanvas" width="700" height="500"></canvas>
     <div id="overlay">
         <h2 class="text-6xl font-black text-green-400 mb-2 italic">ARENA CLEARED</h2>
-        <p class="text-white opacity-70 mb-6 uppercase tracking-widest">PCS365: All targets eliminated</p>
+        <p class="text-white opacity-70 mb-6 uppercase tracking-widest">PCS365: Rewards Synced</p>
         <div class="px-6 py-2 border border-green-500 text-green-500 font-bold animate-pulse">+50 COINS</div>
     </div>
 </div>
@@ -75,17 +75,15 @@ const crystals = [];
 const enemies = [];
 
 function initLevel() {
-    // אתחול קריסטלים
     crystals.length = 0;
     for(let i=0; i<10; i++) {
         crystals.push({ x: 50 + Math.random()*600, y: 50 + Math.random()*400, collected: false });
     }
-    // אתחול אויבים
     enemies.length = 0;
     for(let i=0; i<6; i++) {
         enemies.push({
             x: Math.random()*600 + 50, y: Math.random()*400 + 50,
-            size: 25, dx: (Math.random()-0.5)*4, dy: (Math.random()-0.5)*4,
+            w: 25, h: 25, dx: (Math.random()-0.5)*4, dy: (Math.random()-0.5)*4,
             alive: true
         });
     }
@@ -97,7 +95,7 @@ window.addEventListener("keydown", e => {
     keys[e.code] = true;
     if(e.code === "Space" && !player.attacking) {
         player.attacking = true;
-        player.attackTimer = 12;
+        player.attackTimer = 15;
     }
 });
 window.addEventListener("keyup", e => keys[e.code] = false);
@@ -105,17 +103,8 @@ window.addEventListener("keyup", e => keys[e.code] = false);
 function updateUI() {
     const cCount = crystals.filter(c => c.collected).length;
     const eCount = enemies.filter(e => !e.alive).length;
-    
     document.getElementById("crystal-score").innerText = `${cCount} / 10`;
     document.getElementById("enemy-score").innerText = `${eCount} / 6`;
-    
-    const status = document.getElementById("mission-status");
-    if(cCount === 10 && eCount === 6) {
-        status.innerText = "ALL GOALS MET!";
-        status.className = "text-xs font-bold text-green-400 uppercase italic animate-bounce";
-    } else {
-        status.innerText = "Clear the area!";
-    }
 }
 
 function resetGame() {
@@ -139,9 +128,9 @@ function update() {
     if(!gameActive) return;
 
     if(keys["ArrowUp"] || keys["KeyW"]) { player.y -= player.speed; player.dir = 'up'; }
-    if(keys["ArrowDown"] || keys["KeyS"]) { player.y += player.speed; player.dir = 'down'; }
-    if(keys["ArrowLeft"] || keys["KeyA"]) { player.x -= player.speed; player.dir = 'left'; }
-    if(keys["ArrowRight"] || keys["KeyD"]) { player.x += player.speed; player.dir = 'right'; }
+    else if(keys["ArrowDown"] || keys["KeyS"]) { player.y += player.speed; player.dir = 'down'; }
+    else if(keys["ArrowLeft"] || keys["KeyA"]) { player.x -= player.speed; player.dir = 'left'; }
+    else if(keys["ArrowRight"] || keys["KeyD"]) { player.x += player.speed; player.dir = 'right'; }
 
     player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
     player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
@@ -149,25 +138,39 @@ function update() {
     if(player.attackTimer > 0) player.attackTimer--;
     else player.attacking = false;
 
-    // לוגיקת אויבים
+    // הגדרת אזור הפגיעה של החרב (Sword Hitbox)
+    let swordHitbox = { x: 0, y: 0, w: 0, h: 0 };
+    const range = 40; 
+    if(player.attacking) {
+        if(player.dir === 'up') swordHitbox = { x: player.x - 10, y: player.y - range, w: player.size + 20, h: range };
+        if(player.dir === 'down') swordHitbox = { x: player.x - 10, y: player.y + player.size, w: player.size + 20, h: range };
+        if(player.dir === 'left') swordHitbox = { x: player.x - range, y: player.y - 10, w: range, h: player.size + 20 };
+        if(player.dir === 'right') swordHitbox = { x: player.x + player.size, y: player.y - 10, w: range, h: player.size + 20 };
+    }
+
     enemies.forEach(e => {
         if(!e.alive) return;
         e.x += e.dx; e.y += e.dy;
-        if(e.x < 0 || e.x > canvas.width - e.size) e.dx *= -1;
-        if(e.y < 0 || e.y > canvas.height - e.size) e.dy *= -1;
+        if(e.x < 0 || e.x > canvas.width - e.w) e.dx *= -1;
+        if(e.y < 0 || e.y > canvas.height - e.h) e.dy *= -1;
 
-        const dist = Math.hypot(player.x - e.x, player.y - e.y);
-        if(dist < 28) {
-            if(player.attacking) {
+        // בדיקת פגיעה של החרב באויב (AABB Collision)
+        if(player.attacking) {
+            if(swordHitbox.x < e.x + e.w && swordHitbox.x + swordHitbox.w > e.x &&
+               swordHitbox.y < e.y + e.h && swordHitbox.y + swordHitbox.h > e.y) {
                 e.alive = false;
                 updateUI();
-            } else {
-                resetGame(); // פסילה = איפוס הכל
+                return;
             }
+        }
+
+        // בדיקת פגיעה של אויב בשחקן
+        if(player.x < e.x + e.w && player.x + player.size > e.x &&
+           player.y < e.y + e.h && player.y + player.size > e.y) {
+            resetGame();
         }
     });
 
-    // לוגיקת קריסטלים
     crystals.forEach(c => {
         if(!c.collected && Math.hypot(player.x - c.x, player.y - c.y) < 25) {
             c.collected = true;
@@ -175,16 +178,13 @@ function update() {
         }
     });
 
-    const allCrystals = crystals.every(c => c.collected);
-    const allDead = enemies.every(e => !e.alive);
-    if(allCrystals && allDead) handleWin();
+    if(crystals.every(c => c.collected) && enemies.every(e => !e.alive)) handleWin();
 }
 
 function draw() {
     ctx.fillStyle = "#010409";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // קריסטלים
     crystals.forEach(c => {
         if(!c.collected) {
             ctx.shadowBlur = 15; ctx.shadowColor = "#0f0";
@@ -196,34 +196,28 @@ function draw() {
         }
     });
 
-    // אויבים
     enemies.forEach(e => {
         if(e.alive) {
             ctx.shadowBlur = 20; ctx.shadowColor = "#f00";
             ctx.font = "26px Arial";
-            ctx.fillText("💀", e.x, e.y + 20);
+            ctx.fillText("💀", e.x, e.y + 22);
         }
     });
     ctx.shadowBlur = 0;
 
-    // חרב
     if(player.attacking) {
-        ctx.strokeStyle = "#fff"; ctx.lineWidth = 4;
+        ctx.strokeStyle = "#fff"; ctx.lineWidth = 3;
         ctx.shadowBlur = 15; ctx.shadowColor = "#0ff";
         ctx.beginPath();
-        const centerX = player.x + 15; const centerY = player.y + 15;
-        if(player.dir === 'right') ctx.arc(centerX + 15, centerY, 25, -1, 1);
-        if(player.dir === 'left') ctx.arc(centerX - 15, centerY, 25, 2, 4);
-        if(player.dir === 'up') ctx.arc(centerX, centerY - 15, 25, 3.5, 6);
-        if(player.dir === 'down') ctx.arc(centerX, centerY + 15, 25, 0.5, 2.5);
+        const cx = player.x + 15; const cy = player.y + 15;
+        if(player.dir === 'right') ctx.arc(cx + 10, cy, 30, -0.8, 0.8);
+        if(player.dir === 'left') ctx.arc(cx - 10, cy, 30, 2.3, 3.9);
+        if(player.dir === 'up') ctx.arc(cx, cy - 10, 30, 3.9, 5.5);
+        if(player.dir === 'down') ctx.arc(cx, cy + 10, 30, 0.8, 2.3);
         ctx.stroke();
     }
 
-    // שחקן
-    ctx.shadowBlur = player.attacking ? 20 : 0;
-    ctx.shadowColor = "#0ff";
     ctx.drawImage(linkImg, player.x, player.y, player.size, player.size);
-    ctx.shadowBlur = 0;
 }
 
 function loop() {
