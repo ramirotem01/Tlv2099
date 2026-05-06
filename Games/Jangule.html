@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>Neon Jungle Runner</title>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+body { margin:0; overflow:hidden; background:#020617; color:white; }
+canvas { display:block; margin:auto; }
+.neon { text-shadow:0 0 10px #0f0,0 0 20px #0f0; }
+
+#overlay {
+  position:absolute;
+  inset:0;
+  display:none;
+  background:rgba(0,0,0,0.9);
+  justify-content:center;
+  align-items:center;
+  flex-direction:column;
+}
+</style>
+</head>
+
+<body class="flex flex-col items-center justify-center h-screen">
+
+<h1 class="text-4xl neon mb-4">🌴 Jungle Runner 80s</h1>
+
+<canvas id="gameCanvas" width="800" height="400"></canvas>
+
+<div id="overlay" class="flex">
+  <h2 class="text-5xl neon text-green-400 mb-4">🎉 ניצחת!</h2>
+  <p>+50 מטבעות נוספו</p>
+</div>
+
+<script type="module">
+import { auth, db } from "../firebase-config.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+let gameActive = true;
+let winTriggered = false;
+let currentUser = null;
+let loopStarted = false;
+
+// 🧍 Player
+const player = {
+  x:100,
+  y:300,
+  w:30,
+  h:30,
+  dy:0,
+  gravity:0.8,
+  jump:-12,
+  onGround:true
+};
+
+// 🌍 World
+let distance = 0;
+const winDistance = 2000;
+
+// 🌵 Obstacles
+const obstacles = [];
+
+// 🪙 Coins
+const coins = [];
+
+// 🎮 Controls
+let jumping = false;
+window.addEventListener("keydown", e=>{
+  if((e.code==="Space" || e.code==="ArrowUp") && player.onGround){
+    player.dy = player.jump;
+    player.onGround = false;
+  }
+});
+
+// 🔥 Firebase
+async function handleWin(){
+  if(winTriggered) return;
+  winTriggered = true;
+  gameActive = false;
+
+  document.getElementById("overlay").style.display="flex";
+
+  try{
+    const ref = doc(db,"players",currentUser.uid);
+    await updateDoc(ref,{
+      currentQuestStatus:"completed",
+      coins: increment(50)
+    });
+    console.log("WIN saved");
+  }catch(e){
+    console.error("DB error:",e);
+  }
+
+  setTimeout(()=>{
+    window.location.href="../dashboard.html";
+  },2500);
+}
+
+// 🎯 Update
+function update(){
+  if(!gameActive) return;
+
+  distance++;
+
+  // Gravity
+  player.dy += player.gravity;
+  player.y += player.dy;
+
+  if(player.y >= 300){
+    player.y = 300;
+    player.dy = 0;
+    player.onGround = true;
+  }
+
+  // יצירת מכשולים
+  if(Math.random() < 0.02){
+    obstacles.push({
+      x: canvas.width,
+      y:300,
+      w:20,
+      h:30
+    });
+  }
+
+  // יצירת מטבעות
+  if(Math.random() < 0.03){
+    coins.push({
+      x: canvas.width,
+      y: 250 - Math.random()*100,
+      r:8,
+      collected:false
+    });
+  }
+
+  // תזוזת אובייקטים
+  obstacles.forEach(o=>{
+    o.x -= 5;
+
+    if(player.x < o.x+o.w &&
+       player.x+player.w > o.x &&
+       player.y < o.y+o.h &&
+       player.y+player.h > o.y){
+      // פגיעה → ריסט קטן
+      player.y = 300;
+      player.dy = 0;
+    }
+  });
+
+  coins.forEach(c=>{
+    c.x -= 5;
+
+    if(!c.collected &&
+       player.x < c.x+10 &&
+       player.x+player.w > c.x &&
+       player.y < c.y+10 &&
+       player.y+player.h > c.y){
+      c.collected = true;
+    }
+  });
+
+  // ניקוי אובייקטים
+  while(obstacles.length && obstacles[0].x < -50) obstacles.shift();
+  while(coins.length && coins[0].x < -50) coins.shift();
+
+  // ניצחון
+  if(distance >= winDistance){
+    handleWin();
+  }
+}
+
+// 🎨 Draw
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // קרקע
+  ctx.fillStyle="#14532d";
+  ctx.fillRect(0,330,canvas.width,70);
+
+  // שחקן
+  ctx.shadowBlur=20;
+  ctx.shadowColor="#0f0";
+  ctx.fillStyle="#0f0";
+  ctx.fillRect(player.x,player.y,player.w,player.h);
+
+  // מכשולים
+  ctx.shadowColor="#f00";
+  ctx.fillStyle="#f00";
+  obstacles.forEach(o=>{
+    ctx.fillRect(o.x,o.y,o.w,o.h);
+  });
+
+  // מטבעות
+  ctx.shadowColor="#ff0";
+  ctx.fillStyle="#ff0";
+  coins.forEach(c=>{
+    if(!c.collected){
+      ctx.beginPath();
+      ctx.arc(c.x,c.y,c.r,0,Math.PI*2);
+      ctx.fill();
+    }
+  });
+
+  ctx.shadowBlur=0;
+
+  // UI
+  ctx.fillStyle="#fff";
+  ctx.fillText("Distance: "+distance, 20, 20);
+}
+
+// 🔁 Loop
+function loop(){
+  if(!gameActive) return;
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// 🔐 Auth
+onAuthStateChanged(auth,user=>{
+  if(!user){
+    window.location.href="../index.html";
+    return;
+  }
+
+  currentUser = user;
+
+  if(!loopStarted){
+    loopStarted = true;
+    loop();
+  }
+});
+</script>
+
+</body>
+</html>
