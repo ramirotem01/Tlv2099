@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>Jungle Quest - TLV2099</title>
+    <title>Jungle Quest - Fair Play Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;800&display=swap');
@@ -27,7 +27,7 @@
 <body class="flex flex-col items-center justify-center h-screen">
 
 <div class="absolute top-5 flex justify-between w-full px-10 pointer-events-none">
-    <h1 class="text-4xl text-white jungle-font">🌴 JUNGLE QUEST - BALANCED</h1>
+    <h1 class="text-4xl text-white jungle-font">🌴 JUNGLE QUEST - EASY ELEPHANTS</h1>
     <div class="bg-black/40 p-3 rounded-xl border border-yellow-500 shadow-[0_0_15px_rgba(250,204,21,0.3)]">
         <p class="text-yellow-400 font-bold text-2xl" id="coinCounter">🪙 מטבעות: 0 / 50</p>
     </div>
@@ -37,8 +37,8 @@
 
 <div id="overlay">
     <div class="bg-white p-12 rounded-[3rem] text-center shadow-2xl border-8 border-yellow-400">
-        <h2 class="text-7xl text-green-600 font-black mb-4">אלופים! 🏆</h2>
-        <p class="text-2xl text-slate-700 mb-8 font-bold">הצלחת לעבור את חיות הג'ונגל ולאסוף 50 מטבעות!</p>
+        <h2 class="text-7xl text-green-600 font-black mb-4">כל הכבוד! 👑</h2>
+        <p class="text-2xl text-slate-700 mb-8 font-bold">הצלחת לעבור את הג'ונגל בסטייל.</p>
         <div class="text-5xl animate-bounce">💰 +50 COINS</div>
     </div>
 </div>
@@ -122,13 +122,20 @@ function update() {
         player.rotation -= 0.1;
     }
 
-    // יצירת חיות - סיכוי נמוך יותר (0.007 במקום 0.012)
+    // יצירת חיות - סיכוי הופעה נמוך וחלוקה הוגנת
     if (Math.random() < 0.007) {
-        // גדלים מוקטנים: חזיר 30px, פיל 45px
-        const type = Math.random() > 0.5 ? {icon: '🐗', size: 30} : {icon: '🐘', size: 45};
+        let type;
+        const rand = Math.random();
+        
+        if (rand > 0.8) { // 20% סיכוי בלבד לפיל
+            type = {icon: '🐘', size: 32}; // מוקטן מ-45 ל-32
+        } else { // 80% סיכוי לחזיר (קל יותר)
+            type = {icon: '🐗', size: 28};
+        }
+
         obstacles.push({ 
             x: -100, 
-            y: GROUND_Y + 20, // קצת יותר נמוך לקרקע
+            y: GROUND_Y + 25, 
             w: type.size, 
             h: type.size, 
             icon: type.icon, 
@@ -136,13 +143,13 @@ function update() {
         });
     }
 
-    // תוכים מוקטנים ובתדירות נמוכה יותר
-    if (Math.random() < 0.005) {
+    // ציפורים - נדירות וקטנות
+    if (Math.random() < 0.004) {
         obstacles.push({ 
             x: -100, 
             y: GROUND_Y - 110, 
-            w: 30, 
-            h: 30, 
+            w: 25, 
+            h: 25, 
             icon: '🦜', 
             speed: 8 
         });
@@ -155,9 +162,9 @@ function update() {
     obstacles.forEach((o, index) => {
         o.x += o.speed;
         
-        // Hitbox סלחני יותר (פחות 10 פיקסלים מכל צד)
-        if (player.x < o.x + o.w - 10 && player.x + player.w > o.x + 10 &&
-            player.y < o.y + o.h - 10 && player.y + player.h > o.y + 10) {
+        // Hitbox סופר סלחני כדי למנוע תסכול
+        if (player.x < o.x + o.w - 12 && player.x + player.w > o.x + 12 &&
+            player.y < o.y + o.h - 12 && player.y + player.h > o.y + 12) {
             resetGame();
         }
     });
