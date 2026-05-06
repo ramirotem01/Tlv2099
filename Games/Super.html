@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>Neon Quest - Money Bag Edition</title>
+<title>Neon Quest - Mario Edition</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
@@ -14,11 +14,7 @@
         backdrop-filter: blur(15px); justify-content:center; align-items:center;
         flex-direction:column; z-index: 100;
     }
-    #game-ui {
-        position: absolute; top: 20px; left: 20px; pointer-events: none;
-    }
-    .warning-text { color: #ff0055; font-size: 10px; margin-top: 4px; animation: pulse 1s infinite; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    #game-ui { position: absolute; top: 20px; left: 20px; pointer-events: none; }
 </style>
 </head>
 <body class="flex flex-col items-center justify-center h-screen">
@@ -26,21 +22,18 @@
 <div id="game-ui" class="bg-black/60 p-4 border border-cyan-500/30 rounded-xl backdrop-blur-md">
     <div class="text-cyan-400 text-[10px] tracking-widest mb-1 uppercase">Target: 30 Money Bags</div>
     <div id="coin-counter" class="text-3xl font-black text-white">0 / 30</div>
-    <div id="status-msg" class="warning-text">אסוף עוד שקים כדי לפתוח את השער!</div>
 </div>
 
 <div class="mb-4 text-center">
-    <h1 class="text-4xl font-black neon-title italic uppercase tracking-tighter">Cyber Collector</h1>
+    <h1 class="text-4xl font-black neon-title italic uppercase tracking-tighter">Mario Cyber Runner</h1>
 </div>
 
 <div class="relative">
     <canvas id="gameCanvas" width="900" height="400"></canvas>
     <div id="overlay">
         <h2 class="text-6xl font-black text-green-400 mb-2 italic">MISSION SUCCESS</h2>
-        <p class="text-white opacity-70 mb-8 uppercase tracking-widest">כל השקים נאספו והועברו לחשבון</p>
-        <div class="flex gap-4">
-             <div class="px-6 py-2 border border-green-500 text-green-500 font-bold">+50 COINS</div>
-        </div>
+        <p class="text-white opacity-70 mb-8 uppercase tracking-widest">PCS365: הנתונים סונכרנו בהצלחה</p>
+        <div class="px-6 py-2 border border-green-500 text-green-500 font-bold animate-pulse">+50 COINS</div>
     </div>
 </div>
 
@@ -52,53 +45,39 @@ import { doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
+// --- הגדרת השחקן (מריו) ---
+const marioImg = new Image();
+// SVG Base64 של מריו
+marioImg.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjE2MCIgdmlld0JveD0iMCAwIDEyIDE2IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHNoYXBlLXJlbmRlcmluZz0iY3Jpc3BFZGdlcyI+PHBhdGggZmlsbD0iI0ZGMDAwMCIgZD0iTTMgMGg2djFIM3ptMiAxaDd2MUgydjFoM3oxIDloMnYxaDF2MWgxdjJINHYxSDJ2LTFIMXYtMkgwVjloMXptOCAwaDJ2MWgxdjJoLTF2MUg5di0xSDh2LTJoMXYtOXoiIC8+PHBhdGggZmlsbD0iI0ZGRUNDOTkiIGQ9Ik0yIDNoN3YxaDN2M2gtMVY2aC0xdjFIOXYxaC03VjdIMVY0aDFWM3ptMCA4aDF2MUgydi0xe m03IDBoMXYxSDl2LTF6IiAvPjxwYXRoIGZpbGw9IiM2NjMzMDAiIGQ9Ik0yIDNoM3YxSDN2MUgyVjN6bTAgMmgxdjFIMlY1em01IDBoMXYxSDdWNXptMCAxaDJ2MUg3VjZ6bS00IDFoMXYxSDNWN3ptNCAwaDF2MUg3Vjd6IiAvPjxwYXRoIGZpbGw9IiMwMDAwRkYiIGQ9Ik0zIDhoNnYxSDh2MWgxdjNIOHYxSDR2LTFIM3YtM2gxVjlIM1Y4ek00IDExaDF2MUg0di0xe m03IDBoMXYxSDd2LTF6IiAvPjxwYXRoIGZpbGw9IiMzMzFBMDAiIGQ9Ik0xIDE0aDN2MUgxdi0xe m03IDBoM3YxSDh2LTF6IiAvPjwvc3ZnPg==';
+
 let gameActive = true;
 let winTriggered = false;
 let currentUser = null;
 let scrollX = 0;
+let facingRight = true;
 
 const player = {
-    x: 100, y: 300, w: 25, h: 25, dx: 0, dy: 0,
+    x: 100, y: 300, w: 32, h: 42, dx: 0, dy: 0,
     speed: 5.5, jump: -14, gravity: 0.7, onGround: false
 };
 
-const levelEnd = 5000; // הארכתי את השלב פי 2
+const levelEnd = 5000;
 const winTarget = 30;
 
-// משטחים ארוכים יותר ומפוזרים
+// בניית עולם
 const platforms = [
     {x:0, y:350, w:5500, h:50, type: 'ground'},
-    {x:300, y:260, w:150, h:15},
-    {x:600, y:180, w:150, h:15},
-    {x:950, y:250, w:200, h:15},
-    {x:1300, y:180, w:150, h:15},
-    {x:1600, y:270, w:150, h:15},
-    {x:1900, y:160, w:200, h:15},
-    {x:2300, y:250, w:150, h:15},
-    {x:2700, y:180, w:200, h:15},
-    {x:3100, y:260, w:150, h:15},
-    {x:3500, y:170, w:200, h:15},
-    {x:3900, y:240, w:150, h:15},
-    {x:4300, y:180, w:300, h:15}
+    {x:300, y:260, w:150, h:15}, {x:600, y:180, w:150, h:15}, {x:950, y:250, w:200, h:15},
+    {x:1300, y:180, w:150, h:15}, {x:1600, y:270, w:150, h:15}, {x:1900, y:160, w:200, h:15},
+    {x:2300, y:250, w:150, h:15}, {x:2700, y:180, w:200, h:15}, {x:3100, y:260, w:150, h:15},
+    {x:3500, y:170, w:200, h:15}, {x:3900, y:240, w:150, h:15}, {x:4300, y:180, w:300, h:15}
 ];
 
-// מפלצות
 const monsters = [];
-for(let i=1; i<=8; i++) {
-    monsters.push({
-        x: i * 600, y: 320, size: 30, dir: 1, range: 150, startX: i * 600
-    });
-}
+for(let i=1; i<=10; i++) monsters.push({ x: i * 550, y: 320, size: 30, dir: 1, range: 120, startX: i * 550 });
 
-// שקי כסף - יצירת 40 שקים כדי שיהיה קל להגיע ל-30
 const moneyBags = [];
-for(let i=0; i<40; i++) {
-    moneyBags.push({
-        x: 400 + (i * 110), 
-        y: 100 + Math.random() * 200, 
-        collected: false
-    });
-}
+for(let i=0; i<45; i++) moneyBags.push({ x: 400 + (i * 105), y: 100 + Math.random() * 200, collected: false });
 
 const keys = {};
 window.addEventListener("keydown", e => keys[e.code] = true);
@@ -106,30 +85,16 @@ window.addEventListener("keyup", e => keys[e.code] = false);
 
 function updateUI() {
     const collected = moneyBags.filter(b => b.collected).length;
-    const counter = document.getElementById("coin-counter");
-    const msg = document.getElementById("status-msg");
-    
-    counter.innerText = `${collected} / ${winTarget}`;
-    
-    if(collected >= winTarget) {
-        counter.classList.replace("text-white", "text-green-400");
-        msg.innerText = "השער פתוח! רוץ לסוף המסלול!";
-        msg.classList.replace("text-slate-500", "text-green-500");
-    }
+    document.getElementById("coin-counter").innerText = `${collected} / ${winTarget}`;
 }
 
 async function handleWin(){
     if(winTriggered) return;
-    winTriggered = true;
-    gameActive = false;
+    winTriggered = true; gameActive = false;
     document.getElementById("overlay").style.display="flex";
-
     try {
         const ref = doc(db, "players", currentUser.uid);
-        await updateDoc(ref, {
-            currentQuestStatus: "completed",
-            coins: increment(50)
-        });
+        await updateDoc(ref, { currentQuestStatus: "completed", coins: increment(50) });
     } catch(e) { console.error(e); }
     setTimeout(() => window.location.href="../dashboard.html", 4000);
 }
@@ -142,8 +107,9 @@ function update(){
     if(!gameActive) return;
 
     player.dx = 0;
-    if(keys["ArrowRight"] || keys["KeyD"]) player.dx = player.speed;
-    if(keys["ArrowLeft"] || keys["KeyA"]) player.dx = -player.speed;
+    if(keys["ArrowRight"] || keys["KeyD"]) { player.dx = player.speed; facingRight = true; }
+    if(keys["ArrowLeft"] || keys["KeyA"]) { player.dx = -player.speed; facingRight = false; }
+    
     if((keys["Space"] || keys["ArrowUp"] || keys["KeyW"]) && player.onGround){
         player.dy = player.jump; player.onGround = false;
     }
@@ -161,40 +127,30 @@ function update(){
     });
 
     monsters.forEach(m => {
-        m.x += m.dir * 3.5;
+        m.x += m.dir * 3;
         if(Math.abs(m.x - m.startX) > m.range) m.dir *= -1;
         if(player.x < m.x + m.size-5 && player.x + player.w > m.x+5 &&
-           player.y < m.y + m.size-5 && player.y + player.h > m.y+5){
-            resetGame();
-        }
+           player.y < m.y + m.size-5 && player.y + player.h > m.y+5) resetGame();
     });
 
     moneyBags.forEach(b => {
         if(!b.collected && Math.hypot(player.x - b.x, player.y - b.y) < 35){
-            b.collected = true;
-            updateUI();
+            b.collected = true; updateUI();
         }
     });
 
-    if(player.x > 300) scrollX = player.x - 300;
-    else scrollX = 0;
-
+    scrollX = player.x > 300 ? player.x - 300 : 0;
     if(player.y > canvas.height) resetGame();
     
-    // בדיקת ניצחון: גם הגעה לסוף וגם כמות שקים
     const collectedCount = moneyBags.filter(b => b.collected).length;
-    if(player.x > levelEnd && collectedCount >= winTarget) {
-        handleWin();
-    } else if (player.x > levelEnd && collectedCount < winTarget) {
-        // אם הגיע לסוף בלי מספיק שקים - מחזיר אותו קצת אחורה כדי שישלים
-        player.x = levelEnd - 200;
-    }
+    if(player.x > levelEnd && collectedCount >= winTarget) handleWin();
+    else if (player.x > levelEnd) player.x = levelEnd - 10;
 }
 
 function draw(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
-
-    // Background Grid
+    
+    // Grid
     ctx.strokeStyle = "rgba(0, 242, 255, 0.05)";
     for(let i=0; i<canvas.width; i+=50){
         ctx.beginPath(); ctx.moveTo(i - (scrollX*0.1)%50, 0); ctx.lineTo(i - (scrollX*0.1)%50, canvas.height); ctx.stroke();
@@ -207,56 +163,45 @@ function draw(){
     platforms.forEach(p => {
         ctx.fillStyle = p.type === 'ground' ? "#020617" : "#1e40af";
         ctx.fillRect(p.x, p.y, p.w, p.h);
-        ctx.strokeStyle = "#0ff";
-        ctx.lineWidth = 1;
-        ctx.strokeRect(p.x, p.y, p.w, 2);
+        ctx.strokeStyle = "#0ff"; ctx.strokeRect(p.x, p.y, p.w, 2);
     });
 
-    // Money Bags (💰)
+    // Money Bags
     ctx.font = "24px Arial";
-    moneyBags.forEach(b => {
-        if(!b.collected){
-            ctx.shadowBlur = 10; ctx.shadowColor = "#fbbf24";
-            ctx.fillText("💰", b.x, b.y);
-        }
-    });
+    moneyBags.forEach(b => { if(!b.collected) ctx.fillText("💰", b.x, b.y); });
 
     // Monsters
     ctx.font = "30px Arial";
-    ctx.shadowBlur = 20; ctx.shadowColor = "#ff0055";
     monsters.forEach(m => { ctx.fillText("👾", m.x, m.y + m.size); });
 
-    // Player
-    ctx.shadowBlur = 25; ctx.shadowColor = "#0ff";
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(player.x, player.y, player.w, player.h);
-    ctx.strokeStyle = "#0ff";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(player.x, player.y, player.w, player.h);
+    // DRAW MARIO
+    ctx.save();
+    if (!facingRight) {
+        ctx.scale(-1, 1);
+        ctx.drawImage(marioImg, -player.x - player.w, player.y, player.w, player.h);
+    } else {
+        ctx.drawImage(marioImg, player.x, player.y, player.w, player.h);
+    }
+    ctx.restore();
 
     // Finish Gate
     const collected = moneyBags.filter(b => b.collected).length;
-    ctx.shadowColor = collected >= winTarget ? "#39ff14" : "#ff0055";
     ctx.fillStyle = collected >= winTarget ? "#39ff14" : "#ff0055";
     ctx.fillRect(levelEnd + 100, 50, 20, 300);
-    ctx.font = "bold 20px Orbitron";
-    ctx.fillText(collected >= winTarget ? "OPEN" : "LOCKED", levelEnd + 60, 40);
 
     ctx.restore();
 }
 
 function loop(){
     if(!gameActive) return;
-    update();
-    draw();
+    update(); draw();
     requestAnimationFrame(loop);
 }
 
 onAuthStateChanged(auth, user => {
-    if(!user) { window.location.href="../index.html"; return; }
+    if(!user) return;
     currentUser = user;
-    updateUI();
-    loop();
+    updateUI(); loop();
 });
 </script>
 </body>
