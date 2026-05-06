@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>Jungle Quest PRO - PCS365</title>
+    <title>Jungle Quest - Right Side Run</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;800&display=swap');
@@ -27,7 +27,7 @@
 <body class="flex flex-col items-center justify-center h-screen">
 
 <div class="absolute top-5 flex justify-between w-full px-10 pointer-events-none">
-    <h1 class="text-4xl text-white jungle-font">🌴 JUNGLE QUEST PRO</h1>
+    <h1 class="text-4xl text-white jungle-font">🌴 JUNGLE QUEST - RIGHT SIDE</h1>
     <div class="bg-black/40 p-3 rounded-xl border border-yellow-500 shadow-[0_0_15px_rgba(250,204,21,0.3)]">
         <p class="text-yellow-400 font-bold text-2xl" id="coinCounter">🪙 מטבעות: 0 / 50</p>
     </div>
@@ -37,8 +37,8 @@
 
 <div id="overlay">
     <div class="bg-white p-12 rounded-[3rem] text-center shadow-2xl border-8 border-yellow-400">
-        <h2 class="text-7xl text-green-600 font-black mb-4">מלך הג'ונגל! 👑</h2>
-        <p class="text-2xl text-slate-700 mb-8 font-bold">אספת 50 מטבעות ושרדת את חיות הפרא!</p>
+        <h2 class="text-7xl text-green-600 font-black mb-4">ניצחת שמאלה! 🏆</h2>
+        <p class="text-2xl text-slate-700 mb-8 font-bold">אספת 50 מטבעות מול חיות הג'ונגל!</p>
         <div class="text-5xl animate-bounce">💰 +50 COINS</div>
     </div>
 </div>
@@ -51,7 +51,6 @@ import { doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// הגדרות יעד - 50 מטבעות לניצחון
 const TARGET_COINS = 50;
 const GROUND_Y = 400;
 
@@ -59,9 +58,11 @@ let gameActive = true;
 let winTriggered = false;
 let currentUser = null;
 let loopStarted = false;
+let animationFrameId = null;
 
+// שחקן ממוקם בצד ימין בגלל האייקון 🏃
 const player = {
-    x: 120,
+    x: 800, 
     y: GROUND_Y,
     w: 50,
     h: 60,
@@ -78,6 +79,7 @@ const coins = [];
 const clouds = Array.from({length: 6}, () => ({ x: Math.random()*1000, y: Math.random()*180, s: Math.random()*0.5 + 0.2 }));
 
 window.addEventListener("keydown", e => {
+    if (!gameActive) return;
     if ((e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") && player.onGround) {
         player.dy = player.jump;
         player.onGround = false;
@@ -89,6 +91,7 @@ async function handleWin() {
     winTriggered = true;
     gameActive = false;
 
+    if (animationFrameId) cancelAnimationFrame(animationFrameId);
     document.getElementById("overlay").style.display = "flex";
 
     try {
@@ -97,7 +100,7 @@ async function handleWin() {
             currentQuestStatus: "completed",
             coins: increment(50)
         });
-        console.log("Firebase: Win status and 50 coins updated.");
+        console.log("Firebase: Win recorded.");
     } catch (e) {
         console.error("Firebase Error:", e);
     }
@@ -120,14 +123,14 @@ function update() {
         player.onGround = true;
         player.rotation = 0;
     } else {
-        player.rotation += 0.1;
+        player.rotation -= 0.1; // סיבוב שמתאים לריצה שמאלה
     }
 
-    // יצירת מכשולים קרקע (חזיר / פיל)
+    // יצירת חיות שמגיעות מצד שמאל (x = -100)
     if (Math.random() < 0.012) {
         const type = Math.random() > 0.5 ? {icon: '🐗', size: 45} : {icon: '🐘', size: 60};
         obstacles.push({ 
-            x: canvas.width, 
+            x: -100, 
             y: GROUND_Y + 10, 
             w: type.size, 
             h: type.size, 
@@ -136,10 +139,10 @@ function update() {
         });
     }
 
-    // יצירת מכשולים אוויר (תוכי / ציפור)
+    // יצירת תוכים מצד שמאל
     if (Math.random() < 0.008) {
         obstacles.push({ 
-            x: canvas.width, 
+            x: -100, 
             y: GROUND_Y - 120, 
             w: 40, 
             h: 40, 
@@ -148,16 +151,15 @@ function update() {
         });
     }
 
-    // יצירת מטבעות
+    // יצירת מטבעות מצד שמאל
     if (Math.random() < 0.03) {
-        coins.push({ x: canvas.width, y: GROUND_Y - 60 - Math.random() * 150, r: 14 });
+        coins.push({ x: -100, y: GROUND_Y - 60 - Math.random() * 150, r: 14 });
     }
 
-    // עדכון אובייקטים וזיהוי פגיעות
+    // תנועה ימינה לעבר השחקן
     obstacles.forEach((o, index) => {
-        o.x -= o.speed;
+        o.x += o.speed;
         
-        // פגיעה במכשול -> איפוס
         if (player.x < o.x + o.w - 15 && player.x + player.w > o.x + 15 &&
             player.y < o.y + o.h - 10 && player.y + player.h > o.y + 10) {
             resetGame();
@@ -165,14 +167,13 @@ function update() {
     });
 
     coins.forEach((c, index) => {
-        c.x -= 7;
+        c.x += 7;
         if (player.x < c.x + 20 && player.x + player.w > c.x - 20 &&
             player.y < c.y + 20 && player.y + player.h > c.y - 20) {
             coins.splice(index, 1);
             collectedCoins++;
             document.getElementById("coinCounter").innerText = `🪙 מטבעות: ${collectedCoins} / ${TARGET_COINS}`;
             
-            // בדיקת ניצחון אמיתית ב-50 מטבעות
             if (collectedCoins >= TARGET_COINS) {
                 handleWin();
             }
@@ -180,13 +181,12 @@ function update() {
     });
 
     clouds.forEach(cl => {
-        cl.x -= cl.s;
-        if (cl.x < -150) cl.x = canvas.width + 150;
+        cl.x += cl.s;
+        if (cl.x > canvas.width + 150) cl.x = -150;
     });
 
-    // ניקוי זיכרון
-    if (obstacles.length && obstacles[0].x < -100) obstacles.shift();
-    if (coins.length && coins[0].x < -100) coins.shift();
+    if (obstacles.length && obstacles[0].x > canvas.width + 100) obstacles.shift();
+    if (coins.length && coins[0].x > canvas.width + 100) coins.shift();
 }
 
 function resetGame() {
@@ -194,33 +194,33 @@ function resetGame() {
     obstacles.length = 0;
     coins.length = 0;
     player.y = GROUND_Y;
+    player.x = 800;
     document.getElementById("coinCounter").innerText = `🪙 מטבעות: 0 / ${TARGET_COINS}`;
-    console.log("Game Reset: Player hit an animal.");
 }
 
 function draw() {
-    // רקע ג'ונגל עמוק
     const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
     skyGrad.addColorStop(0, "#075985"); 
     skyGrad.addColorStop(1, "#064e3b");
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // עננים
     ctx.font = "50px Arial";
     clouds.forEach(cl => ctx.fillText("☁️", cl.x, cl.y));
 
-    // קרקע
     ctx.fillStyle = "#1a2e05";
     ctx.fillRect(0, GROUND_Y + 50, canvas.width, 100);
 
-    // ציור מכשולים (חיות)
+    // ציור המכשולים עם היפוך (מכיוון שהם רצים ימינה)
     obstacles.forEach(o => {
+        ctx.save();
+        ctx.translate(o.x + o.w/2, o.y + o.h/2);
+        ctx.scale(-1, 1); // הופך את ה-Emoji שיסתכל ימינה
         ctx.font = `${o.w}px Arial`;
-        ctx.fillText(o.icon, o.x, o.y + o.h/2);
+        ctx.fillText(o.icon, -o.w/2, o.h/2);
+        ctx.restore();
     });
 
-    // ציור מטבעות זוהרים
     ctx.shadowBlur = 20;
     ctx.shadowColor = "#fbbf24";
     ctx.fillStyle = "#fbbf24";
@@ -235,7 +235,7 @@ function draw() {
     });
     ctx.shadowBlur = 0;
 
-    // ציור השחקן
+    // ציור השחקן (פונה שמאלה כברירת מחדל)
     ctx.save();
     ctx.translate(player.x + player.w/2, player.y + player.h/2);
     ctx.rotate(player.rotation);
@@ -243,10 +243,9 @@ function draw() {
     ctx.fillText("🏃", -30, 30);
     ctx.restore();
 
-    // תפאורה
     ctx.font = "70px Arial";
-    ctx.fillText("🌴", 50, GROUND_Y + 50);
-    ctx.fillText("🌿", 900, GROUND_Y + 60);
+    ctx.fillText("🌴", 900, GROUND_Y + 50);
+    ctx.fillText("🌿", 50, GROUND_Y + 60);
 }
 
 function loop() {
