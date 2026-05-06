@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>Jungle Quest - Tlv2099</title>
+    <title>Jungle Quest - TLV2099</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;800&display=swap');
@@ -27,7 +27,7 @@
 <body class="flex flex-col items-center justify-center h-screen">
 
 <div class="absolute top-5 flex justify-between w-full px-10 pointer-events-none">
-    <h1 class="text-4xl text-white jungle-font">🌴 JUNGLE QUEST - RIGHT SIDE</h1>
+    <h1 class="text-4xl text-white jungle-font">🌴 JUNGLE QUEST - BALANCED</h1>
     <div class="bg-black/40 p-3 rounded-xl border border-yellow-500 shadow-[0_0_15px_rgba(250,204,21,0.3)]">
         <p class="text-yellow-400 font-bold text-2xl" id="coinCounter">🪙 מטבעות: 0 / 50</p>
     </div>
@@ -37,8 +37,8 @@
 
 <div id="overlay">
     <div class="bg-white p-12 rounded-[3rem] text-center shadow-2xl border-8 border-yellow-400">
-        <h2 class="text-7xl text-green-600 font-black mb-4">ניצחת שמאלה! 🏆</h2>
-        <p class="text-2xl text-slate-700 mb-8 font-bold">אספת 50 מטבעות מול חיות הג'ונגל!</p>
+        <h2 class="text-7xl text-green-600 font-black mb-4">אלופים! 🏆</h2>
+        <p class="text-2xl text-slate-700 mb-8 font-bold">הצלחת לעבור את חיות הג'ונגל ולאסוף 50 מטבעות!</p>
         <div class="text-5xl animate-bounce">💰 +50 COINS</div>
     </div>
 </div>
@@ -60,7 +60,6 @@ let currentUser = null;
 let loopStarted = false;
 let animationFrameId = null;
 
-// שחקן ממוקם בצד ימין בגלל האייקון 🏃
 const player = {
     x: 800, 
     y: GROUND_Y,
@@ -90,7 +89,6 @@ async function handleWin() {
     if (winTriggered) return;
     winTriggered = true;
     gameActive = false;
-
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
     document.getElementById("overlay").style.display = "flex";
 
@@ -100,7 +98,6 @@ async function handleWin() {
             currentQuestStatus: "completed",
             coins: increment(50)
         });
-        console.log("Firebase: Win recorded.");
     } catch (e) {
         console.error("Firebase Error:", e);
     }
@@ -113,7 +110,6 @@ async function handleWin() {
 function update() {
     if (!gameActive) return;
 
-    // פיזיקה
     player.dy += player.gravity;
     player.y += player.dy;
 
@@ -123,44 +119,44 @@ function update() {
         player.onGround = true;
         player.rotation = 0;
     } else {
-        player.rotation -= 0.1; // סיבוב שמתאים לריצה שמאלה
+        player.rotation -= 0.1;
     }
 
-    // יצירת חיות שמגיעות מצד שמאל (x = -100)
-    if (Math.random() < 0.012) {
-        const type = Math.random() > 0.5 ? {icon: '🐗', size: 45} : {icon: '🐘', size: 60};
+    // יצירת חיות - סיכוי נמוך יותר (0.007 במקום 0.012)
+    if (Math.random() < 0.007) {
+        // גדלים מוקטנים: חזיר 30px, פיל 45px
+        const type = Math.random() > 0.5 ? {icon: '🐗', size: 30} : {icon: '🐘', size: 45};
         obstacles.push({ 
             x: -100, 
-            y: GROUND_Y + 10, 
+            y: GROUND_Y + 20, // קצת יותר נמוך לקרקע
             w: type.size, 
             h: type.size, 
             icon: type.icon, 
-            speed: 7 
+            speed: 6.5 
         });
     }
 
-    // יצירת תוכים מצד שמאל
-    if (Math.random() < 0.008) {
+    // תוכים מוקטנים ובתדירות נמוכה יותר
+    if (Math.random() < 0.005) {
         obstacles.push({ 
             x: -100, 
-            y: GROUND_Y - 120, 
-            w: 40, 
-            h: 40, 
+            y: GROUND_Y - 110, 
+            w: 30, 
+            h: 30, 
             icon: '🦜', 
-            speed: 9 
+            speed: 8 
         });
     }
 
-    // יצירת מטבעות מצד שמאל
     if (Math.random() < 0.03) {
         coins.push({ x: -100, y: GROUND_Y - 60 - Math.random() * 150, r: 14 });
     }
 
-    // תנועה ימינה לעבר השחקן
     obstacles.forEach((o, index) => {
         o.x += o.speed;
         
-        if (player.x < o.x + o.w - 15 && player.x + player.w > o.x + 15 &&
+        // Hitbox סלחני יותר (פחות 10 פיקסלים מכל צד)
+        if (player.x < o.x + o.w - 10 && player.x + player.w > o.x + 10 &&
             player.y < o.y + o.h - 10 && player.y + player.h > o.y + 10) {
             resetGame();
         }
@@ -173,10 +169,7 @@ function update() {
             coins.splice(index, 1);
             collectedCoins++;
             document.getElementById("coinCounter").innerText = `🪙 מטבעות: ${collectedCoins} / ${TARGET_COINS}`;
-            
-            if (collectedCoins >= TARGET_COINS) {
-                handleWin();
-            }
+            if (collectedCoins >= TARGET_COINS) handleWin();
         }
     });
 
@@ -211,11 +204,10 @@ function draw() {
     ctx.fillStyle = "#1a2e05";
     ctx.fillRect(0, GROUND_Y + 50, canvas.width, 100);
 
-    // ציור המכשולים עם היפוך (מכיוון שהם רצים ימינה)
     obstacles.forEach(o => {
         ctx.save();
         ctx.translate(o.x + o.w/2, o.y + o.h/2);
-        ctx.scale(-1, 1); // הופך את ה-Emoji שיסתכל ימינה
+        ctx.scale(-1, 1); 
         ctx.font = `${o.w}px Arial`;
         ctx.fillText(o.icon, -o.w/2, o.h/2);
         ctx.restore();
@@ -229,13 +221,12 @@ function draw() {
         ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = "#78350f";
-        ctx.font = "16px Arial";
-        ctx.fillText("50", c.x - 10, c.y + 6);
+        ctx.font = "14px Arial";
+        ctx.fillText("50", c.x - 8, c.y + 5);
         ctx.fillStyle = "#fbbf24";
     });
     ctx.shadowBlur = 0;
 
-    // ציור השחקן (פונה שמאלה כברירת מחדל)
     ctx.save();
     ctx.translate(player.x + player.w/2, player.y + player.h/2);
     ctx.rotate(player.rotation);
