@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>Neon Overdrive - Mission 50</title>
+<title>Neon Overdrive - Pro Edition</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
@@ -25,7 +25,7 @@
     </div>
     <div class="bg-black/80 p-3 border border-red-500 rounded-lg text-right shadow-[0_0_15px_rgba(255,0,0,0.3)]">
         <div class="text-[10px] text-red-400 uppercase tracking-widest">System Status</div>
-        <div id="status-text" class="text-xs font-bold text-white uppercase italic">Active Drive</div>
+        <div id="status-text" class="text-xs font-bold text-white uppercase italic">High Velocity</div>
     </div>
 </div>
 
@@ -33,20 +33,19 @@
     <canvas id="gameCanvas" width="500" height="700"></canvas>
     <div id="overlay">
         <h2 class="text-6xl font-black text-green-400 mb-2 italic">MISSION COMPLETE</h2>
-        <p class="text-white opacity-70 mb-6 uppercase tracking-widest">Syncing with PCS365...</p>
-        <div class="px-8 py-3 border-2 border-green-500 text-green-500 font-bold text-2xl">+50 COINS</div>
+        <p class="text-white opacity-70 mb-6 uppercase tracking-widest text-center">Data Synced with PCS365<br>Returning to Dashboard...</p>
+        <div class="px-8 py-3 border-2 border-green-500 text-green-500 font-bold text-2xl animate-pulse">+50 COINS</div>
     </div>
 </div>
 
 <script type="module">
 import { auth, db } from "../firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"; // Note: Updated import paths if needed for your environment
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// טעינת גרפיקת SVG לרכבים
 const carSVG = `data:image/svg+xml;base64,${btoa(`
 <svg width="60" height="100" viewBox="0 0 60 100" xmlns="http://www.w3.org/2000/svg">
     <rect x="10" y="5" width="40" height="90" rx="8" fill="#00f3ff" />
@@ -56,15 +55,14 @@ const carSVG = `data:image/svg+xml;base64,${btoa(`
     <rect x="12" y="5" width="10" height="5" fill="#fff" />
     <rect x="38" y="5" width="10" height="5" fill="#fff" />
     <path d="M10 30 L5 40 L5 70 L10 80" fill="none" stroke="#00f3ff" stroke-width="2" />
-    <path d="M50 30 L55 40 L55 70 L50 80" fill="none" stroke="#00f3ff" stroke-width="2" />
 </svg>`)}`;
 
 const enemySVG = `data:image/svg+xml;base64,${btoa(`
 <svg width="60" height="100" viewBox="0 0 60 100" xmlns="http://www.w3.org/2000/svg">
     <rect x="10" y="5" width="40" height="90" rx="8" fill="#f87171" />
     <rect x="15" y="20" width="30" height="25" rx="2" fill="#1e1b4b" />
-    <circle cx="15" cy="10" r="3" fill="#ef4444" />
-    <circle cx="45" cy="10" r="3" fill="#ef4444" />
+    <circle cx="15" cy="10" r="4" fill="#facc15" />
+    <circle cx="45" cy="10" r="4" fill="#facc15" />
 </svg>`)}`;
 
 const carImg = new Image(); carImg.src = carSVG;
@@ -72,7 +70,7 @@ const enemyImg = new Image(); enemyImg.src = enemySVG;
 
 let gameActive = true;
 let coinsCollected = 0;
-let speed = 9; // מהירות התחלתית גבוהה יותר
+let speed = 11; // מהירות התחלתית גבוהה יותר
 let currentUser = null;
 let carX = 225;
 let targetX = 225;
@@ -80,19 +78,20 @@ let targetX = 225;
 const obstacles = [];
 const coins = [];
 const roadLines = [];
-for(let i=0; i<12; i++) roadLines.push({ y: i * 60 });
+for(let i=0; i<15; i++) roadLines.push({ y: i * 50 });
 
 function resetGame() {
     coinsCollected = 0;
-    speed = 9;
+    speed = 11;
     obstacles.length = 0;
     coins.length = 0;
     document.getElementById("coin-score").innerText = `0 / 50`;
-    document.getElementById("status-text").innerText = "RESTARTING...";
-    setTimeout(() => { document.getElementById("status-text").innerText = "Active Drive"; }, 1000);
+    document.getElementById("status-text").innerText = "SYSTEM REBOOT...";
+    setTimeout(() => { document.getElementById("status-text").innerText = "High Velocity"; }, 800);
 }
 
 async function handleWin() {
+    if(!gameActive) return;
     gameActive = false;
     document.getElementById("overlay").style.display = "flex";
     if (currentUser) {
@@ -115,26 +114,39 @@ window.addEventListener("keydown", e => {
 function update() {
     if(!gameActive) return;
 
-    speed += 0.002;
-    carX += (targetX - carX) * 0.2;
+    speed += 0.003; // האצה מהירה יותר
+    carX += (targetX - carX) * 0.25;
 
     roadLines.forEach(l => {
         l.y += speed;
-        if(l.y > canvas.height) l.y = -60;
+        if(l.y > canvas.height) l.y = -50;
     });
+
+    // לוגיקה למניעת חסימה של 3 נתיבים
+    if(Math.random() < 0.04) {
+        const activeLanes = new Set();
+        obstacles.forEach(o => {
+            if(o.y < 150) { // בודק מכשולים קרובים מאוד למעלה
+                activeLanes.add(Math.floor((o.x - 60) / 165));
+            }
+        });
+
+        if(activeLanes.size < 2) { // יוצר מכשול רק אם יש פחות מ-2 נתיבים חסומים באותו גובה
+            const lane = Math.floor(Math.random() * 3);
+            if(!activeLanes.has(lane)) {
+                obstacles.push({ x: lane * 165 + 60, y: -100, w: 50, h: 90 });
+            }
+        }
+    }
 
     if(Math.random() < 0.03) {
         const lane = Math.floor(Math.random() * 3);
-        obstacles.push({ x: lane * 165 + 60, y: -100, w: 50, h: 90 });
-    }
-
-    if(Math.random() < 0.02) {
-        const lane = Math.floor(Math.random() * 3);
-        coins.push({ x: lane * 165 + 85, y: -50, r: 12 });
+        coins.push({ x: lane * 165 + 85, y: -50, r: 14 });
     }
 
     obstacles.forEach((obs, i) => {
         obs.y += speed;
+        // Collision Detection
         if(carX < obs.x + obs.w && carX + 50 > obs.x && 580 < obs.y + obs.h && 580 + 90 > obs.y) {
             resetGame();
         }
@@ -144,7 +156,7 @@ function update() {
     coins.forEach((c, i) => {
         c.y += speed;
         const dist = Math.hypot(carX + 25 - c.x, 580 + 45 - c.y);
-        if(dist < 40) {
+        if(dist < 45) {
             coins.splice(i, 1);
             coinsCollected++;
             document.getElementById("coin-score").innerText = `${coinsCollected} / 50`;
@@ -158,31 +170,34 @@ function draw() {
     ctx.fillStyle = "#010409";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // קווי הפרדה בנאון
-    ctx.shadowBlur = 10; ctx.shadowColor = "#0ff";
+    // כביש נאון
+    ctx.shadowBlur = 15; ctx.shadowColor = "#0ff";
     ctx.fillStyle = "#0ff";
     roadLines.forEach(l => {
-        ctx.fillRect(165, l.y, 4, 30);
-        ctx.fillRect(330, l.y, 4, 30);
+        ctx.fillRect(165, l.y, 2, 25);
+        ctx.fillRect(330, l.y, 2, 25);
     });
 
-    // ציור המכונית
-    ctx.shadowBlur = 20; ctx.shadowColor = "#00f3ff";
+    // שחקן
+    ctx.shadowBlur = 25; ctx.shadowColor = "#00f3ff";
     ctx.drawImage(carImg, carX, 580, 50, 90);
 
-    // ציור מכשולים
+    // מכשולים
     obstacles.forEach(obs => {
-        ctx.shadowBlur = 15; ctx.shadowColor = "#f87171";
+        ctx.shadowBlur = 20; ctx.shadowColor = "#f87171";
         ctx.drawImage(enemyImg, obs.x, obs.y, obs.w, obs.h);
     });
 
-    // ציור מטבעות
+    // מטבעות נאון מוזהבות
     coins.forEach(c => {
-        ctx.shadowBlur = 15; ctx.shadowColor = "#fbbf24";
+        ctx.shadowBlur = 20; ctx.shadowColor = "#fbbf24";
         ctx.fillStyle = "#fbbf24";
         ctx.beginPath();
         ctx.arc(c.x, c.y, c.r, 0, Math.PI*2);
         ctx.fill();
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2;
+        ctx.stroke();
     });
     ctx.shadowBlur = 0;
 }
