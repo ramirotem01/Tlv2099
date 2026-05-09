@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>Neon Overdrive - Pro Edition</title>
+<title>Neon Overdrive - Fixed & Fast</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
@@ -25,7 +25,7 @@
     </div>
     <div class="bg-black/80 p-3 border border-red-500 rounded-lg text-right shadow-[0_0_15px_rgba(255,0,0,0.3)]">
         <div class="text-[10px] text-red-400 uppercase tracking-widest">System Status</div>
-        <div id="status-text" class="text-xs font-bold text-white uppercase italic">High Velocity</div>
+        <div id="status-text" class="text-xs font-bold text-white uppercase italic">Extreme Speed</div>
     </div>
 </div>
 
@@ -33,19 +33,21 @@
     <canvas id="gameCanvas" width="500" height="700"></canvas>
     <div id="overlay">
         <h2 class="text-6xl font-black text-green-400 mb-2 italic">MISSION COMPLETE</h2>
-        <p class="text-white opacity-70 mb-6 uppercase tracking-widest text-center">Data Synced with PCS365<br>Returning to Dashboard...</p>
+        <p class="text-white opacity-70 mb-6 uppercase tracking-widest text-center">Syncing Coins...<br>Returning to Dashboard</p>
         <div class="px-8 py-3 border-2 border-green-500 text-green-500 font-bold text-2xl animate-pulse">+50 COINS</div>
     </div>
 </div>
 
 <script type="module">
+// ייבוא Firebase - וודא שהנתיב ל-firebase-config נכון אצלך
 import { auth, db } from "../firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"; // Note: Updated import paths if needed for your environment
+import { doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
+// יצירת תמונות מה-SVG
 const carSVG = `data:image/svg+xml;base64,${btoa(`
 <svg width="60" height="100" viewBox="0 0 60 100" xmlns="http://www.w3.org/2000/svg">
     <rect x="10" y="5" width="40" height="90" rx="8" fill="#00f3ff" />
@@ -54,7 +56,6 @@ const carSVG = `data:image/svg+xml;base64,${btoa(`
     <rect x="40" y="75" width="8" height="15" fill="#ff0000" />
     <rect x="12" y="5" width="10" height="5" fill="#fff" />
     <rect x="38" y="5" width="10" height="5" fill="#fff" />
-    <path d="M10 30 L5 40 L5 70 L10 80" fill="none" stroke="#00f3ff" stroke-width="2" />
 </svg>`)}`;
 
 const enemySVG = `data:image/svg+xml;base64,${btoa(`
@@ -70,7 +71,7 @@ const enemyImg = new Image(); enemyImg.src = enemySVG;
 
 let gameActive = true;
 let coinsCollected = 0;
-let speed = 11; // מהירות התחלתית גבוהה יותר
+let speed = 12; // מהיר יותר מההתחלה
 let currentUser = null;
 let carX = 225;
 let targetX = 225;
@@ -82,12 +83,14 @@ for(let i=0; i<15; i++) roadLines.push({ y: i * 50 });
 
 function resetGame() {
     coinsCollected = 0;
-    speed = 11;
+    speed = 12;
     obstacles.length = 0;
     coins.length = 0;
+    targetX = 225;
+    carX = 225;
     document.getElementById("coin-score").innerText = `0 / 50`;
     document.getElementById("status-text").innerText = "SYSTEM REBOOT...";
-    setTimeout(() => { document.getElementById("status-text").innerText = "High Velocity"; }, 800);
+    setTimeout(() => { document.getElementById("status-text").innerText = "Extreme Speed"; }, 800);
 }
 
 async function handleWin() {
@@ -102,10 +105,11 @@ async function handleWin() {
                 currentQuestStatus: "completed"
             });
             setTimeout(() => window.location.href = "../dashboard.html", 3000);
-        } catch(e) { console.error(e); }
+        } catch(e) { console.error("Firebase Error:", e); }
     }
 }
 
+// שליטה חלקה יותר
 window.addEventListener("keydown", e => {
     if(e.code === "ArrowLeft" && targetX > 100) targetX -= 165;
     if(e.code === "ArrowRight" && targetX < 300) targetX += 165;
@@ -114,102 +118,101 @@ window.addEventListener("keydown", e => {
 function update() {
     if(!gameActive) return;
 
-    speed += 0.003; // האצה מהירה יותר
-    carX += (targetX - carX) * 0.25;
+    speed += 0.004; // האצה משמעותית
+    carX += (targetX - carX) * 0.3; // תגובה מהירה יותר של הרכב
 
     roadLines.forEach(l => {
         l.y += speed;
         if(l.y > canvas.height) l.y = -50;
     });
 
-    // לוגיקה למניעת חסימה של 3 נתיבים
-    if(Math.random() < 0.04) {
-        const activeLanes = new Set();
-        obstacles.forEach(o => {
-            if(o.y < 150) { // בודק מכשולים קרובים מאוד למעלה
-                activeLanes.add(Math.floor((o.x - 60) / 165));
-            }
-        });
-
-        if(activeLanes.size < 2) { // יוצר מכשול רק אם יש פחות מ-2 נתיבים חסומים באותו גובה
-            const lane = Math.floor(Math.random() * 3);
-            if(!activeLanes.has(lane)) {
-                obstacles.push({ x: lane * 165 + 60, y: -100, w: 50, h: 90 });
-            }
+    // ייצור מכשולים חכם - ללא חסימה מלאה
+    if(Math.random() < 0.05) {
+        const lane = Math.floor(Math.random() * 3);
+        // בדיקה שאין כבר מכשולים קרובים מדי בנתיבים אחרים שיחסמו הכל
+        const blockingCount = obstacles.filter(o => o.y < 120).length;
+        if(blockingCount < 2) {
+            obstacles.push({ x: lane * 165 + 60, y: -100, w: 50, h: 90 });
         }
     }
 
-    if(Math.random() < 0.03) {
+    // ייצור מטבעות
+    if(Math.random() < 0.04) {
         const lane = Math.floor(Math.random() * 3);
-        coins.push({ x: lane * 165 + 85, y: -50, r: 14 });
+        coins.push({ x: lane * 165 + 85, y: -50, r: 15 });
     }
 
-    obstacles.forEach((obs, i) => {
+    // עדכון מכשולים
+    for(let i = obstacles.length - 1; i >= 0; i--) {
+        const obs = obstacles[i];
         obs.y += speed;
-        // Collision Detection
+        
+        // התנגשות (Collision)
         if(carX < obs.x + obs.w && carX + 50 > obs.x && 580 < obs.y + obs.h && 580 + 90 > obs.y) {
             resetGame();
         }
         if(obs.y > canvas.height) obstacles.splice(i, 1);
-    });
+    }
 
-    coins.forEach((c, i) => {
+    // עדכון מטבעות
+    for(let i = coins.length - 1; i >= 0; i--) {
+        const c = coins[i];
         c.y += speed;
         const dist = Math.hypot(carX + 25 - c.x, 580 + 45 - c.y);
-        if(dist < 45) {
+        if(dist < 50) {
             coins.splice(i, 1);
             coinsCollected++;
             document.getElementById("coin-score").innerText = `${coinsCollected} / 50`;
             if(coinsCollected >= 50) handleWin();
+        } else if(c.y > canvas.height) {
+            coins.splice(i, 1);
         }
-        if(c.y > canvas.height) coins.splice(i, 1);
-    });
+    }
 }
 
 function draw() {
     ctx.fillStyle = "#010409";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // כביש נאון
+    // ציור כביש
     ctx.shadowBlur = 15; ctx.shadowColor = "#0ff";
     ctx.fillStyle = "#0ff";
     roadLines.forEach(l => {
-        ctx.fillRect(165, l.y, 2, 25);
-        ctx.fillRect(330, l.y, 2, 25);
+        ctx.fillRect(165, l.y, 2, 30);
+        ctx.fillRect(330, l.y, 2, 30);
     });
 
-    // שחקן
+    // ציור שחקן
     ctx.shadowBlur = 25; ctx.shadowColor = "#00f3ff";
     ctx.drawImage(carImg, carX, 580, 50, 90);
 
-    // מכשולים
+    // ציור מכשולים
     obstacles.forEach(obs => {
         ctx.shadowBlur = 20; ctx.shadowColor = "#f87171";
         ctx.drawImage(enemyImg, obs.x, obs.y, obs.w, obs.h);
     });
 
-    // מטבעות נאון מוזהבות
+    // ציור מטבעות
     coins.forEach(c => {
         ctx.shadowBlur = 20; ctx.shadowColor = "#fbbf24";
         ctx.fillStyle = "#fbbf24";
         ctx.beginPath();
         ctx.arc(c.x, c.y, c.r, 0, Math.PI*2);
         ctx.fill();
-        ctx.strokeStyle = "#fff";
-        ctx.lineWidth = 2;
-        ctx.stroke();
+        ctx.shadowBlur = 0;
     });
-    ctx.shadowBlur = 0;
 }
 
 function loop() {
-    update(); draw();
+    update();
+    draw();
     if(gameActive) requestAnimationFrame(loop);
 }
 
+// אתחול המשחק בבדיקת משתמש
 onAuthStateChanged(auth, user => {
-    if(!user) return;
     currentUser = user;
+    resetGame();
     loop();
 });
 </script>
